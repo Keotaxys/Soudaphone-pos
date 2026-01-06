@@ -1,10 +1,9 @@
+import { signInAnonymously } from 'firebase/auth'; // 🟢 Import Login function
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
-// 🟢 ຖອຍອອກ 2 ຂັ້ນ (../../) ເພື່ອໄປຫາ src/firebase.js
-import { db } from '../../src/firebase';
+import { auth, db } from '../../src/firebase';
 
-// 🟢 ກຳນົດ Type ໃຫ້ສິນຄ້າ
 interface Product {
   id: string;
   name: string;
@@ -17,31 +16,41 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const productsRef = ref(db, 'products');
-    
-    // 🟢 ໃສ່ : any ເພື່ອບໍ່ໃຫ້ TS ຟ້ອງ Error
-    const unsubscribe = onValue(productsRef, (snapshot: any) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const productList = Object.keys(data).map(key => ({
-          id: key,
-          ...data[key]
-        }));
-        setProducts(productList as Product[]);
-      } else {
-        setProducts([]);
-      }
-      setLoading(false);
-    });
+    // 🟢 1. ສັ່ງ Login ກ່ອນ!
+    signInAnonymously(auth)
+      .then(() => {
+        console.log("Login anonymous success!");
+        
+        // 🟢 2. Login ຜ່ານແລ້ວ ຄ່ອຍດຶງຂໍ້ມູນ
+        const productsRef = ref(db, 'products');
+        const unsubscribe = onValue(productsRef, (snapshot: any) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            const productList = Object.keys(data).map(key => ({
+              id: key,
+              ...data[key]
+            }));
+            setProducts(productList as Product[]);
+          } else {
+            setProducts([]);
+          }
+          setLoading(false);
+        });
 
-    return () => unsubscribe();
+        return unsubscribe;
+      })
+      .catch((error) => {
+        console.error("Login failed: ", error);
+        setLoading(false);
+      });
+
   }, []);
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text>ກຳລັງໂຫຼດຂໍ້ມູນຮ້ານ...</Text>
+        <Text>ກຳລັງເຊື່ອມຕໍ່ລະບົບ...</Text>
       </View>
     );
   }

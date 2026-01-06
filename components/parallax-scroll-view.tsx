@@ -1,5 +1,5 @@
 import type { PropsWithChildren, ReactElement } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, useColorScheme } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedRef,
@@ -8,7 +8,6 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 const HEADER_HEIGHT = 250;
@@ -23,10 +22,16 @@ export default function ParallaxScrollView({
   headerImage,
   headerBackgroundColor,
 }: Props) {
+  // 1. ດຶງສີພື້ນຫຼັງມາໃຊ້
   const backgroundColor = useThemeColor({}, 'background');
-  const colorScheme = useColorScheme() ?? 'light';
+  
+  // 2. ກວດສອບໂຫມດສີ (Dark/Light) ແບບປອດໄພ
+  const systemColorScheme = useColorScheme();
+  const colorScheme = systemColorScheme === 'dark' ? 'dark' : 'light';
+  
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollOffset = useScrollOffset(scrollRef);
+  
   const headerAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -52,7 +57,7 @@ export default function ParallaxScrollView({
       <Animated.View
         style={[
           styles.header,
-          { backgroundColor: headerBackgroundColor[colorScheme ?? 'light']},
+          { backgroundColor: headerBackgroundColor[colorScheme] }, // 🟢 ບ່ອນນີ້ແກ້ໄຂແລ້ວ
           headerAnimatedStyle,
         ]}>
         {headerImage}

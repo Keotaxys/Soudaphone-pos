@@ -18,3 +18,28 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 export { db };
+// 🟢 ເພີ່ມ getAuth
+import { getAuth } from 'firebase/auth';
+// 🟢 (ສຳຄັນ) ເພີ່ມ ReactNativeAsyncStorage ເພື່ອໃຫ້ Login ຄ້າງໄວ້ໄດ້ (ຖ້າບໍ່ມີກໍບໍ່ເປັນຫຍັງສຳລັບຂັ້ນຕອນນີ້)
+
+const firebaseConfig = {
+  // ... (Config ເດີມຂອງເຈົ້າ ບໍ່ຕ້ອງປ່ຽນ) ...
+  apiKey: "AIzaSy...", 
+  authDomain: "...",
+  databaseURL: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+// 🟢 Initialize Auth (ແບບບໍ່ຕ້ອງຈື່ Session ໄປກ່ອນ ເພື່ອຄວາມງ່າຍ)
+const auth = getAuth(app); 
+
+// Initialize Database
+const db = getDatabase(app);
+
+export { auth, db }; // 🟢 ສົ່ງ auth ອອກໄປນຳ

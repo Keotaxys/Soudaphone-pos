@@ -1,24 +1,33 @@
+import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, ActivityIndicator } from 'react-native';
-import { ref, onValue } from 'firebase/database';
-import { db } from './src/firebase'; // ດຶງ db ທີ່ເຮົາສ້າງມາໃຊ້
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+// 🟢 ຖອຍອອກ 2 ຂັ້ນ (../../) ເພື່ອໄປຫາ src/firebase.js
+import { db } from '../../src/firebase';
+
+// 🟢 ກຳນົດ Type ໃຫ້ສິນຄ້າ
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+}
 
 export default function App() {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const productsRef = ref(db, 'products'); // ຊີ້ໄປທີ່ຕາຕະລາງ 'products' ດຽວກັນກັບ POS
+    const productsRef = ref(db, 'products');
     
-    const unsubscribe = onValue(productsRef, (snapshot) => {
+    // 🟢 ໃສ່ : any ເພື່ອບໍ່ໃຫ້ TS ຟ້ອງ Error
+    const unsubscribe = onValue(productsRef, (snapshot: any) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        // ແປງຂໍ້ມູນຈາກ Object ເປັນ Array (ຄືກັນກັບໃນ Web)
         const productList = Object.keys(data).map(key => ({
           id: key,
           ...data[key]
         }));
-        setProducts(productList);
+        setProducts(productList as Product[]);
       } else {
         setProducts([]);
       }
@@ -48,7 +57,7 @@ export default function App() {
           <View style={styles.card}>
             <Text style={styles.title}>{item.name}</Text>
             <View style={styles.row}>
-              <Text style={styles.price}>{parseInt(item.price).toLocaleString()} ກີບ</Text>
+              <Text style={styles.price}>{Number(item.price).toLocaleString()} ກີບ</Text>
               <Text style={item.stock > 0 ? styles.stock : styles.outOfStock}>
                 ຄົງເຫຼືອ: {item.stock}
               </Text>

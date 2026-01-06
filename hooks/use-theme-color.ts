@@ -5,14 +5,15 @@
 
 import { useColorScheme } from 'react-native';
 
-import { Colors } from '@/constants/Colors';
+// 🟢 ແກ້ໄຂ Path: ປ່ຽນຈາກ @/constants/Colors ເປັນ ../constants/Colors
+import { Colors } from '../constants/Colors';
 
 export function useThemeColor(
   props: { light?: string; dark?: string },
   colorName: keyof typeof Colors.light & keyof typeof Colors.dark
 ) {
-  // 🟢 ແກ້ໄຂ: ຕື່ມ ?? 'light' ເພື່ອບັງຄັບໃຫ້ມີຄ່າສະເໝີ
-  const theme = useColorScheme() ?? 'light'; 
+  // 🟢 ແກ້ໄຂ Logic: ບັງຄັບໃຫ້ມີຄ່າສະເໝີ (ຖ້າ null ໃຫ້ເປັນ light)
+  const theme = useColorScheme() ?? 'light';
 
   const colorFromProps = props[theme];
 

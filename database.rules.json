@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "products": {
+      ".read": true,
+      ".write": false
+    }
+  }
+}

@@ -4,6 +4,7 @@ import { ref, onValue, push, update, get } from 'firebase/database';
 import { db } from '../../src/firebase'; 
 import { Ionicons } from '@expo/vector-icons'; 
 import { useFonts } from 'expo-font'; 
+import DateTimePicker from '@react-native-community/datetimepicker'; // 🟢 1. Import Date Picker
 
 interface Product {
   id: string;
@@ -42,6 +43,14 @@ const formatNumber = (num: number | string) => {
   return parts.join('.');
 };
 
+// 🟢 Helper Function: ຈັດ format ວັນທີ (DD/MM/YYYY)
+const formatDate = (date: Date) => {
+  const d = date.getDate().toString().padStart(2, '0');
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+};
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'),
@@ -58,7 +67,11 @@ export default function App() {
   const [paymentCurrency, setPaymentCurrency] = useState<'LAK' | 'THB'>('LAK');
   const [manualTotal, setManualTotal] = useState<string>(''); 
   const [discount, setDiscount] = useState(0);
-  const [exchangeRate, setExchangeRate] = useState(700); 
+  const [exchangeRate, setExchangeRate] = useState(700);
+  
+  // 🟢 State ສຳລັບວັນທີ
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     const productsRef = ref(db, 'products');
@@ -109,6 +122,7 @@ export default function App() {
         const total = calculateTotalInCurrency(paymentCurrency);
         setManualTotal(total.toString()); 
         setDiscount(0);
+        setSelectedDate(new Date()); // Reset ວັນທີເປັນປັດຈຸບັນທຸກຄັ້ງທີ່ເປີດໃໝ່
     }
   }, [cart, modalVisible, paymentCurrency]);
 
@@ -123,6 +137,13 @@ export default function App() {
     const newTotal = parseFloat(cleanText) || 0;
     const originalSubtotal = calculateTotalInCurrency(paymentCurrency);
     setDiscount(originalSubtotal - newTotal);
+  };
+
+  // 🟢 ຈັດການການເລືອກວັນທີ
+  const onChangeDate = (event: any, selected: Date | undefined) => {
+    const currentDate = selected || selectedDate;
+    setShowDatePicker(Platform.OS === 'ios'); // iOS ໃຫ້ໂຊຄ້າງໄວ້, Android ໃຫ້ປິດ
+    setSelectedDate(currentDate);
   };
 
   const addToCart = (product: Product) => {
@@ -169,9 +190,9 @@ export default function App() {
         total: finalTotal,
         currency: paymentCurrency, 
         source: saleSource,       
-        date: new Date().toISOString(),
+        date: selectedDate.toISOString(), // 🟢 ໃຊ้วັນທີທີ່ເລືອກແທນ new Date()
         status: 'ສຳເລັດ',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString() // ວັນທີສ້າງຈິງ (ບໍ່ປ່ຽນ)
       };
 
       await push(ref(db, 'sales'), orderData);
@@ -258,7 +279,6 @@ export default function App() {
         </TouchableOpacity>
       )}
 
-      {/* 🟢 ແກ້ໄຂແລ້ວ: ໃຊ້ KeyboardAvoidingView ຫໍ່ Modal Content */}
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -272,22 +292,42 @@ export default function App() {
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.sourceContainer}>
-                    <TouchableOpacity 
-                        style={[styles.sourceBtn, saleSource === 'ໜ້າຮ້ານ' && styles.sourceBtnActive]}
-                        onPress={() => setSaleSource('ໜ້າຮ້ານ')}
-                    >
-                        <Ionicons name="storefront" size={18} color={saleSource === 'ໜ້າຮ້ານ' ? 'white' : COLORS.textLight} />
-                        <Text style={[styles.sourceText, saleSource === 'ໜ້າຮ້ານ' && styles.sourceTextActive]}>ໜ້າຮ້ານ</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={[styles.sourceBtn, saleSource === 'Online' && styles.sourceBtnActive]}
-                        onPress={() => setSaleSource('Online')}
-                    >
-                        <Ionicons name="globe" size={18} color={saleSource === 'Online' ? 'white' : COLORS.textLight} />
-                        <Text style={[styles.sourceText, saleSource === 'Online' && styles.sourceTextActive]}>Online</Text>
+                {/* 🟢 ແຖບເລືອກແຫຼ່ງຂາຍ ແລະ ວັນທີ */}
+                <View style={{flexDirection: 'row', gap: 10, marginBottom: 15}}>
+                    <View style={styles.sourceContainer}>
+                        <TouchableOpacity 
+                            style={[styles.sourceBtn, saleSource === 'ໜ້າຮ້ານ' && styles.sourceBtnActive]}
+                            onPress={() => setSaleSource('ໜ້າຮ້ານ')}
+                        >
+                            <Ionicons name="storefront" size={16} color={saleSource === 'ໜ້າຮ້ານ' ? 'white' : COLORS.textLight} />
+                            <Text style={[styles.sourceText, saleSource === 'ໜ້າຮ້ານ' && styles.sourceTextActive]}>ໜ້າຮ້ານ</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.sourceBtn, saleSource === 'Online' && styles.sourceBtnActive]}
+                            onPress={() => setSaleSource('Online')}
+                        >
+                            <Ionicons name="globe" size={16} color={saleSource === 'Online' ? 'white' : COLORS.textLight} />
+                            <Text style={[styles.sourceText, saleSource === 'Online' && styles.sourceTextActive]}>Online</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* 🟢 ປຸ່ມເລືອກວັນທີ */}
+                    <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(true)}>
+                        <Ionicons name="calendar" size={18} color={COLORS.primaryDark} />
+                        <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* 🟢 Date Picker Component */}
+                {showDatePicker && (
+                    <DateTimePicker
+                        testID="dateTimePicker"
+                        value={selectedDate}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={onChangeDate}
+                    />
+                )}
 
                 <ScrollView style={styles.modalBody}>
                     {cart.map(item => (
@@ -419,11 +459,17 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   modalTitle: { fontSize: 20, color: '#333', fontFamily: 'Lao-Bold' },
   modalBody: { flex: 1 },
-  sourceContainer: { flexDirection: 'row', backgroundColor: '#f5f5f5', padding: 4, borderRadius: 10, marginBottom: 15 },
+  
+  sourceContainer: { flex: 1, flexDirection: 'row', backgroundColor: '#f5f5f5', padding: 4, borderRadius: 10 },
   sourceBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 8, gap: 5 },
   sourceBtnActive: { backgroundColor: COLORS.primary },
   sourceText: { fontFamily: 'Lao-Regular', color: COLORS.textLight },
   sourceTextActive: { fontFamily: 'Lao-Bold', color: 'white' },
+
+  // Date Picker Button Style
+  datePickerBtn: { backgroundColor: '#f0f4f4', paddingHorizontal: 15, justifyContent: 'center', alignItems: 'center', borderRadius: 10, flexDirection: 'row', gap: 5, borderWidth: 1, borderColor: '#e0e0e0' },
+  dateText: { fontFamily: 'Lao-Bold', color: COLORS.primaryDark, fontSize: 12 },
+
   cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, backgroundColor: '#f9f9f9', padding: 10, borderRadius: 12 },
   cartItemImage: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#ddd' },
   cartItemName: { fontSize: 14, color: '#333', fontFamily: 'Lao-Regular' },

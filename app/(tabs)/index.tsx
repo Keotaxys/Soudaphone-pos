@@ -1,10 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useFonts } from 'expo-font';
+import { get, onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, ActivityIndicator, TouchableOpacity, Alert, Image, Dimensions, Modal, SafeAreaView, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import { ref, onValue, push, update, get } from 'firebase/database';
-import { db } from '../../src/firebase'; 
-import { Ionicons } from '@expo/vector-icons'; 
-import { useFonts } from 'expo-font'; 
-import DateTimePicker from '@react-native-community/datetimepicker'; 
+import { ActivityIndicator, Alert, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { db } from '../../src/firebase';
 
 interface Product {
   id: string;
@@ -23,7 +23,6 @@ const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
 const CARD_WIDTH = (width / COLUMN_COUNT) - 20; 
 
-// 🎨 Theme Colors
 const COLORS = {
   primary: '#4DB6AC',    
   primaryDark: '#009688', 
@@ -67,7 +66,6 @@ export default function App() {
   const [discount, setDiscount] = useState(0);
   const [exchangeRate, setExchangeRate] = useState(700);
   
-  // Date Picker State
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -121,6 +119,7 @@ export default function App() {
         setManualTotal(total.toString()); 
         setDiscount(0);
         setSelectedDate(new Date()); 
+        setShowDatePicker(false); // Reset date picker
     }
   }, [cart, modalVisible, paymentCurrency]);
 
@@ -136,14 +135,20 @@ export default function App() {
     setDiscount(originalSubtotal - newTotal);
   };
 
-  // 🟢 ຟັງຊັນປ່ຽນວັນທີ (ແຍກ Logic iOS/Android)
   const onChangeDate = (event: any, selected: Date | undefined) => {
+    // ສຳລັບ Android: ປິດທັນທີເມື່ອເລືອກແລ້ວ
     if (Platform.OS === 'android') {
-        setShowDatePicker(false); // Android ປິດທັນທີເມື່ອເລືອກ
+        setShowDatePicker(false);
     }
+    
     if (selected) {
         setSelectedDate(selected);
     }
+  };
+
+  // Toggle ສຳລັບ iOS (ກົດເປີດ/ປິດ)
+  const toggleDatePicker = () => {
+      setShowDatePicker(!showDatePicker);
   };
 
   const addToCart = (product: Product) => {
@@ -293,7 +298,7 @@ export default function App() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Source & Date */}
+                {/* Source & Date Selector */}
                 <View style={{flexDirection: 'row', gap: 10, marginBottom: 15}}>
                     <View style={styles.sourceContainer}>
                         <TouchableOpacity 
@@ -312,11 +317,31 @@ export default function App() {
                         </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(true)}>
+                    {/* 🟢 ປຸ່ມວັນທີ */}
+                    <TouchableOpacity style={styles.datePickerBtn} onPress={toggleDatePicker}>
                         <Ionicons name="calendar" size={18} color={COLORS.primaryDark} />
                         <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* 🟢 Date Picker (ວາງໄວ້ບ່ອນນີ້ ເພື່ອໃຫ້ມັນຢູ່ໃນ Modal ດຽວກັນ) */}
+                {showDatePicker && (
+                    <View style={{marginBottom: 15, alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: 10, padding: 10}}>
+                        <DateTimePicker
+                            value={selectedDate}
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'inline' : 'default'} // iOS ໃຊ້ແບບ Inline ງາມກວ່າ
+                            onChange={onChangeDate}
+                            style={Platform.OS === 'ios' ? { width: 320, height: 320 } : undefined}
+                        />
+                        {/* ປຸ່ມປິດສຳລັບ iOS */}
+                        {Platform.OS === 'ios' && (
+                            <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{marginTop: 10}}>
+                                <Text style={{color: COLORS.primaryDark, fontWeight: 'bold'}}>ປິດປະຕິທິນ</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
 
                 <ScrollView style={styles.modalBody}>
                     {cart.map(item => (
@@ -385,43 +410,6 @@ export default function App() {
             </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      {/* 🟢 iOS Specific Date Picker Modal */}
-      {Platform.OS === 'ios' && showDatePicker && (
-        <Modal transparent={true} animationType="fade" visible={showDatePicker} onRequestClose={() => setShowDatePicker(false)}>
-            <View style={styles.datePickerOverlay}>
-                <View style={styles.datePickerContent}>
-                    <View style={styles.datePickerHeader}>
-                        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                            <Text style={{color: COLORS.danger, fontSize: 16, fontFamily: 'Lao-Bold'}}>ຍົກເລີກ</Text>
-                        </TouchableOpacity>
-                        <Text style={{fontSize: 16, fontFamily: 'Lao-Bold'}}>ເລືອກວັນທີ</Text>
-                        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                            <Text style={{color: COLORS.primary, fontSize: 16, fontFamily: 'Lao-Bold'}}>ຕົກລົງ</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <DateTimePicker
-                        value={selectedDate}
-                        mode="date"
-                        display="spinner"
-                        onChange={onChangeDate}
-                        style={{height: 180}}
-                    />
-                </View>
-            </View>
-        </Modal>
-      )}
-
-      {/* 🟢 Android Date Picker */}
-      {Platform.OS === 'android' && showDatePicker && (
-        <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display="default"
-            onChange={onChangeDate}
-        />
-      )}
-
     </SafeAreaView>
   );
 }
@@ -481,7 +469,7 @@ const styles = StyleSheet.create({
   },
   viewCartText: { color: COLORS.primaryDark, fontSize: 12, fontFamily: 'Lao-Bold' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 25, borderTopRightRadius: 25, height: '80%', padding: 20 },
+  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 25, borderTopRightRadius: 25, height: '90%', padding: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   modalTitle: { fontSize: 20, color: '#333', fontFamily: 'Lao-Bold' },
   modalBody: { flex: 1 },
@@ -490,16 +478,8 @@ const styles = StyleSheet.create({
   sourceBtnActive: { backgroundColor: COLORS.primary },
   sourceText: { fontFamily: 'Lao-Regular', color: COLORS.textLight },
   sourceTextActive: { fontFamily: 'Lao-Bold', color: 'white' },
-  
-  // Date Picker Styles
   datePickerBtn: { backgroundColor: '#f0f4f4', paddingHorizontal: 15, justifyContent: 'center', alignItems: 'center', borderRadius: 10, flexDirection: 'row', gap: 5, borderWidth: 1, borderColor: '#e0e0e0' },
   dateText: { fontFamily: 'Lao-Bold', color: COLORS.primaryDark, fontSize: 12 },
-  
-  // iOS Date Picker Modal
-  datePickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
-  datePickerContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 },
-  datePickerHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee', backgroundColor: '#f9f9f9' },
-
   cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, backgroundColor: '#f9f9f9', padding: 10, borderRadius: 12 },
   cartItemImage: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#ddd' },
   cartItemName: { fontSize: 14, color: '#333', fontFamily: 'Lao-Regular' },

@@ -23,11 +23,11 @@ const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
 const CARD_WIDTH = (width / COLUMN_COUNT) - 20; 
 
-// 🎨 Theme Colors (ສີຂຽວພາສເທວ/ສົ້ມ ທີ່ເຈົ້າມັກ)
+// 🎨 Theme Colors
 const COLORS = {
   primary: '#4DB6AC',    
   primaryDark: '#009688', 
-  secondary: '#FFB74D',  
+  secondary: '#FFB74D',  // ສີສົ້ມທີ່ເຈົ້າຕ້ອງການ
   secondaryDark: '#F57C00', 
   background: '#F0F4F4', 
   cardBg: '#FFFFFF',
@@ -320,21 +320,39 @@ export default function App() {
                     </TouchableOpacity>
                 </View>
 
-                {/* 🟢 ປັບແກ້: ກຳນົດຂະໜາດ ແລະ ສີ ໃຫ້ປະຕິທິນຊັດເຈນ */}
+                {/* 🟢 ປະຕິທິນ Theme ສີສົ້ມ */}
                 {showDatePicker && (
-                    <View style={{marginBottom: 15, alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: 12, padding: 10, overflow: 'hidden'}}>
+                    <View style={{
+                        marginBottom: 15, 
+                        alignItems: 'center', 
+                        backgroundColor: COLORS.secondary, // 🟢 ພື້ນຫຼັງສີສົ້ມ
+                        borderRadius: 12, 
+                        padding: 10, 
+                        overflow: 'hidden'
+                    }}>
                         <DateTimePicker
                             testID="dateTimePicker"
                             value={selectedDate}
                             mode="date"
                             display={Platform.OS === 'ios' ? 'inline' : 'default'}
                             onChange={onChangeDate}
-                            textColor={COLORS.text} // ໃຊ້ສີດຳ
-                            style={Platform.OS === 'ios' ? { width: width - 80 } : undefined} // 🟢 ປັບຂະໜາດໃຫ້ພໍດີຈໍ (ໜ້າຈໍລົບ 80px)
+                            textColor="black" // 🟢 ຕົວໜັງສືສີດຳ ເພື່ອໃຫ້ເຫັນໃນພື້ນສົ້ມ
+                            themeVariant="light" // ບັງຄັບ Light Mode ໃຫ້ຕົວເລກເປັນສີດຳ
+                            accentColor="white" // 🟢 ສີວັນທີ່ເລືອກເປັນສີຂາວ (ເດັ່ນໃນພື້ນສົ້ມ)
+                            style={Platform.OS === 'ios' ? { width: width - 80, backgroundColor: COLORS.secondary } : undefined} 
                         />
                         {Platform.OS === 'ios' && (
-                            <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{marginTop: 5, padding: 10}}>
-                                <Text style={{color: COLORS.primaryDark, fontWeight: 'bold'}}>ປິດປະຕິທິນ</Text>
+                            <TouchableOpacity 
+                                onPress={() => setShowDatePicker(false)} 
+                                style={{
+                                    marginTop: 5, 
+                                    padding: 10, 
+                                    backgroundColor: 'rgba(255,255,255,0.2)', // ປຸ່ມສີຂາວຈາງໆ
+                                    borderRadius: 20, 
+                                    paddingHorizontal: 20
+                                }}
+                            >
+                                <Text style={{color: 'white', fontWeight: 'bold'}}>ປິດປະຕິທິນ</Text>
                             </TouchableOpacity>
                         )}
                     </View>

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
-import { get, onValue, push, ref, update } from 'firebase/database'; // 🟢 ເພີ່ມ get
+import { get, onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { db } from '../../src/firebase';
@@ -35,6 +35,11 @@ const COLORS = {
   danger: '#EF5350'
 };
 
+// 🟢 Helper Function: ຈັດ format ຕົວເລກໃຫ້ມີຈຸດ (,)
+const formatNumber = (num: number) => {
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'),
@@ -51,13 +56,9 @@ export default function App() {
   const [paymentCurrency, setPaymentCurrency] = useState<'LAK' | 'THB'>('LAK');
   const [manualTotal, setManualTotal] = useState<string>(''); 
   const [discount, setDiscount] = useState(0);
-  
-  // 🟢 ອັດຕາແລກປ່ຽນ (Default 700 ຖ້າດຶງບໍ່ໄດ້)
   const [exchangeRate, setExchangeRate] = useState(700); 
 
-  // 1. ດຶງຂໍ້ມູນສິນຄ້າ ແລະ ອັດຕາແລກປ່ຽນ
   useEffect(() => {
-    // ດຶງສິນຄ້າ
     const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -73,12 +74,10 @@ export default function App() {
       setLoading(false);
     });
 
-    // 🟢 ດຶງອັດຕາແລກປ່ຽນຈາກ Settings
     const settingsRef = ref(db, 'settings');
     get(settingsRef).then((snapshot) => {
         if(snapshot.exists()) {
             const data = snapshot.val();
-            // ຖ້າມີການບັນທຶກ exchangeRateTHB ໄວ້
             if (data.exchangeRateTHB) {
                 setExchangeRate(Number(data.exchangeRateTHB));
             }
@@ -88,54 +87,39 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 🟢 2. ຟັງຊັນຄຳນວນຍອດເງິນ (Smart Calculation)
-  // targetCurrency = ສະກຸນເງິນທີ່ຕ້ອງການຈ່າຍ (LAK ຫຼື THB)
   const calculateTotalInCurrency = (targetCurrency: 'LAK' | 'THB') => {
     let total = 0;
-    
     cart.forEach(item => {
         const itemTotal = item.price * item.quantity;
-        
-        // ກໍລະນີສິນຄ້າເປັນ LAK
         if (item.priceCurrency !== 'THB') {
-            if (targetCurrency === 'LAK') {
-                total += itemTotal; // LAK -> LAK (ບວກເລີຍ)
-            } else {
-                total += itemTotal / exchangeRate; // LAK -> THB (ຫານເລດ)
-            }
-        } 
-        // ກໍລະນີສິນຄ້າເປັນ THB
-        else {
-            if (targetCurrency === 'THB') {
-                total += itemTotal; // THB -> THB (ບວກເລີຍ)
-            } else {
-                total += itemTotal * exchangeRate; // THB -> LAK (ຄູນເລດ)
-            }
+            if (targetCurrency === 'LAK') total += itemTotal;
+            else total += itemTotal / exchangeRate;
+        } else {
+            if (targetCurrency === 'THB') total += itemTotal;
+            else total += itemTotal * exchangeRate;
         }
     });
-
-    // ປັດເສດທົດສະນິຍົມ
     return targetCurrency === 'LAK' ? Math.round(total) : parseFloat(total.toFixed(2));
   };
 
-  // ເມື່ອເປີດ Modal ຫຼື Cart ປ່ຽນ -> ຄຳນວນໃໝ່ຕາມສະກຸນເງິນປັດຈຸບັນ
   useEffect(() => {
     if (modalVisible) {
         const total = calculateTotalInCurrency(paymentCurrency);
-        setManualTotal(total.toString());
+        setManualTotal(total.toString()); // ເກັບຄ່າເປັນ string ທຳມະດາໃນ Input ເພື່ອໃຫ້ແກ້ໄຂງ່າຍ
         setDiscount(0);
     }
-  }, [cart, modalVisible, paymentCurrency]); // 🟢 ເພີ່ມ paymentCurrency ເຂົ້າໄປ
+  }, [cart, modalVisible, paymentCurrency]);
 
-  // ຟັງຊັນປ່ຽນສະກຸນເງິນ (Switch Currency)
   const handleCurrencyChange = (currency: 'LAK' | 'THB') => {
       setPaymentCurrency(currency);
-      // useEffect ຂ້າງເທິງຈະເຮັດວຽກອັດຕະໂນມັດເມື່ອ state ປ່ຽນ
   };
 
   const handleManualTotalChange = (text: string) => {
-    setManualTotal(text);
-    const newTotal = parseFloat(text) || 0;
+    // ລຶບເຄື່ອງໝາຍ , ອອກກ່ອນຄຳນວນ
+    const cleanText = text.replace(/,/g, '');
+    setManualTotal(cleanText);
+    
+    const newTotal = parseFloat(cleanText) || 0;
     const originalSubtotal = calculateTotalInCurrency(paymentCurrency);
     setDiscount(originalSubtotal - newTotal);
   };
@@ -175,8 +159,6 @@ export default function App() {
     if (cart.length === 0) return;
     try {
       const finalTotal = parseFloat(manualTotal) || 0;
-      
-      // ຄຳນວນ Subtotal ເປັນສະກຸນເງິນທີ່ຈ່າຍ
       const subTotal = calculateTotalInCurrency(paymentCurrency);
 
       const orderData = {
@@ -209,8 +191,6 @@ export default function App() {
   };
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  
-  // ຄຳນວນຍອດລວມສະແດງໜ້າຫຼັກ (ແຍກສະກຸນ)
   const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
   const totalTHB = cart.filter(i => i.priceCurrency === 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
@@ -247,8 +227,9 @@ export default function App() {
             </View>
             <View style={styles.cardContent}>
                 <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
+                {/* 🟢 ສະແດງລາຄາສິນຄ້າແບບມີຈຸດ */}
                 <Text style={[styles.price, { color: item.priceCurrency === 'THB' ? COLORS.secondaryDark : COLORS.primaryDark }]}>
-                    {Number(item.price).toLocaleString()} {item.priceCurrency === 'THB' ? '฿' : '₭'}
+                    {formatNumber(item.price)} {item.priceCurrency === 'THB' ? '฿' : '₭'}
                 </Text>
             </View>
             <TouchableOpacity style={styles.addBtn} onPress={() => addToCart(item)}>
@@ -268,8 +249,9 @@ export default function App() {
             <View style={{flex: 1, marginLeft: 15}}>
                 <Text style={styles.cartInfo}>ຍອດລວມທັງໝົດ</Text>
                 <View style={{flexDirection: 'row', gap: 10}}>
-                    {totalLAK > 0 && <Text style={styles.cartTotal}>{totalLAK.toLocaleString()} ₭</Text>}
-                    {totalTHB > 0 && <Text style={styles.cartTotal}>{totalTHB.toLocaleString()} ฿</Text>}
+                    {/* 🟢 ສະແດງຍອດລວມລຸ່ມແບບມີຈຸດ */}
+                    {totalLAK > 0 && <Text style={styles.cartTotal}>{formatNumber(totalLAK)} ₭</Text>}
+                    {totalTHB > 0 && <Text style={styles.cartTotal}>{formatNumber(totalTHB)} ฿</Text>}
                 </View>
             </View>
             <View style={styles.viewCartBtn}>
@@ -318,8 +300,9 @@ export default function App() {
                             )}
                             <View style={{flex: 1, paddingHorizontal: 10}}>
                                 <Text style={styles.cartItemName} numberOfLines={1}>{item.name}</Text>
+                                {/* 🟢 ລາຄາໃນກະຕ່າແບບມີຈຸດ */}
                                 <Text style={[styles.cartItemPrice, { color: item.priceCurrency === 'THB' ? COLORS.secondaryDark : COLORS.primaryDark }]}>
-                                    {item.price.toLocaleString()} {item.priceCurrency === 'THB' ? '฿' : '₭'}
+                                    {formatNumber(item.price)} {item.priceCurrency === 'THB' ? '฿' : '₭'}
                                 </Text>
                             </View>
                             <View style={styles.qtyControls}>
@@ -339,7 +322,6 @@ export default function App() {
                         <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
                             <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
                             <View style={styles.currencyToggle}>
-                                {/* 🟢 ປຸ່ມປ່ຽນສະກຸນເງິນ (ໃຊ້ handleCurrencyChange) */}
                                 <TouchableOpacity onPress={() => handleCurrencyChange('LAK')} style={[styles.currencyBtn, paymentCurrency === 'LAK' && {backgroundColor: COLORS.primary}]}>
                                     <Text style={[styles.currencyBtnText, paymentCurrency === 'LAK' && {color: 'white'}]}>₭</Text>
                                 </TouchableOpacity>
@@ -361,13 +343,15 @@ export default function App() {
                     {discount !== 0 && (
                         <View style={{flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10}}>
                             <Text style={{color: COLORS.danger, fontSize: 12, fontFamily: 'Lao-Regular'}}>
-                                ສ່ວນຫຼຸດ: {Number(discount).toLocaleString()} {paymentCurrency === 'THB' ? '฿' : '₭'}
+                                {/* 🟢 ສ່ວນຫຼຸດແບບມີຈຸດ */}
+                                ສ່ວນຫຼຸດ: {formatNumber(discount)} {paymentCurrency === 'THB' ? '฿' : '₭'}
                             </Text>
                         </View>
                     )}
 
                     <TouchableOpacity style={styles.confirmBtn} onPress={handleCheckout}>
-                        <Text style={styles.confirmBtnText}>ຢືນຢັນຮັບເງິນ ({Number(manualTotal).toLocaleString()})</Text>
+                        {/* 🟢 ປຸ່ມຢືນຢັນແບບມີຈຸດ */}
+                        <Text style={styles.confirmBtnText}>ຢືນຢັນຮັບເງິນ ({formatNumber(parseFloat(manualTotal) || 0)})</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -380,8 +364,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  
-  // Header Style
   header: { 
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', 
     padding: 15, backgroundColor: 'white', marginTop: 30,
@@ -389,8 +371,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, color: COLORS.primaryDark, fontFamily: 'Lao-Bold' }, 
   iconBtn: { padding: 5 },
-  
-  // Card Style
   card: { 
     width: CARD_WIDTH, backgroundColor: 'white', marginBottom: 15, 
     borderRadius: 16, overflow: 'hidden', elevation: 2, 
@@ -400,16 +380,13 @@ const styles = StyleSheet.create({
   productImage: { width: '100%', height: '100%' },
   imagePlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
   placeholderText: { fontSize: 30, color: '#ccc', fontFamily: 'Lao-Bold' },
-  
   currencyBadge: { position: 'absolute', top: 8, left: 8, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   currencyText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
   stockBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: COLORS.danger, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
   stockText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
-  
   cardContent: { padding: 12 },
   title: { fontSize: 14, color: '#333', marginBottom: 4, fontFamily: 'Lao-Regular' },
   price: { fontSize: 16, fontFamily: 'Lao-Bold' },
-  
   addBtn: { 
     position: 'absolute', bottom: 10, right: 10, 
     backgroundColor: COLORS.secondary, 
@@ -417,8 +394,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 2, elevation: 3
   },
-
-  // Bottom Bar
   bottomBar: { 
     position: 'absolute', bottom: 20, left: 15, right: 15, 
     backgroundColor: COLORS.primaryDark, 
@@ -440,20 +415,16 @@ const styles = StyleSheet.create({
     borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 5 
   },
   viewCartText: { color: COLORS.primaryDark, fontSize: 12, fontFamily: 'Lao-Bold' },
-
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: 'white', borderTopLeftRadius: 25, borderTopRightRadius: 25, height: '80%', padding: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   modalTitle: { fontSize: 20, color: '#333', fontFamily: 'Lao-Bold' },
   modalBody: { flex: 1 },
-
   sourceContainer: { flexDirection: 'row', backgroundColor: '#f5f5f5', padding: 4, borderRadius: 10, marginBottom: 15 },
   sourceBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 8, gap: 5 },
   sourceBtnActive: { backgroundColor: COLORS.primary },
   sourceText: { fontFamily: 'Lao-Regular', color: COLORS.textLight },
   sourceTextActive: { fontFamily: 'Lao-Bold', color: 'white' },
-
   cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, backgroundColor: '#f9f9f9', padding: 10, borderRadius: 12 },
   cartItemImage: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#ddd' },
   cartItemName: { fontSize: 14, color: '#333', fontFamily: 'Lao-Regular' },
@@ -461,9 +432,7 @@ const styles = StyleSheet.create({
   qtyControls: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
   qtyBtn: { padding: 5, width: 30, alignItems: 'center' },
   qtyText: { fontSize: 14, fontFamily: 'Lao-Bold', width: 20, textAlign: 'center' },
-  
   modalFooter: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 20 },
-  
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   totalLabel: { fontSize: 16, color: '#888', fontFamily: 'Lao-Regular' },
   totalInput: { 
@@ -471,11 +440,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#ddd', 
     minWidth: 100, textAlign: 'right', paddingVertical: 0 
   },
-  
   currencyToggle: { flexDirection: 'row', gap: 5 },
   currencyBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' },
   currencyBtnText: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#888' },
-
   confirmBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 15, alignItems: 'center' },
   confirmBtnText: { color: 'white', fontSize: 18, fontFamily: 'Lao-Bold' }
 });

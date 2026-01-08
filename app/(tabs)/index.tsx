@@ -35,9 +35,13 @@ const COLORS = {
   danger: '#EF5350'
 };
 
-// 🟢 Helper Function: ຈັດ format ຕົວເລກໃຫ້ມີຈຸດ (,)
-const formatNumber = (num: number) => {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+// 🟢 Helper Function: ຈັດ format ຕົວເລກໃຫ້ມີຈຸດ (,) ແລະຮອງຮັບທົດສະນິຍົມ
+const formatNumber = (num: number | string) => {
+  if (!num && num !== 0) return '';
+  const parts = num.toString().split('.');
+  // ໃສ່ຈຸດທຸກ 3 ຕົວເລກສະເພາະສ່ວນຈຳນວນເຕັມ
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.join('.');
 };
 
 export default function App() {
@@ -105,7 +109,8 @@ export default function App() {
   useEffect(() => {
     if (modalVisible) {
         const total = calculateTotalInCurrency(paymentCurrency);
-        setManualTotal(total.toString()); // ເກັບຄ່າເປັນ string ທຳມະດາໃນ Input ເພື່ອໃຫ້ແກ້ໄຂງ່າຍ
+        // ເກັບຄ່າເປັນ string ທຳມະດາໃນ state ແຕ່ບໍ່ມີຈຸດ
+        setManualTotal(total.toString()); 
         setDiscount(0);
     }
   }, [cart, modalVisible, paymentCurrency]);
@@ -115,8 +120,10 @@ export default function App() {
   };
 
   const handleManualTotalChange = (text: string) => {
-    // ລຶບເຄື່ອງໝາຍ , ອອກກ່ອນຄຳນວນ
+    // 1. ລຶບຈຸດ (,) ອອກກ່ອນເອົາໄປຄຳນວນ
     const cleanText = text.replace(/,/g, '');
+    
+    // 2. ອັບເດດ State (ເກັບແບບບໍ່ມີຈຸດເພື່ອໃຫ້ຄຳນວນຖືກ)
     setManualTotal(cleanText);
     
     const newTotal = parseFloat(cleanText) || 0;
@@ -158,7 +165,8 @@ export default function App() {
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     try {
-      const finalTotal = parseFloat(manualTotal) || 0;
+      // ຕ້ອງລຶບຈຸດອອກກ່ອນບັນທຶກລົງ Database
+      const finalTotal = parseFloat(manualTotal.replace(/,/g, '')) || 0;
       const subTotal = calculateTotalInCurrency(paymentCurrency);
 
       const orderData = {
@@ -227,7 +235,6 @@ export default function App() {
             </View>
             <View style={styles.cardContent}>
                 <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
-                {/* 🟢 ສະແດງລາຄາສິນຄ້າແບບມີຈຸດ */}
                 <Text style={[styles.price, { color: item.priceCurrency === 'THB' ? COLORS.secondaryDark : COLORS.primaryDark }]}>
                     {formatNumber(item.price)} {item.priceCurrency === 'THB' ? '฿' : '₭'}
                 </Text>
@@ -249,7 +256,6 @@ export default function App() {
             <View style={{flex: 1, marginLeft: 15}}>
                 <Text style={styles.cartInfo}>ຍອດລວມທັງໝົດ</Text>
                 <View style={{flexDirection: 'row', gap: 10}}>
-                    {/* 🟢 ສະແດງຍອດລວມລຸ່ມແບບມີຈຸດ */}
                     {totalLAK > 0 && <Text style={styles.cartTotal}>{formatNumber(totalLAK)} ₭</Text>}
                     {totalTHB > 0 && <Text style={styles.cartTotal}>{formatNumber(totalTHB)} ฿</Text>}
                 </View>
@@ -300,7 +306,6 @@ export default function App() {
                             )}
                             <View style={{flex: 1, paddingHorizontal: 10}}>
                                 <Text style={styles.cartItemName} numberOfLines={1}>{item.name}</Text>
-                                {/* 🟢 ລາຄາໃນກະຕ່າແບບມີຈຸດ */}
                                 <Text style={[styles.cartItemPrice, { color: item.priceCurrency === 'THB' ? COLORS.secondaryDark : COLORS.primaryDark }]}>
                                     {formatNumber(item.price)} {item.priceCurrency === 'THB' ? '฿' : '₭'}
                                 </Text>
@@ -331,9 +336,10 @@ export default function App() {
                             </View>
                         </View>
                         
+                        {/* 🟢 ແກ້ໄຂແລ້ວ: ໃຊ້ formatNumber ໃນ value ເພື່ອສະແດງຈຸດໃນ Input */}
                         <TextInput 
                             style={[styles.totalInput, { color: paymentCurrency === 'THB' ? COLORS.secondaryDark : COLORS.primaryDark }]}
-                            value={manualTotal}
+                            value={formatNumber(manualTotal)} 
                             onChangeText={handleManualTotalChange}
                             keyboardType="numeric"
                             selectTextOnFocus
@@ -343,15 +349,16 @@ export default function App() {
                     {discount !== 0 && (
                         <View style={{flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10}}>
                             <Text style={{color: COLORS.danger, fontSize: 12, fontFamily: 'Lao-Regular'}}>
-                                {/* 🟢 ສ່ວນຫຼຸດແບບມີຈຸດ */}
                                 ສ່ວນຫຼຸດ: {formatNumber(discount)} {paymentCurrency === 'THB' ? '฿' : '₭'}
                             </Text>
                         </View>
                     )}
 
                     <TouchableOpacity style={styles.confirmBtn} onPress={handleCheckout}>
-                        {/* 🟢 ປຸ່ມຢືນຢັນແບບມີຈຸດ */}
-                        <Text style={styles.confirmBtnText}>ຢືນຢັນຮັບເງິນ ({formatNumber(parseFloat(manualTotal) || 0)})</Text>
+                        {/* 🟢 ແກ້ໄຂແລ້ວ: ໃຊ້ formatNumber ໃນປຸ່ມ Confirm */}
+                        <Text style={styles.confirmBtnText}>
+                            ຢືນຢັນຮັບເງິນ ({formatNumber(manualTotal || 0)})
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </View>

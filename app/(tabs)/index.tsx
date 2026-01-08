@@ -1,10 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useFonts } from 'expo-font';
-import { get, onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { db } from '../../src/firebase';
+import { StyleSheet, Text, View, FlatList, ActivityIndicator, TouchableOpacity, Alert, Image, Dimensions, Modal, SafeAreaView, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { ref, onValue, push, update, get } from 'firebase/database';
+import { db } from '../../src/firebase'; 
+import { Ionicons } from '@expo/vector-icons'; 
+import { useFonts } from 'expo-font'; 
+import DateTimePicker from '@react-native-community/datetimepicker'; 
 
 interface Product {
   id: string;

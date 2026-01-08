@@ -1,9 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useFonts } from 'expo-font';
-import { get, onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { db } from '../../src/firebase';
+import { StyleSheet, Text, View, FlatList, ActivityIndicator, TouchableOpacity, Alert, Image, Dimensions, Modal, SafeAreaView, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { ref, onValue, push, update, get } from 'firebase/database';
+import { db } from '../../src/firebase'; 
+import { Ionicons } from '@expo/vector-icons'; 
+import { useFonts } from 'expo-font'; 
 
 interface Product {
   id: string;
@@ -35,11 +35,9 @@ const COLORS = {
   danger: '#EF5350'
 };
 
-// 🟢 Helper Function: ຈັດ format ຕົວເລກໃຫ້ມີຈຸດ (,) ແລະຮອງຮັບທົດສະນິຍົມ
 const formatNumber = (num: number | string) => {
   if (!num && num !== 0) return '';
   const parts = num.toString().split('.');
-  // ໃສ່ຈຸດທຸກ 3 ຕົວເລກສະເພາະສ່ວນຈຳນວນເຕັມ
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return parts.join('.');
 };
@@ -109,7 +107,6 @@ export default function App() {
   useEffect(() => {
     if (modalVisible) {
         const total = calculateTotalInCurrency(paymentCurrency);
-        // ເກັບຄ່າເປັນ string ທຳມະດາໃນ state ແຕ່ບໍ່ມີຈຸດ
         setManualTotal(total.toString()); 
         setDiscount(0);
     }
@@ -120,10 +117,7 @@ export default function App() {
   };
 
   const handleManualTotalChange = (text: string) => {
-    // 1. ລຶບຈຸດ (,) ອອກກ່ອນເອົາໄປຄຳນວນ
     const cleanText = text.replace(/,/g, '');
-    
-    // 2. ອັບເດດ State (ເກັບແບບບໍ່ມີຈຸດເພື່ອໃຫ້ຄຳນວນຖືກ)
     setManualTotal(cleanText);
     
     const newTotal = parseFloat(cleanText) || 0;
@@ -165,7 +159,6 @@ export default function App() {
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     try {
-      // ຕ້ອງລຶບຈຸດອອກກ່ອນບັນທຶກລົງ Database
       const finalTotal = parseFloat(manualTotal.replace(/,/g, '')) || 0;
       const subTotal = calculateTotalInCurrency(paymentCurrency);
 
@@ -208,7 +201,6 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Soudaphone POS</Text>
         <TouchableOpacity style={styles.iconBtn}><Ionicons name="search" size={24} color={COLORS.text} /></TouchableOpacity>
@@ -246,7 +238,6 @@ export default function App() {
         )}
       />
 
-      {/* Bottom Bar */}
       {cart.length > 0 && (
         <TouchableOpacity style={styles.bottomBar} onPress={() => setModalVisible(true)} activeOpacity={0.9}>
             <View style={styles.cartIconBadge}>
@@ -267,9 +258,12 @@ export default function App() {
         </TouchableOpacity>
       )}
 
-      {/* Cart Modal */}
+      {/* 🟢 ແກ້ໄຂແລ້ວ: ໃຊ້ KeyboardAvoidingView ຫໍ່ Modal Content */}
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={styles.modalOverlay}
+        >
             <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>ກະຕ່າສິນຄ້າ</Text>
@@ -278,7 +272,6 @@ export default function App() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Source Selector */}
                 <View style={styles.sourceContainer}>
                     <TouchableOpacity 
                         style={[styles.sourceBtn, saleSource === 'ໜ້າຮ້ານ' && styles.sourceBtnActive]}
@@ -336,13 +329,13 @@ export default function App() {
                             </View>
                         </View>
                         
-                        {/* 🟢 ແກ້ໄຂແລ້ວ: ໃຊ້ formatNumber ໃນ value ເພື່ອສະແດງຈຸດໃນ Input */}
                         <TextInput 
                             style={[styles.totalInput, { color: paymentCurrency === 'THB' ? COLORS.secondaryDark : COLORS.primaryDark }]}
                             value={formatNumber(manualTotal)} 
                             onChangeText={handleManualTotalChange}
                             keyboardType="numeric"
                             selectTextOnFocus
+                            returnKeyType="done"
                         />
                     </View>
                     
@@ -355,14 +348,13 @@ export default function App() {
                     )}
 
                     <TouchableOpacity style={styles.confirmBtn} onPress={handleCheckout}>
-                        {/* 🟢 ແກ້ໄຂແລ້ວ: ໃຊ້ formatNumber ໃນປຸ່ມ Confirm */}
                         <Text style={styles.confirmBtnText}>
                             ຢືນຢັນຮັບເງິນ ({formatNumber(manualTotal || 0)})
                         </Text>
                     </TouchableOpacity>
                 </View>
             </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

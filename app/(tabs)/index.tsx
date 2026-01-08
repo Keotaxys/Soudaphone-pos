@@ -1,15 +1,15 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, Text, View, FlatList, ActivityIndicator, TouchableOpacity, Alert, Image, Dimensions, Modal, SafeAreaView, ScrollView, TextInput, KeyboardAvoidingView, Platform, Vibration, Animated, Easing } from 'react-native';
+import { ref, onValue, push, update, get, remove } from 'firebase/database';
+import { db } from '../../src/firebase'; 
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; 
+import { useFonts } from 'expo-font'; 
+import DateTimePicker from '@react-native-community/datetimepicker'; 
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useFonts } from 'expo-font';
-import * as ImagePicker from 'expo-image-picker'; // 🟢 Import Image Picker
-import { get, onValue, push, ref, remove, update } from 'firebase/database';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Dimensions, Easing, FlatList, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
-import { db } from '../../src/firebase';
+import * as ImagePicker from 'expo-image-picker';
 
 interface Product {
-  id?: string; // id ເປັນ optional ເວລາສ້າງໃໝ່
+  id?: string;
   name: string;
   price: number;
   stock: number;
@@ -20,7 +20,7 @@ interface Product {
 
 interface CartItem extends Product {
   quantity: number;
-  id: string; // CartItem ຕ້ອງມີ id ສະເໝີ
+  id: string;
 }
 
 interface SaleRecord {
@@ -39,7 +39,6 @@ const COLUMN_COUNT = 2;
 const CARD_WIDTH = (width / COLUMN_COUNT) - 20; 
 const SIDEBAR_WIDTH = width * 0.75;
 
-// 🎨 Theme Colors
 const COLORS = {
   primary: '#4DB6AC',    
   primaryDark: '#009688', 
@@ -86,6 +85,9 @@ export default function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   
+  // 🟢 State ເພື່ອກຳນົດວ່າສະແກນເພື່ອຫຍັງ ('sell' = ຂາຍ, 'edit' = ໃສ່ຂໍ້ມູນສິນຄ້າ)
+  const [scanMode, setScanMode] = useState<'sell' | 'edit'>('sell');
+
   const [currentScreen, setCurrentScreen] = useState<'home' | 'history' | 'inventory'>('home');
 
   const [saleSource, setSaleSource] = useState<'ໜ້າຮ້ານ' | 'Online'>('ໜ້າຮ້ານ');
@@ -101,10 +103,9 @@ export default function App() {
   const [menuVisible, setMenuVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
 
-  // 🟢 State ສຳລັບການເພີ່ມ/ແກ້ໄຂສິນຄ້າ
   const [productModalVisible, setProductModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product>({
-      name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: ''
+      name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: ''
   });
 
   useEffect(() => {
@@ -162,51 +163,42 @@ export default function App() {
       toggleMenu(false); 
   };
 
-  // --- Product Management Functions ---
-  
-  // 🟢 ເປີດ Modal ເພີ່ມສິນຄ້າໃໝ່
+  // Product Management
   const openAddProductModal = () => {
-      setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '' });
+      setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' });
       setProductModalVisible(true);
   };
 
-  // 🟢 ເປີດ Modal ແກ້ໄຂສິນຄ້າ
   const openEditProductModal = (product: Product) => {
       setEditingProduct({ ...product });
       setProductModalVisible(true);
   };
 
-  // 🟢 ເລືອກຮູບຈາກ Gallery
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
-      base64: true, // ຂໍເປັນ Base64 ເພື່ອບັນທຶກລົງ Firebase Realtime Database ໄດ້ເລີຍ (ງ່າຍແຕ່ບໍ່ຄວນໃຊ້ກັບຮູບໃຫຍ່)
+      base64: true,
     });
 
     if (!result.canceled) {
-        // ໝາຍເຫດ: ການເກັບ Base64 ໂດຍກົງອາດເຮັດໃຫ້ DB ໜັກ. ຖ້າໃຊ້ຈິງຄວນອັບໂຫລດຂຶ້ນ Storage
         const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
         setEditingProduct({ ...editingProduct, imageUrl: base64Img });
     }
   };
 
-  // 🟢 ບັນທຶກສິນຄ້າ (Save / Update)
   const saveProduct = async () => {
       if (!editingProduct.name || !editingProduct.price) {
           Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ລາຄາ');
           return;
       }
-
       try {
           if (editingProduct.id) {
-              // Update
               await update(ref(db, `products/${editingProduct.id}`), editingProduct);
               Alert.alert('ສຳເລັດ', 'ແກ້ໄຂຂໍ້ມູນສິນຄ້າແລ້ວ');
           } else {
-              // Create New
               await push(ref(db, 'products'), editingProduct);
               Alert.alert('ສຳເລັດ', 'ເພີ່ມສິນຄ້າໃໝ່ແລ້ວ');
           }
@@ -216,7 +208,6 @@ export default function App() {
       }
   };
 
-  // 🟢 ລຶບສິນຄ້າ
   const deleteProduct = (id: string) => {
       Alert.alert('ຢືນຢັນ', 'ຕ້ອງການລຶບສິນຄ້ານີ້ແທ້ບໍ່?', [
           { text: 'ຍົກເລີກ', style: 'cancel' },
@@ -226,7 +217,7 @@ export default function App() {
       ]);
   };
 
-  // --- Sale Logic ---
+  // Sale Logic
   const calculateTotalInCurrency = (targetCurrency: 'LAK' | 'THB') => {
     let total = 0;
     cart.forEach(item => {
@@ -271,11 +262,13 @@ export default function App() {
 
   const toggleDatePicker = () => setShowDatePicker(!showDatePicker);
 
-  const openScanner = async () => {
+  // 🟢 ຟັງຊັນເປີດກ້ອງ (ຮັບ Parameter ວ່າຈະສະແກນເພື່ອຫຍັງ)
+  const openScanner = async (mode: 'sell' | 'edit' = 'sell') => {
     if (!permission?.granted) {
         const { granted } = await requestPermission();
         if (!granted) { Alert.alert('ຕ້ອງການສິດ', 'ກະລຸນາອະນຸຍາດໃຫ້ໃຊ້ກ້ອງຖ່າຍຮູບ'); return; }
     }
+    setScanMode(mode); // ກຳນົດໂໝດ
     setIsScanning(true);
     setScanned(false);
   };
@@ -284,17 +277,19 @@ export default function App() {
     if (scanned) return;
     setScanned(true);
     Vibration.vibrate();
+
+    // 🟢 ຖ້າສະແກນເພື່ອແກ້ໄຂ/ເພີ່ມສິນຄ້າ
+    if (scanMode === 'edit') {
+        setEditingProduct({ ...editingProduct, barcode: data }); // ໃສ່ຂໍ້ມູນລົງໃນຟອມ
+        setIsScanning(false);
+        // Alert.alert('ສຳເລັດ', `ສະແກນບາໂຄດ: ${data} ຮຽບຮ້ອຍ`);
+        return;
+    }
+
+    // 🟢 ຖ້າສະແກນເພື່ອຂາຍ (Logic ເດີມ)
     const product = products.find(p => p.barcode === data);
     if (product) {
-        // Logic add to cart (duplicate code, simplified for now)
-        setCart(prev => {
-            const existing = prev.find(item => item.id === product.id);
-            if (existing) {
-                if (existing.quantity >= product.stock) return prev;
-                return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-            }
-            return [...prev, { ...product, quantity: 1 } as CartItem];
-        });
+        addToCart(product);
         Alert.alert('✅ ເພີ່ມສິນຄ້າແລ້ວ', `${product.name}\nລາຄາ: ${formatNumber(product.price)}`, [{ text: 'ສະແກນຕໍ່', onPress: () => setScanned(false) }, { text: 'ປິດ', onPress: () => setIsScanning(false) }]);
     } else {
         Alert.alert('❌ ບໍ່ພົບສິນຄ້າ', `ລະຫັດບາໂຄດ: ${data} ບໍ່ມີໃນລະບົບ`, [{ text: 'ລອງໃໝ່', onPress: () => setScanned(false) }, { text: 'ປິດ', onPress: () => setIsScanning(false) }]);
@@ -398,7 +393,6 @@ export default function App() {
                     <View style={styles.historyItem}>
                         <View style={{flex: 1}}>
                             <Text style={styles.historyDate}>{formatDate(item.date)}</Text>
-                            {/* 🟢 ສະແດງປະເພດການຈ່າຍ */}
                             <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 5}}>
                                 <View style={[styles.paymentBadge, {backgroundColor: item.paymentMethod === 'QR' ? COLORS.blue : COLORS.success}]}>
                                     <Text style={styles.paymentBadgeText}>{item.paymentMethod === 'QR' ? '📲 QR' : '💵 ເງິນສົດ'}</Text>
@@ -408,7 +402,6 @@ export default function App() {
                         </View>
                         <View style={{alignItems: 'flex-end'}}>
                             <Text style={styles.historyTotal}>{formatNumber(item.total)} {item.currency === 'THB' ? '฿' : '₭'}</Text>
-                            {/* ສະແດງເງິນທອນໃນປະຫວັດ */}
                             {item.paymentMethod === 'CASH' && item.change && item.change > 0 ? (
                                 <Text style={{fontSize: 10, color: COLORS.success}}>ທອນ: {formatNumber(item.change)}</Text>
                             ) : null}
@@ -440,7 +433,6 @@ export default function App() {
                         </TouchableOpacity>
                     )}
                 />
-                {/* 🟢 ປຸ່ມເພີ່ມສິນຄ້າ (Floating Action Button) */}
                 <TouchableOpacity style={styles.fab} onPress={openAddProductModal}>
                     <Ionicons name="add" size={30} color="white" />
                 </TouchableOpacity>
@@ -473,13 +465,13 @@ export default function App() {
         <TouchableOpacity style={styles.iconBtn} onPress={() => toggleMenu(true)}><Ionicons name="menu" size={28} color={COLORS.text} /></TouchableOpacity>
         <Text style={styles.headerTitle}>{currentScreen === 'home' ? 'Soudaphone POS' : currentScreen === 'history' ? 'ປະຫວັດການຂາຍ' : 'ຈັດການສະຕັອກ'}</Text>
         <View style={{flexDirection: 'row', gap: 5}}>
-            {currentScreen === 'home' && (<TouchableOpacity style={styles.iconBtn} onPress={openScanner}><Ionicons name="barcode-outline" size={24} color={COLORS.text} /></TouchableOpacity>)}
+            {currentScreen === 'home' && (<TouchableOpacity style={styles.iconBtn} onPress={() => openScanner('sell')}><Ionicons name="barcode-outline" size={24} color={COLORS.text} /></TouchableOpacity>)}
         </View>
       </View>
 
       {renderContent()}
 
-      {/* 🟢 Product Management Modal (Add/Edit) */}
+      {/* Product Management Modal */}
       <Modal animationType="slide" transparent={true} visible={productModalVisible} onRequestClose={() => setProductModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -505,7 +497,13 @@ export default function App() {
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.label}>ລາຄາ</Text>
-                            <TextInput style={styles.input} value={editingProduct.price.toString()} onChangeText={(t) => setEditingProduct({ ...editingProduct, price: parseFloat(t) || 0 })} keyboardType="numeric" />
+                            {/* 🟢 ແກ້ໄຂ: ໃຫ້ Input ໃສ່ຈຸດໄດ້ */}
+                            <TextInput 
+                                style={styles.input} 
+                                value={formatNumber(editingProduct.price)} 
+                                onChangeText={(t) => setEditingProduct({ ...editingProduct, price: parseFloat(t.replace(/,/g, '')) || 0 })} 
+                                keyboardType="numeric" 
+                            />
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.label}>ສະກຸນເງິນ</Text>
@@ -523,11 +521,27 @@ export default function App() {
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.label}>ຈຳນວນສະຕັອກ</Text>
-                            <TextInput style={styles.input} value={editingProduct.stock.toString()} onChangeText={(t) => setEditingProduct({ ...editingProduct, stock: parseInt(t) || 0 })} keyboardType="numeric" />
+                            <TextInput 
+                                style={styles.input} 
+                                value={formatNumber(editingProduct.stock)} 
+                                onChangeText={(t) => setEditingProduct({ ...editingProduct, stock: parseInt(t.replace(/,/g, '')) || 0 })} 
+                                keyboardType="numeric" 
+                            />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.label}>ບາໂຄດ (ຖ້າມີ)</Text>
-                            <TextInput style={styles.input} value={editingProduct.barcode || ''} onChangeText={(t) => setEditingProduct({ ...editingProduct, barcode: t })} placeholder="Scan..." />
+                            <Text style={styles.label}>ບາໂຄດ</Text>
+                            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                <TextInput 
+                                    style={[styles.input, {flex: 1, marginBottom: 0}]} 
+                                    value={editingProduct.barcode || ''} 
+                                    onChangeText={(t) => setEditingProduct({ ...editingProduct, barcode: t })} 
+                                    placeholder="Scan..." 
+                                />
+                                {/* 🟢 ປຸ່ມສະແກນບາໂຄດສຳລັບເພີ່ມສິນຄ້າ */}
+                                <TouchableOpacity onPress={() => openScanner('edit')} style={{padding: 10, backgroundColor: COLORS.secondary, borderRadius: 8, marginLeft: 5}}>
+                                    <Ionicons name="barcode-outline" size={24} color="white" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
 
@@ -539,7 +553,7 @@ export default function App() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Sidebar & Other Modals (Same as before) */}
+      {/* Sidebar (Menu) */}
       {menuVisible && (
         <View style={styles.sidebarOverlay}>
             <TouchableOpacity style={{flex: 1}} onPress={() => toggleMenu(false)} activeOpacity={1} />

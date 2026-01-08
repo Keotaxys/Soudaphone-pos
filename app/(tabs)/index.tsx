@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons'; // ໄອຄອນງາມໆ
+import { Ionicons } from '@expo/vector-icons';
 import { onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { db } from '../../src/firebase';
 
 interface Product {
@@ -17,11 +17,14 @@ interface CartItem extends Product {
   quantity: number;
 }
 
+const { width } = Dimensions.get('window');
+const COLUMN_COUNT = 2;
+const CARD_WIDTH = (width / COLUMN_COUNT) - 20; // ຄຳນວນຂະໜາດບັດໃຫ້ພໍດີຈໍ
+
 export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCartModal, setShowCartModal] = useState(false);
 
   // 1. ດຶງຂໍ້ມູນສິນຄ້າ
   useEffect(() => {
@@ -42,7 +45,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. ຟັງຊັນເພີ່ມລົງກະຕ່າ
+  // 2. ເພີ່ມລົງກະຕ່າ
   const addToCart = (product: Product) => {
     if (product.stock <= 0) {
       Alert.alert('ສິນຄ້າໝົດ!', 'ສິນຄ້ານີ້ບໍ່ມີໃນສະຕັອກ');
@@ -62,12 +65,11 @@ export default function App() {
     });
   };
 
-  // 3. ຟັງຊັນສັ່ງຊື້ (Checkout)
+  // 3. ສັ່ງຊື້
   const handleCheckout = async () => {
     if (cart.length === 0) return;
 
     try {
-      // ກຽມຂໍ້ມູນອໍເດີ
       const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const orderData = {
         items: cart,
@@ -77,10 +79,8 @@ export default function App() {
         source: 'Mobile App'
       };
 
-      // ບັນທຶກລົງ Firebase Orders
       await push(ref(db, 'sales'), orderData);
 
-      // ຕັດສະຕັອກ
       const updates: any = {};
       cart.forEach(item => {
         const product = products.find(p => p.id === item.id);
@@ -91,17 +91,16 @@ export default function App() {
       await update(ref(db), updates);
 
       Alert.alert('ສຳເລັດ!', 'ຂາຍສິນຄ້າຮຽບຮ້ອຍແລ້ວ');
-      setCart([]); // ລ້າງກະຕ່າ
-      setShowCartModal(false);
+      setCart([]);
     } catch (error) {
       Alert.alert('ຜິດພາດ', 'ບໍ່ສາມາດບັນທຶກການຂາຍໄດ້');
       console.error(error);
     }
   };
 
-  // ຄຳນວນຍອດລວມ
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
+  const totalTHB = cart.filter(i => i.priceCurrency === 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
   if (loading) {
     return (
@@ -114,39 +113,56 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      {/* 🟢 ສ່ວນສະແດງສິນຄ້າ */}
       <FlatList
         data={products}
         keyExtractor={item => item.id}
-        numColumns={2} // ສະແດງ 2 ຖັນ
+        numColumns={COLUMN_COUNT}
+        columnWrapperStyle={{ justifyContent: 'space-between' }}
         contentContainerStyle={{ paddingBottom: 100 }}
         renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.card} 
-            onPress={() => addToCart(item)} // 👈 ໃສ່ onPress ໃຫ້ກົດໄດ້ແລ້ວ!
-          >
-            <View style={styles.imagePlaceholder}>
-               <Text style={styles.placeholderText}>{item.name.charAt(0)}</Text>
-            </View>
-            <View style={styles.cardContent}>
-                <Text style={styles.title} numberOfLines={2}>{item.name}</Text>
-                <View style={styles.row}>
-                    <Text style={styles.price}>{Number(item.price).toLocaleString()} {item.priceCurrency === 'THB' ? '฿' : '₭'}</Text>
-                    {item.stock <= 5 && (
-                        <Text style={styles.lowStock}>{item.stock}</Text>
-                    )}
+          <TouchableOpacity style={styles.card} onPress={() => addToCart(item)}>
+            {/* 🟢 ສ່ວນສະແດງຮູບພາບ (Image) */}
+            <View style={styles.imageContainer}>
+                {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={styles.productImage} resizeMode="cover" />
+                ) : (
+                    <View style={styles.imagePlaceholder}>
+                        <Text style={styles.placeholderText}>{item.name.charAt(0)}</Text>
+                    </View>
+                )}
+                
+                {/* ປ້າຍບອກສະກຸນເງິນ */}
+                <View style={[styles.currencyBadge, { backgroundColor: item.priceCurrency === 'THB' ? '#007AFF' : '#34C759' }]}>
+                    <Text style={styles.currencyText}>{item.priceCurrency || 'LAK'}</Text>
                 </View>
+
+                {/* ປ້າຍບອກສະຕັອກ (ຖ້າໃກ້ໝົດ) */}
+                {item.stock <= 5 && (
+                    <View style={styles.stockBadge}>
+                        <Text style={styles.stockText}>{item.stock}</Text>
+                    </View>
+                )}
+            </View>
+
+            <View style={styles.cardContent}>
+                <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
+                <Text style={[styles.price, { color: item.priceCurrency === 'THB' ? '#007AFF' : '#34C759' }]}>
+                    {Number(item.price).toLocaleString()} {item.priceCurrency === 'THB' ? '฿' : '₭'}
+                </Text>
             </View>
           </TouchableOpacity>
         )}
       />
 
-      {/* 🟢 ແຖບກະຕ່າທາງລຸ່ມ (ສະແດງເມື່ອມີສິນຄ້າ) */}
+      {/* 🟢 ແຖບກະຕ່າ (Bottom Bar) */}
       {cart.length > 0 && (
         <View style={styles.bottomBar}>
             <View>
                 <Text style={styles.cartInfo}>{totalItems} ລາຍການ</Text>
-                <Text style={styles.cartTotal}>{total.toLocaleString()} ກີບ</Text>
+                <View style={{flexDirection: 'row', gap: 10}}>
+                    {totalLAK > 0 && <Text style={styles.cartTotal}>{totalLAK.toLocaleString()} ₭</Text>}
+                    {totalTHB > 0 && <Text style={styles.cartTotal}>{totalTHB.toLocaleString()} ฿</Text>}
+                </View>
             </View>
             <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout}>
                 <Text style={styles.checkoutText}>ຢືນຢັນຂາຍ</Text>
@@ -162,56 +178,44 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f2f2f2', padding: 10, paddingTop: 50 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   card: { 
-    flex: 1, 
+    width: CARD_WIDTH,
     backgroundColor: 'white', 
-    margin: 5, 
+    marginBottom: 15, 
     borderRadius: 12, 
     overflow: 'hidden',
-    elevation: 3, // ເງົາ Android
-    shadowColor: '#000', // ເງົາ iOS
+    elevation: 3, 
+    shadowColor: '#000', 
     shadowOpacity: 0.1,
     shadowRadius: 4
   },
-  imagePlaceholder: {
-    height: 100,
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  placeholderText: { fontSize: 30, color: '#888', fontWeight: 'bold' },
-  cardContent: { padding: 10 },
-  title: { fontSize: 14, fontWeight: 'bold', marginBottom: 5, height: 40 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  price: { fontSize: 14, color: '#0a7ea4', fontWeight: 'bold' },
-  lowStock: { fontSize: 10, color: 'white', backgroundColor: 'red', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
+  // 🟢 Style ສຳລັບຮູບພາບ
+  imageContainer: { height: 140, width: '100%', position: 'relative' },
+  productImage: { width: '100%', height: '100%' },
+  imagePlaceholder: { width: '100%', height: '100%', backgroundColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' },
+  placeholderText: { fontSize: 40, color: '#aaa', fontWeight: 'bold' },
   
-  // Bottom Bar Styles
+  // Badges
+  currencyBadge: { position: 'absolute', top: 5, left: 5, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  currencyText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+  stockBadge: { position: 'absolute', top: 5, right: 5, backgroundColor: 'red', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, minWidth: 20, alignItems: 'center' },
+  stockText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+
+  cardContent: { padding: 10 },
+  title: { fontSize: 14, fontWeight: '500', marginBottom: 4 },
+  price: { fontSize: 16, fontWeight: 'bold' },
+  
+  // Bottom Bar
   bottomBar: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: '#333',
-    borderRadius: 50,
-    padding: 15,
-    paddingHorizontal: 25,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 10
+    position: 'absolute', bottom: 30, left: 20, right: 20,
+    backgroundColor: '#222', borderRadius: 50, padding: 15, paddingHorizontal: 25,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    elevation: 10, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10
   },
   cartInfo: { color: '#aaa', fontSize: 12 },
-  cartTotal: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  cartTotal: { color: 'white', fontSize: 16, fontWeight: 'bold' },
   checkoutBtn: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#0a7ea4', 
-    paddingVertical: 8, 
-    paddingHorizontal: 15, 
-    borderRadius: 20 
+    flexDirection: 'row', alignItems: 'center', 
+    backgroundColor: '#0a7ea4', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 30 
   },
   checkoutText: { color: 'white', fontWeight: 'bold', marginRight: 5 }
 });

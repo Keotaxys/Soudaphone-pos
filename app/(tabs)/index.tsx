@@ -70,21 +70,17 @@ export default function App() {
 
   const [permission, requestPermission] = useCameraPermissions();
 
-  // Data States
   const [products, setProducts] = useState<Product[]>([]);
-  const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]); // 🟢 State ປະຫວັດການຂາຍ
+  const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   
-  // UI States
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   
-  // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'history' | 'inventory'>('home'); // 🟢 ຕົວປ່ຽນໜ້າ
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'history' | 'inventory'>('home');
 
-  // Sale States
   const [saleSource, setSaleSource] = useState<'ໜ້າຮ້ານ' | 'Online'>('ໜ້າຮ້ານ');
   const [paymentCurrency, setPaymentCurrency] = useState<'LAK' | 'THB'>('LAK');
   const [manualTotal, setManualTotal] = useState<string>(''); 
@@ -93,11 +89,9 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Sidebar Animation
   const [menuVisible, setMenuVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
 
-  // 1. ດຶງຂໍ້ມູນສິນຄ້າ
   useEffect(() => {
     const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
@@ -114,7 +108,6 @@ export default function App() {
       setLoading(false);
     });
 
-    // 🟢 ດຶງປະຫວັດການຂາຍ
     const salesRef = ref(db, 'sales');
     const unsubscribeSales = onValue(salesRef, (snapshot) => {
         if(snapshot.exists()){
@@ -123,7 +116,6 @@ export default function App() {
                 id: key,
                 ...data[key]
             }));
-            // ລຽງຈາກໃໝ່ -> ເກົ່າ
             setSalesHistory(salesList.reverse() as SaleRecord[]);
         } else {
             setSalesHistory([]);
@@ -152,10 +144,9 @@ export default function App() {
 
   const handleMenuSelect = (screen: 'home' | 'history' | 'inventory') => {
       setCurrentScreen(screen);
-      toggleMenu(false); // ປິດເມນູເມື່ອເລືອກແລ້ວ
+      toggleMenu(false); 
   };
 
-  // --- Logic ການຂາຍ (ຄືເກົ່າ) ---
   const calculateTotalInCurrency = (targetCurrency: 'LAK' | 'THB') => {
     let total = 0;
     cart.forEach(item => {
@@ -275,7 +266,6 @@ export default function App() {
     } catch (error) { Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ'); }
   };
 
-  // 🟢 ຟັງຊັນລຶບປະຫວັດການຂາຍ
   const deleteSale = (id: string) => {
       Alert.alert('ຢືນຢັນ', 'ຕ້ອງການລຶບລາຍການນີ້ບໍ່?', [
           { text: 'ຍົກເລີກ', style: 'cancel' },
@@ -293,11 +283,11 @@ export default function App() {
 
   if (!fontsLoaded || loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
-  // 🟢 Render Screen Logic
   const renderContent = () => {
       if (currentScreen === 'history') {
           return (
               <FlatList 
+                key="history-list" // 🟢 ໃສ່ Key ໃຫ້ມັນຮູ້ວ່າເປັນ list 1 ຖັນ
                 data={salesHistory}
                 keyExtractor={item => item.id}
                 contentContainerStyle={{padding: 10, paddingBottom: 100}}
@@ -322,6 +312,7 @@ export default function App() {
       if (currentScreen === 'inventory') {
           return (
               <FlatList 
+                key="inventory-list" // 🟢 ໃສ່ Key ໃຫ້ມັນຮູ້ວ່າເປັນ list 1 ຖັນ
                 data={products}
                 keyExtractor={item => item.id}
                 contentContainerStyle={{padding: 10, paddingBottom: 100}}
@@ -345,6 +336,7 @@ export default function App() {
       // Default: Home (POS)
       return (
         <FlatList
+            key="home-grid" // 🟢 ໃສ່ Key ໃຫ້ມັນຮູ້ວ່າເປັນ grid 2 ຖັນ
             data={products}
             keyExtractor={item => item.id}
             numColumns={COLUMN_COUNT}
@@ -386,10 +378,8 @@ export default function App() {
         </View>
       </View>
 
-      {/* 🟢 Render Content ຕາມເມນູທີ່ເລືອກ */}
       {renderContent()}
 
-      {/* Sidebar */}
       {menuVisible && (
         <View style={styles.sidebarOverlay}>
             <TouchableOpacity style={{flex: 1}} onPress={() => toggleMenu(false)} activeOpacity={1} />
@@ -422,7 +412,6 @@ export default function App() {
         </View>
       )}
 
-      {/* Bottom Bar (Show only on Home) */}
       {currentScreen === 'home' && cart.length > 0 && (
         <TouchableOpacity style={styles.bottomBar} onPress={() => setModalVisible(true)} activeOpacity={0.9}>
             <View style={styles.cartIconBadge}>
@@ -440,7 +429,6 @@ export default function App() {
         </TouchableOpacity>
       )}
 
-      {/* Cart Modal (Code ເກົ່າ) */}
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -500,7 +488,6 @@ export default function App() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Scanner Modal */}
       <Modal animationType="slide" visible={isScanning} onRequestClose={() => setIsScanning(false)}>
         <View style={styles.scannerContainer}>
             <CameraView style={StyleSheet.absoluteFillObject} facing="back" onBarcodeScanned={scanned ? undefined : handleBarCodeScanned} barcodeScannerSettings={{ barcodeTypes: ["qr", "ean13", "ean8", "code128"], }} />

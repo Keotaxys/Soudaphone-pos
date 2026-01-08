@@ -27,6 +27,7 @@ interface SaleRecord {
     total: number;
     items: CartItem[];
     currency: 'LAK' | 'THB';
+    paymentMethod: 'CASH' | 'QR';
 }
 
 const { width } = Dimensions.get('window');
@@ -44,7 +45,8 @@ const COLORS = {
   cardBg: '#FFFFFF',
   text: '#424242',
   textLight: '#757575',
-  danger: '#EF5350'
+  danger: '#EF5350',
+  success: '#66BB6A'
 };
 
 const formatNumber = (num: number | string) => {
@@ -88,6 +90,10 @@ export default function App() {
   const [exchangeRate, setExchangeRate] = useState(700);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // 🟢 State ໃໝ່ສຳລັບການຊຳລະເງິນ
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
+  const [amountReceived, setAmountReceived] = useState<string>(''); // ເງິນທີ່ຮັບມາ
 
   const [menuVisible, setMenuVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
@@ -169,6 +175,8 @@ export default function App() {
         setDiscount(0);
         setSelectedDate(new Date()); 
         setShowDatePicker(false);
+        setAmountReceived(''); // Reset ເງິນຮັບ
+        setPaymentMethod('CASH'); // Default Cash
     }
   }, [cart, modalVisible, paymentCurrency]);
 
@@ -239,15 +247,28 @@ export default function App() {
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
+    const finalTotal = parseFloat(manualTotal.replace(/,/g, '')) || 0;
+    const received = parseFloat(amountReceived.replace(/,/g, '')) || 0;
+
+    // 🟢 ກວດສອບເງິນທອນ (ຖ້າຈ່າຍເງິນສົດ)
+    if (paymentMethod === 'CASH') {
+        if (received < finalTotal) {
+            Alert.alert('ເງິນບໍ່ພໍ', `ຍັງຂາດອີກ ${formatNumber(finalTotal - received)} ${paymentCurrency === 'THB' ? '฿' : '₭'}`);
+            return;
+        }
+    }
+
     try {
-      const finalTotal = parseFloat(manualTotal.replace(/,/g, '')) || 0;
       const subTotal = calculateTotalInCurrency(paymentCurrency);
       const orderData = {
         items: cart,
         subTotal: subTotal,
         discount: discount,
         total: finalTotal,
-        currency: paymentCurrency, 
+        amountReceived: paymentMethod === 'CASH' ? received : finalTotal,
+        change: paymentMethod === 'CASH' ? received - finalTotal : 0,
+        currency: paymentCurrency,
+        paymentMethod: paymentMethod, // 🟢 ບັນທຶກວິທີຊຳລະ
         source: saleSource,       
         date: selectedDate.toISOString(), 
         status: 'ສຳເລັດ',
@@ -260,7 +281,14 @@ export default function App() {
         if (product) updates[`products/${item.id}/stock`] = product.stock - item.quantity;
       });
       await update(ref(db), updates);
-      Alert.alert('✅ ສຳເລັດ', 'ຂາຍສິນຄ້າຮຽບຮ້ອຍແລ້ວ');
+      
+      // 🟢 ແຈ້ງເຕືອນສຳເລັດ + ບອກເງິນທອນ
+      let successMsg = 'ຂາຍສິນຄ້າຮຽບຮ້ອຍແລ້ວ';
+      if (paymentMethod === 'CASH' && (received - finalTotal) > 0) {
+          successMsg += `\n\n💰 ເງິນທອນ: ${formatNumber(received - finalTotal)} ${paymentCurrency === 'THB' ? '฿' : '₭'}`;
+      }
+      
+      Alert.alert('✅ ສຳເລັດ', successMsg);
       setCart([]);
       setModalVisible(false);
     } catch (error) { Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ'); }
@@ -270,9 +298,7 @@ export default function App() {
       Alert.alert('ຢືນຢັນ', 'ຕ້ອງການລຶບລາຍການນີ້ບໍ່?', [
           { text: 'ຍົກເລີກ', style: 'cancel' },
           { text: 'ລຶບ', style: 'destructive', onPress: async () => {
-              try {
-                  await remove(ref(db, `sales/${id}`));
-              } catch(e) { Alert.alert('Error', 'ລຶບບໍ່ໄດ້'); }
+              try { await remove(ref(db, `sales/${id}`)); } catch(e) { Alert.alert('Error', 'ລຶບບໍ່ໄດ້'); }
           }}
       ]);
   };
@@ -281,41 +307,35 @@ export default function App() {
   const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
   const totalTHB = cart.filter(i => i.priceCurrency === 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
+  // 🟢 ຄຳນວນເງິນທອນ (Change)
+  const finalTotalCalc = parseFloat(manualTotal.replace(/,/g, '')) || 0;
+  const receivedCalc = parseFloat(amountReceived.replace(/,/g, '')) || 0;
+  const changeCalc = receivedCalc - finalTotalCalc;
+
   if (!fontsLoaded || loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
   const renderContent = () => {
       if (currentScreen === 'history') {
           return (
-              <FlatList 
-                key="history-list" // 🟢 ໃສ່ Key ໃຫ້ມັນຮູ້ວ່າເປັນ list 1 ຖັນ
-                data={salesHistory}
-                keyExtractor={item => item.id}
-                contentContainerStyle={{padding: 10, paddingBottom: 100}}
+              <FlatList key="history-list" data={salesHistory} keyExtractor={item => item.id} contentContainerStyle={{padding: 10, paddingBottom: 100}}
                 renderItem={({item}) => (
                     <View style={styles.historyItem}>
                         <View style={{flex: 1}}>
                             <Text style={styles.historyDate}>{formatDate(item.date)}</Text>
-                            <Text style={styles.historyItems}>{item.items.length} ລາຍການ</Text>
+                            <Text style={styles.historyItems}>{item.items.length} ລາຍການ | {item.paymentMethod === 'QR' ? 'QR' : 'ເງິນສົດ'}</Text>
                         </View>
                         <View style={{alignItems: 'flex-end'}}>
                             <Text style={styles.historyTotal}>{formatNumber(item.total)} {item.currency === 'THB' ? '฿' : '₭'}</Text>
-                            <TouchableOpacity onPress={() => deleteSale(item.id)}>
-                                <Text style={{color: COLORS.danger, fontSize: 12, fontFamily: 'Lao-Regular', marginTop: 5}}>ລຶບ</Text>
-                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => deleteSale(item.id)}><Text style={{color: COLORS.danger, fontSize: 12, fontFamily: 'Lao-Regular', marginTop: 5}}>ລຶບ</Text></TouchableOpacity>
                         </View>
                     </View>
                 )}
               />
           );
       } 
-      
       if (currentScreen === 'inventory') {
           return (
-              <FlatList 
-                key="inventory-list" // 🟢 ໃສ່ Key ໃຫ້ມັນຮູ້ວ່າເປັນ list 1 ຖັນ
-                data={products}
-                keyExtractor={item => item.id}
-                contentContainerStyle={{padding: 10, paddingBottom: 100}}
+              <FlatList key="inventory-list" data={products} keyExtractor={item => item.id} contentContainerStyle={{padding: 10, paddingBottom: 100}}
                 renderItem={({item}) => (
                     <View style={styles.inventoryItem}>
                         {item.imageUrl ? <Image source={{uri: item.imageUrl}} style={styles.invImage} /> : <View style={[styles.invImage, {backgroundColor: '#eee'}]} />}
@@ -332,16 +352,8 @@ export default function App() {
               />
           );
       }
-
-      // Default: Home (POS)
       return (
-        <FlatList
-            key="home-grid" // 🟢 ໃສ່ Key ໃຫ້ມັນຮູ້ວ່າເປັນ grid 2 ຖັນ
-            data={products}
-            keyExtractor={item => item.id}
-            numColumns={COLUMN_COUNT}
-            columnWrapperStyle={{ justifyContent: 'space-between', paddingHorizontal: 10 }}
-            contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
+        <FlatList key="home-grid" data={products} keyExtractor={item => item.id} numColumns={COLUMN_COUNT} columnWrapperStyle={{ justifyContent: 'space-between', paddingHorizontal: 10 }} contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
             renderItem={({ item }) => (
             <TouchableOpacity style={styles.card} onPress={() => addToCart(item)} activeOpacity={0.8}>
                 <View style={styles.imageContainer}>
@@ -363,18 +375,10 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => toggleMenu(true)}>
-            <Ionicons name="menu" size={28} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-            {currentScreen === 'home' ? 'Soudaphone POS' : currentScreen === 'history' ? 'ປະຫວັດການຂາຍ' : 'ຈັດການສະຕັອກ'}
-        </Text>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => toggleMenu(true)}><Ionicons name="menu" size={28} color={COLORS.text} /></TouchableOpacity>
+        <Text style={styles.headerTitle}>{currentScreen === 'home' ? 'Soudaphone POS' : currentScreen === 'history' ? 'ປະຫວັດການຂາຍ' : 'ຈັດການສະຕັອກ'}</Text>
         <View style={{flexDirection: 'row', gap: 5}}>
-            {currentScreen === 'home' && (
-                <TouchableOpacity style={styles.iconBtn} onPress={openScanner}>
-                    <Ionicons name="barcode-outline" size={24} color={COLORS.text} />
-                </TouchableOpacity>
-            )}
+            {currentScreen === 'home' && (<TouchableOpacity style={styles.iconBtn} onPress={openScanner}><Ionicons name="barcode-outline" size={24} color={COLORS.text} /></TouchableOpacity>)}
         </View>
       </View>
 
@@ -390,23 +394,11 @@ export default function App() {
                     <Text style={styles.sidebarSubtitle}>Admin</Text>
                 </View>
                 <ScrollView style={styles.menuContainer}>
-                    <TouchableOpacity style={[styles.menuItem, currentScreen === 'home' && styles.menuActive]} onPress={() => handleMenuSelect('home')}>
-                        <Ionicons name="home-outline" size={24} color={currentScreen === 'home' ? COLORS.primaryDark : COLORS.text} />
-                        <Text style={[styles.menuText, currentScreen === 'home' && styles.menuTextActive]}>ໜ້າຫຼັກ</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.menuItem, currentScreen === 'history' && styles.menuActive]} onPress={() => handleMenuSelect('history')}>
-                        <Ionicons name="receipt-outline" size={24} color={currentScreen === 'history' ? COLORS.primaryDark : COLORS.text} />
-                        <Text style={[styles.menuText, currentScreen === 'history' && styles.menuTextActive]}>ປະຫວັດການຂາຍ</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.menuItem, currentScreen === 'inventory' && styles.menuActive]} onPress={() => handleMenuSelect('inventory')}>
-                        <MaterialCommunityIcons name="cube-outline" size={24} color={currentScreen === 'inventory' ? COLORS.primaryDark : COLORS.text} />
-                        <Text style={[styles.menuText, currentScreen === 'inventory' && styles.menuTextActive]}>ຈັດການສະຕັອກ</Text>
-                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.menuItem, currentScreen === 'home' && styles.menuActive]} onPress={() => handleMenuSelect('home')}><Ionicons name="home-outline" size={24} color={currentScreen === 'home' ? COLORS.primaryDark : COLORS.text} /><Text style={[styles.menuText, currentScreen === 'home' && styles.menuTextActive]}>ໜ້າຫຼັກ</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.menuItem, currentScreen === 'history' && styles.menuActive]} onPress={() => handleMenuSelect('history')}><Ionicons name="receipt-outline" size={24} color={currentScreen === 'history' ? COLORS.primaryDark : COLORS.text} /><Text style={[styles.menuText, currentScreen === 'history' && styles.menuTextActive]}>ປະຫວັດການຂາຍ</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.menuItem, currentScreen === 'inventory' && styles.menuActive]} onPress={() => handleMenuSelect('inventory')}><MaterialCommunityIcons name="cube-outline" size={24} color={currentScreen === 'inventory' ? COLORS.primaryDark : COLORS.text} /><Text style={[styles.menuText, currentScreen === 'inventory' && styles.menuTextActive]}>ຈັດການສະຕັອກ</Text></TouchableOpacity>
                     <View style={styles.divider} />
-                    <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert('Info', 'Version 1.0.0')}>
-                        <Ionicons name="settings-outline" size={24} color={COLORS.text} />
-                        <Text style={styles.menuText}>ຕັ້ງຄ່າ</Text>
-                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert('Info', 'Version 1.0.0')}><Ionicons name="settings-outline" size={24} color={COLORS.text} /><Text style={styles.menuText}>ຕັ້ງຄ່າ</Text></TouchableOpacity>
                 </ScrollView>
             </Animated.View>
         </View>
@@ -414,10 +406,7 @@ export default function App() {
 
       {currentScreen === 'home' && cart.length > 0 && (
         <TouchableOpacity style={styles.bottomBar} onPress={() => setModalVisible(true)} activeOpacity={0.9}>
-            <View style={styles.cartIconBadge}>
-                <Ionicons name="cart" size={28} color="white" />
-                <View style={styles.badge}><Text style={styles.badgeText}>{totalItems}</Text></View>
-            </View>
+            <View style={styles.cartIconBadge}><Ionicons name="cart" size={28} color="white" /><View style={styles.badge}><Text style={styles.badgeText}>{totalItems}</Text></View></View>
             <View style={{flex: 1, marginLeft: 15}}>
                 <Text style={styles.cartInfo}>ຍອດລວມທັງໝົດ</Text>
                 <View style={{flexDirection: 'row', gap: 10}}>
@@ -467,6 +456,19 @@ export default function App() {
                     ))}
                 </ScrollView>
                 <View style={styles.modalFooter}>
+                    {/* 🟢 1. Payment Method Toggle */}
+                    <View style={styles.paymentMethodContainer}>
+                        <TouchableOpacity style={[styles.paymentMethodBtn, paymentMethod === 'CASH' && styles.paymentMethodActive]} onPress={() => setPaymentMethod('CASH')}>
+                            <Ionicons name="cash-outline" size={20} color={paymentMethod === 'CASH' ? 'white' : COLORS.textLight} />
+                            <Text style={[styles.paymentMethodText, paymentMethod === 'CASH' && {color: 'white'}]}>ເງິນສົດ</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.paymentMethodBtn, paymentMethod === 'QR' && styles.paymentMethodActive]} onPress={() => setPaymentMethod('QR')}>
+                            <Ionicons name="qr-code-outline" size={20} color={paymentMethod === 'QR' ? 'white' : COLORS.textLight} />
+                            <Text style={[styles.paymentMethodText, paymentMethod === 'QR' && {color: 'white'}]}>QR Code</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Total Row */}
                     <View style={styles.totalRow}>
                         <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
                             <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
@@ -482,7 +484,32 @@ export default function App() {
                         <TextInput style={[styles.totalInput, { color: paymentCurrency === 'THB' ? COLORS.secondaryDark : COLORS.primaryDark }]} value={formatNumber(manualTotal)} onChangeText={handleManualTotalChange} keyboardType="numeric" selectTextOnFocus returnKeyType="done" />
                     </View>
                     {discount !== 0 && (<View style={{flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10}}><Text style={{color: COLORS.danger, fontSize: 12, fontFamily: 'Lao-Regular'}}>ສ່ວນຫຼຸດ: {formatNumber(discount)} {paymentCurrency === 'THB' ? '฿' : '₭'}</Text></View>)}
-                    <TouchableOpacity style={styles.confirmBtn} onPress={handleCheckout}><Text style={styles.confirmBtnText}>ຢືນຢັນຮັບເງິນ ({formatNumber(manualTotal || 0)})</Text></TouchableOpacity>
+                    
+                    {/* 🟢 2. Cash Input & Change Calculation */}
+                    {paymentMethod === 'CASH' && (
+                        <View style={styles.cashContainer}>
+                            <View style={{flex: 1}}>
+                                <Text style={styles.cashLabel}>ຮັບເງິນມາ:</Text>
+                                <TextInput 
+                                    style={styles.cashInput} 
+                                    placeholder="0" 
+                                    keyboardType="numeric" 
+                                    value={formatNumber(amountReceived)} 
+                                    onChangeText={(t) => setAmountReceived(t.replace(/,/g, ''))} 
+                                />
+                            </View>
+                            <View style={{flex: 1, alignItems: 'flex-end'}}>
+                                <Text style={styles.cashLabel}>ເງິນທອນ:</Text>
+                                <Text style={[styles.changeText, changeCalc < 0 ? {color: COLORS.danger} : {color: COLORS.success}]}>
+                                    {formatNumber(changeCalc < 0 ? 0 : changeCalc)}
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
+                    <TouchableOpacity style={styles.confirmBtn} onPress={handleCheckout}>
+                        <Text style={styles.confirmBtnText}>ຢືນຢັນຮັບເງິນ ({formatNumber(manualTotal || 0)})</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
         </KeyboardAvoidingView>
@@ -588,6 +615,19 @@ const styles = StyleSheet.create({
   currencyBtnText: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#888' },
   confirmBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 15, alignItems: 'center' },
   confirmBtnText: { color: 'white', fontSize: 18, fontFamily: 'Lao-Bold' },
+  
+  // Payment Method Styles
+  paymentMethodContainer: { flexDirection: 'row', gap: 10, marginBottom: 15 },
+  paymentMethodBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 10, backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#eee', gap: 5 },
+  paymentMethodActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  paymentMethodText: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
+  
+  // Cash Input Styles
+  cashContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, padding: 10, backgroundColor: '#f9f9f9', borderRadius: 10 },
+  cashLabel: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#888', marginBottom: 5 },
+  cashInput: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333', borderBottomWidth: 1, borderBottomColor: '#ddd', minWidth: 100, paddingVertical: 0 },
+  changeText: { fontSize: 20, fontFamily: 'Lao-Bold' },
+
   scannerContainer: { flex: 1, backgroundColor: 'black' },
   scannerOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
   scannerHeader: { position: 'absolute', top: 50, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

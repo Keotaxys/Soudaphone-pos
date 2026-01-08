@@ -1,9 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
-import { onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { db } from '../../src/firebase';
-// ❌ ຕັດ useFonts ອອກກ່ອນ ເພາະເຮົາຍັງບໍ່ມີໄຟລ໌
+import { StyleSheet, Text, View, FlatList, ActivityIndicator, TouchableOpacity, Alert, Image, Dimensions, Modal, SafeAreaView, ScrollView } from 'react-native';
+import { ref, onValue, push, update } from 'firebase/database';
+import { db } from '../../src/firebase'; 
+import { Ionicons } from '@expo/vector-icons'; 
+import { useFonts } from 'expo-font'; // 🟢 1. Import ຄຳສັ່ງໂຫຼດ Font
 
 interface Product {
   id: string;
@@ -24,11 +24,11 @@ const CARD_WIDTH = (width / COLUMN_COUNT) - 20;
 
 // 🎨 Theme Colors (ຂຽວພາສເທວ + ສົ້ມ)
 const COLORS = {
-  primary: '#4DB6AC',    // ຂຽວພາສເທວ (Teal 300)
+  primary: '#4DB6AC',    // ຂຽວພາສເທວ
   primaryDark: '#009688', // ຂຽວເຂັ້ມ
-  secondary: '#FFB74D',  // ສີສົ້ມພາສເທວ (Orange 300)
+  secondary: '#FFB74D',  // ສີສົ້ມ
   secondaryDark: '#F57C00', // ສົ້ມເຂັ້ມ
-  background: '#F0F4F4', // ພື້ນຫຼັງຂຽວອ່ອນໆ
+  background: '#F0F4F4', 
   cardBg: '#FFFFFF',
   text: '#424242',
   textLight: '#757575',
@@ -36,7 +36,12 @@ const COLORS = {
 };
 
 export default function App() {
-  // 🟢 ໃຊ້ Font ລະບົບແທນ (System Font)
+  // 🟢 2. ໂຫຼດ Font ຈາກໂຟນເດີ assets/fonts
+  const [fontsLoaded] = useFonts({
+    'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'),
+    'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
+  });
+
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,7 +129,8 @@ export default function App() {
   const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
   const totalTHB = cart.filter(i => i.priceCurrency === 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
-  if (loading) {
+  // 🟢 3. ລໍຖ້າໃຫ້ Font ໂຫຼດແລ້ວກ່ອນຈຶ່ງສະແດງໜ້າຈໍ
+  if (!fontsLoaded || loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
   }
 
@@ -150,19 +156,20 @@ export default function App() {
                 ) : (
                     <View style={styles.imagePlaceholder}><Text style={styles.placeholderText}>{item.name.charAt(0)}</Text></View>
                 )}
-                {/* Badge ສີສົ້ມ/ຂຽວ ຕາມສະກຸນເງິນ */}
                 <View style={[styles.currencyBadge, { backgroundColor: item.priceCurrency === 'THB' ? COLORS.secondary : COLORS.primary }]}>
                     <Text style={styles.currencyText}>{item.priceCurrency || 'LAK'}</Text>
                 </View>
                 {item.stock <= 5 && <View style={styles.stockBadge}><Text style={styles.stockText}>{item.stock}</Text></View>}
             </View>
             <View style={styles.cardContent}>
+                {/* 🟢 4. ໃຊ້ fontFamily: 'Lao-Regular' */}
                 <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
+                
+                {/* 🟢 5. ໃຊ້ fontFamily: 'Lao-Bold' */}
                 <Text style={[styles.price, { color: item.priceCurrency === 'THB' ? COLORS.secondaryDark : COLORS.primaryDark }]}>
                     {Number(item.price).toLocaleString()} {item.priceCurrency === 'THB' ? '฿' : '₭'}
                 </Text>
             </View>
-            {/* ປຸ່ມບວກສີສົ້ມ */}
             <TouchableOpacity style={styles.addBtn} onPress={() => addToCart(item)}>
                 <Ionicons name="add" size={24} color="white" />
             </TouchableOpacity>
@@ -257,7 +264,7 @@ const styles = StyleSheet.create({
     padding: 15, backgroundColor: 'white', marginTop: 30,
     borderBottomWidth: 1, borderBottomColor: '#E0E0E0'
   },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.primaryDark },
+  headerTitle: { fontSize: 22, color: COLORS.primaryDark, fontFamily: 'Lao-Bold' }, 
   iconBtn: { padding: 5 },
   
   // Card Style
@@ -269,19 +276,19 @@ const styles = StyleSheet.create({
   imageContainer: { height: 130, width: '100%', backgroundColor: '#f0f0f0', position: 'relative' },
   productImage: { width: '100%', height: '100%' },
   imagePlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
-  placeholderText: { fontSize: 30, color: '#ccc', fontWeight: 'bold' },
+  placeholderText: { fontSize: 30, color: '#ccc', fontFamily: 'Lao-Bold' },
   
   // Badges
   currencyBadge: { position: 'absolute', top: 8, left: 8, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  currencyText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+  currencyText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
   stockBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: COLORS.danger, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
-  stockText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+  stockText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
   
   cardContent: { padding: 12 },
-  title: { fontSize: 14, color: '#333', marginBottom: 4 },
-  price: { fontSize: 16, fontWeight: 'bold' },
+  title: { fontSize: 14, color: '#333', marginBottom: 4, fontFamily: 'Lao-Regular' },
+  price: { fontSize: 16, fontFamily: 'Lao-Bold' },
   
-  // Add Button (Pastel Orange)
+  // Add Button
   addBtn: { 
     position: 'absolute', bottom: 10, right: 10, 
     backgroundColor: COLORS.secondary, 
@@ -290,7 +297,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 2, elevation: 3
   },
 
-  // Bottom Bar (Pastel Green Theme)
+  // Bottom Bar
   bottomBar: { 
     position: 'absolute', bottom: 20, left: 15, right: 15, 
     backgroundColor: COLORS.primaryDark, 
@@ -304,33 +311,33 @@ const styles = StyleSheet.create({
     width: 20, height: 20, borderRadius: 10, 
     justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: COLORS.primaryDark 
   },
-  badgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
-  cartInfo: { color: '#E0F2F1', fontSize: 10, textTransform: 'uppercase' },
-  cartTotal: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  badgeText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
+  cartInfo: { color: '#E0F2F1', fontSize: 10, textTransform: 'uppercase', fontFamily: 'Lao-Regular' },
+  cartTotal: { color: 'white', fontSize: 16, fontFamily: 'Lao-Bold' },
   viewCartBtn: { 
     backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 8, 
     borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 5 
   },
-  viewCartText: { color: COLORS.primaryDark, fontSize: 12, fontWeight: 'bold' },
+  viewCartText: { color: COLORS.primaryDark, fontSize: 12, fontFamily: 'Lao-Bold' },
 
   // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: 'white', borderTopLeftRadius: 25, borderTopRightRadius: 25, height: '80%', padding: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 15 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  modalTitle: { fontSize: 20, color: '#333', fontFamily: 'Lao-Bold' },
   modalBody: { flex: 1 },
   cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, backgroundColor: '#f9f9f9', padding: 10, borderRadius: 12 },
   cartItemImage: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#ddd' },
-  cartItemName: { fontSize: 14, color: '#333' },
-  cartItemPrice: { fontSize: 14, fontWeight: 'bold' },
+  cartItemName: { fontSize: 14, color: '#333', fontFamily: 'Lao-Regular' },
+  cartItemPrice: { fontSize: 14, fontFamily: 'Lao-Bold' },
   qtyControls: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
   qtyBtn: { padding: 5, width: 30, alignItems: 'center' },
-  qtyText: { fontSize: 14, fontWeight: 'bold', width: 20, textAlign: 'center' },
+  qtyText: { fontSize: 14, fontFamily: 'Lao-Bold', width: 20, textAlign: 'center' },
   
   modalFooter: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 20 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-  totalLabel: { fontSize: 16, color: '#888' },
-  finalTotal: { fontSize: 20, fontWeight: 'bold' },
+  totalLabel: { fontSize: 16, color: '#888', fontFamily: 'Lao-Regular' },
+  finalTotal: { fontSize: 20, fontFamily: 'Lao-Bold' },
   confirmBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 15, alignItems: 'center' },
-  confirmBtnText: { color: 'white', fontSize: 18, fontWeight: 'bold' }
+  confirmBtnText: { color: 'white', fontSize: 18, fontFamily: 'Lao-Bold' }
 });

@@ -23,6 +23,7 @@ const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
 const CARD_WIDTH = (width / COLUMN_COUNT) - 20; 
 
+// 🎨 Theme Colors (ສີຂຽວພາສເທວ/ສົ້ມ ທີ່ເຈົ້າມັກ)
 const COLORS = {
   primary: '#4DB6AC',    
   primaryDark: '#009688', 
@@ -119,7 +120,7 @@ export default function App() {
         setManualTotal(total.toString()); 
         setDiscount(0);
         setSelectedDate(new Date()); 
-        setShowDatePicker(false); // Reset date picker
+        setShowDatePicker(false);
     }
   }, [cart, modalVisible, paymentCurrency]);
 
@@ -136,17 +137,14 @@ export default function App() {
   };
 
   const onChangeDate = (event: any, selected: Date | undefined) => {
-    // ສຳລັບ Android: ປິດທັນທີເມື່ອເລືອກແລ້ວ
     if (Platform.OS === 'android') {
         setShowDatePicker(false);
     }
-    
     if (selected) {
         setSelectedDate(selected);
     }
   };
 
-  // Toggle ສຳລັບ iOS (ກົດເປີດ/ປິດ)
   const toggleDatePicker = () => {
       setShowDatePicker(!showDatePicker);
   };
@@ -284,7 +282,7 @@ export default function App() {
         </TouchableOpacity>
       )}
 
-      {/* Cart Modal */}
+      {/* Modal */}
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -298,7 +296,6 @@ export default function App() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Source & Date Selector */}
                 <View style={{flexDirection: 'row', gap: 10, marginBottom: 15}}>
                     <View style={styles.sourceContainer}>
                         <TouchableOpacity 
@@ -317,26 +314,26 @@ export default function App() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* 🟢 ປຸ່ມວັນທີ */}
                     <TouchableOpacity style={styles.datePickerBtn} onPress={toggleDatePicker}>
                         <Ionicons name="calendar" size={18} color={COLORS.primaryDark} />
                         <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* 🟢 Date Picker (ວາງໄວ້ບ່ອນນີ້ ເພື່ອໃຫ້ມັນຢູ່ໃນ Modal ດຽວກັນ) */}
+                {/* 🟢 ປັບແກ້: ກຳນົດຂະໜາດ ແລະ ສີ ໃຫ້ປະຕິທິນຊັດເຈນ */}
                 {showDatePicker && (
-                    <View style={{marginBottom: 15, alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: 10, padding: 10}}>
+                    <View style={{marginBottom: 15, alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: 12, padding: 10, overflow: 'hidden'}}>
                         <DateTimePicker
+                            testID="dateTimePicker"
                             value={selectedDate}
                             mode="date"
-                            display={Platform.OS === 'ios' ? 'inline' : 'default'} // iOS ໃຊ້ແບບ Inline ງາມກວ່າ
+                            display={Platform.OS === 'ios' ? 'inline' : 'default'}
                             onChange={onChangeDate}
-                            style={Platform.OS === 'ios' ? { width: 320, height: 320 } : undefined}
+                            textColor={COLORS.text} // ໃຊ້ສີດຳ
+                            style={Platform.OS === 'ios' ? { width: width - 80 } : undefined} // 🟢 ປັບຂະໜາດໃຫ້ພໍດີຈໍ (ໜ້າຈໍລົບ 80px)
                         />
-                        {/* ປຸ່ມປິດສຳລັບ iOS */}
                         {Platform.OS === 'ios' && (
-                            <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{marginTop: 10}}>
+                            <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{marginTop: 5, padding: 10}}>
                                 <Text style={{color: COLORS.primaryDark, fontWeight: 'bold'}}>ປິດປະຕິທິນ</Text>
                             </TouchableOpacity>
                         )}

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
-import { onValue, push, ref, update } from 'firebase/database';
+import { get, onValue, push, ref, update } from 'firebase/database'; // 🟢 ເພີ່ມ get
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { db } from '../../src/firebase';
@@ -46,13 +46,18 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // 🟢 State ໃໝ່ສຳລັບການຂາຍ
+  // State ສຳລັບການຂາຍ
   const [saleSource, setSaleSource] = useState<'ໜ້າຮ້ານ' | 'Online'>('ໜ້າຮ້ານ');
   const [paymentCurrency, setPaymentCurrency] = useState<'LAK' | 'THB'>('LAK');
-  const [manualTotal, setManualTotal] = useState<string>(''); // ເກັບຄ່າທີ່ແກ້ໄຂ
+  const [manualTotal, setManualTotal] = useState<string>(''); 
   const [discount, setDiscount] = useState(0);
+  
+  // 🟢 ອັດຕາແລກປ່ຽນ (Default 700 ຖ້າດຶງບໍ່ໄດ້)
+  const [exchangeRate, setExchangeRate] = useState(700); 
 
+  // 1. ດຶງຂໍ້ມູນສິນຄ້າ ແລະ ອັດຕາແລກປ່ຽນ
   useEffect(() => {
+    // ດຶງສິນຄ້າ
     const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -67,33 +72,72 @@ export default function App() {
       }
       setLoading(false);
     });
+
+    // 🟢 ດຶງອັດຕາແລກປ່ຽນຈາກ Settings
+    const settingsRef = ref(db, 'settings');
+    get(settingsRef).then((snapshot) => {
+        if(snapshot.exists()) {
+            const data = snapshot.val();
+            // ຖ້າມີການບັນທຶກ exchangeRateTHB ໄວ້
+            if (data.exchangeRateTHB) {
+                setExchangeRate(Number(data.exchangeRateTHB));
+            }
+        }
+    });
+
     return () => unsubscribe();
   }, []);
 
-  // ຄຳນວນຍອດລວມຕົ້ນທຶນ (Subtotal)
-  const calculateSubtotal = () => {
-    // ໝາຍເຫດ: ນີ້ແມ່ນການລວມຍອດແບບຄ່າວໆ ຖ້າມີຫຼາຍສະກຸນເງິນປົນກັນ ຕ້ອງມີອັດຕາແລກປ່ຽນ
-    // ໃນທີ່ນີ້ສົມມຸດວ່າເນັ້ນສະກຸນເງິນຫຼັກຕາມສິນຄ້າ
+  // 🟢 2. ຟັງຊັນຄຳນວນຍອດເງິນ (Smart Calculation)
+  // targetCurrency = ສະກຸນເງິນທີ່ຕ້ອງການຈ່າຍ (LAK ຫຼື THB)
+  const calculateTotalInCurrency = (targetCurrency: 'LAK' | 'THB') => {
     let total = 0;
+    
     cart.forEach(item => {
-        total += item.price * item.quantity;
+        const itemTotal = item.price * item.quantity;
+        
+        // ກໍລະນີສິນຄ້າເປັນ LAK
+        if (item.priceCurrency !== 'THB') {
+            if (targetCurrency === 'LAK') {
+                total += itemTotal; // LAK -> LAK (ບວກເລີຍ)
+            } else {
+                total += itemTotal / exchangeRate; // LAK -> THB (ຫານເລດ)
+            }
+        } 
+        // ກໍລະນີສິນຄ້າເປັນ THB
+        else {
+            if (targetCurrency === 'THB') {
+                total += itemTotal; // THB -> THB (ບວກເລີຍ)
+            } else {
+                total += itemTotal * exchangeRate; // THB -> LAK (ຄູນເລດ)
+            }
+        }
     });
-    return total;
+
+    // ປັດເສດທົດສະນິຍົມ
+    return targetCurrency === 'LAK' ? Math.round(total) : parseFloat(total.toFixed(2));
   };
 
-  // ອັບເດດຍອດເງິນເມື່ອເປີດກະຕ່າ ຫຼື ກະຕ່າປ່ຽນແປງ
+  // ເມື່ອເປີດ Modal ຫຼື Cart ປ່ຽນ -> ຄຳນວນໃໝ່ຕາມສະກຸນເງິນປັດຈຸບັນ
   useEffect(() => {
-    const sub = calculateSubtotal();
-    setManualTotal(sub.toString());
-    setDiscount(0);
-  }, [cart, modalVisible]);
+    if (modalVisible) {
+        const total = calculateTotalInCurrency(paymentCurrency);
+        setManualTotal(total.toString());
+        setDiscount(0);
+    }
+  }, [cart, modalVisible, paymentCurrency]); // 🟢 ເພີ່ມ paymentCurrency ເຂົ້າໄປ
 
-  // ຟັງຊັນປ່ຽນຍອດເງິນເອງ (Discount)
+  // ຟັງຊັນປ່ຽນສະກຸນເງິນ (Switch Currency)
+  const handleCurrencyChange = (currency: 'LAK' | 'THB') => {
+      setPaymentCurrency(currency);
+      // useEffect ຂ້າງເທິງຈະເຮັດວຽກອັດຕະໂນມັດເມື່ອ state ປ່ຽນ
+  };
+
   const handleManualTotalChange = (text: string) => {
     setManualTotal(text);
     const newTotal = parseFloat(text) || 0;
-    const sub = calculateSubtotal();
-    setDiscount(sub - newTotal);
+    const originalSubtotal = calculateTotalInCurrency(paymentCurrency);
+    setDiscount(originalSubtotal - newTotal);
   };
 
   const addToCart = (product: Product) => {
@@ -131,15 +175,17 @@ export default function App() {
     if (cart.length === 0) return;
     try {
       const finalTotal = parseFloat(manualTotal) || 0;
-      const subTotal = calculateSubtotal();
+      
+      // ຄຳນວນ Subtotal ເປັນສະກຸນເງິນທີ່ຈ່າຍ
+      const subTotal = calculateTotalInCurrency(paymentCurrency);
 
       const orderData = {
         items: cart,
         subTotal: subTotal,
         discount: discount,
         total: finalTotal,
-        currency: paymentCurrency, // 🟢 ບັນທຶກສະກຸນເງິນ
-        source: saleSource,       // 🟢 ບັນທຶກແຫຼ່ງຂາຍ
+        currency: paymentCurrency, 
+        source: saleSource,       
         date: new Date().toISOString(),
         status: 'ສຳເລັດ',
         createdAt: new Date().toISOString()
@@ -163,6 +209,10 @@ export default function App() {
   };
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  
+  // ຄຳນວນຍອດລວມສະແດງໜ້າຫຼັກ (ແຍກສະກຸນ)
+  const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
+  const totalTHB = cart.filter(i => i.priceCurrency === 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
   if (!fontsLoaded || loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
@@ -216,8 +266,11 @@ export default function App() {
                 <View style={styles.badge}><Text style={styles.badgeText}>{totalItems}</Text></View>
             </View>
             <View style={{flex: 1, marginLeft: 15}}>
-                <Text style={styles.cartInfo}>ຍອດລວມ ({totalItems} ລາຍການ)</Text>
-                <Text style={styles.cartTotal}>{Number(manualTotal || calculateSubtotal()).toLocaleString()} {paymentCurrency === 'THB' ? '฿' : '₭'}</Text>
+                <Text style={styles.cartInfo}>ຍອດລວມທັງໝົດ</Text>
+                <View style={{flexDirection: 'row', gap: 10}}>
+                    {totalLAK > 0 && <Text style={styles.cartTotal}>{totalLAK.toLocaleString()} ₭</Text>}
+                    {totalTHB > 0 && <Text style={styles.cartTotal}>{totalTHB.toLocaleString()} ฿</Text>}
+                </View>
             </View>
             <View style={styles.viewCartBtn}>
                 <Text style={styles.viewCartText}>ເບິ່ງກະຕ່າ</Text>
@@ -237,7 +290,7 @@ export default function App() {
                     </TouchableOpacity>
                 </View>
 
-                {/* 🟢 1. ຕົວເລືອກແຫຼ່ງຂາຍ (Source Selector) */}
+                {/* Source Selector */}
                 <View style={styles.sourceContainer}>
                     <TouchableOpacity 
                         style={[styles.sourceBtn, saleSource === 'ໜ້າຮ້ານ' && styles.sourceBtnActive]}
@@ -282,22 +335,20 @@ export default function App() {
                 </ScrollView>
 
                 <View style={styles.modalFooter}>
-                    {/* 🟢 2. ເລືອກສະກຸນເງິນ & ແກ້ໄຂລາຄາ */}
                     <View style={styles.totalRow}>
                         <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
                             <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
-                            {/* ປຸ່ມສະກຸນເງິນ */}
                             <View style={styles.currencyToggle}>
-                                <TouchableOpacity onPress={() => setPaymentCurrency('LAK')} style={[styles.currencyBtn, paymentCurrency === 'LAK' && {backgroundColor: COLORS.primary}]}>
+                                {/* 🟢 ປຸ່ມປ່ຽນສະກຸນເງິນ (ໃຊ້ handleCurrencyChange) */}
+                                <TouchableOpacity onPress={() => handleCurrencyChange('LAK')} style={[styles.currencyBtn, paymentCurrency === 'LAK' && {backgroundColor: COLORS.primary}]}>
                                     <Text style={[styles.currencyBtnText, paymentCurrency === 'LAK' && {color: 'white'}]}>₭</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity onPress={() => setPaymentCurrency('THB')} style={[styles.currencyBtn, paymentCurrency === 'THB' && {backgroundColor: COLORS.secondary}]}>
+                                <TouchableOpacity onPress={() => handleCurrencyChange('THB')} style={[styles.currencyBtn, paymentCurrency === 'THB' && {backgroundColor: COLORS.secondary}]}>
                                     <Text style={[styles.currencyBtnText, paymentCurrency === 'THB' && {color: 'white'}]}>฿</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
                         
-                        {/* 🟢 3. ຊ່ອງ Input ແກ້ໄຂລາຄາ (Editable Total) */}
                         <TextInput 
                             style={[styles.totalInput, { color: paymentCurrency === 'THB' ? COLORS.secondaryDark : COLORS.primaryDark }]}
                             value={manualTotal}
@@ -307,10 +358,11 @@ export default function App() {
                         />
                     </View>
                     
-                    {/* ສະແດງສ່ວນຫຼຸດຖ້າມີ */}
-                    {discount > 0 && (
+                    {discount !== 0 && (
                         <View style={{flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10}}>
-                            <Text style={{color: COLORS.danger, fontSize: 12, fontFamily: 'Lao-Regular'}}>ສ່ວນຫຼຸດ: -{discount.toLocaleString()}</Text>
+                            <Text style={{color: COLORS.danger, fontSize: 12, fontFamily: 'Lao-Regular'}}>
+                                ສ່ວນຫຼຸດ: {Number(discount).toLocaleString()} {paymentCurrency === 'THB' ? '฿' : '₭'}
+                            </Text>
                         </View>
                     )}
 
@@ -396,7 +448,6 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, color: '#333', fontFamily: 'Lao-Bold' },
   modalBody: { flex: 1 },
 
-  // Source Selector
   sourceContainer: { flexDirection: 'row', backgroundColor: '#f5f5f5', padding: 4, borderRadius: 10, marginBottom: 15 },
   sourceBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 8, gap: 5 },
   sourceBtnActive: { backgroundColor: COLORS.primary },
@@ -413,7 +464,6 @@ const styles = StyleSheet.create({
   
   modalFooter: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 20 },
   
-  // Total Row & Input
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   totalLabel: { fontSize: 16, color: '#888', fontFamily: 'Lao-Regular' },
   totalInput: { 
@@ -422,7 +472,6 @@ const styles = StyleSheet.create({
     minWidth: 100, textAlign: 'right', paddingVertical: 0 
   },
   
-  // Currency Toggle
   currencyToggle: { flexDirection: 'row', gap: 5 },
   currencyBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' },
   currencyBtnText: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#888' },

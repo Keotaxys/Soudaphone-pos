@@ -1,10 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { CameraView, useCameraPermissions } from 'expo-camera'; // 🟢 1. Import Camera
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import { get, onValue, push, ref, update } from 'firebase/database';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Dimensions, Easing, FlatList, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
 import { db } from '../../src/firebase';
 
 interface Product {
@@ -14,16 +14,17 @@ interface Product {
   stock: number;
   imageUrl?: string;
   priceCurrency?: 'LAK' | 'THB';
-  barcode?: string; // 🟢 ເພີ່ມ Barcode field
+  barcode?: string;
 }
 
 interface CartItem extends Product {
   quantity: number;
 }
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
 const CARD_WIDTH = (width / COLUMN_COUNT) - 20; 
+const SIDEBAR_WIDTH = width * 0.75; // ຄວາມກວ້າງຂອງ Slide Bar (75% ຂອງຈໍ)
 
 // 🎨 Theme Colors
 const COLORS = {
@@ -58,7 +59,6 @@ export default function App() {
     'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
   });
 
-  // 🟢 Camera Permission Hook
   const [permission, requestPermission] = useCameraPermissions();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -66,7 +66,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   
-  // 🟢 State ສຳລັບກ້ອງ
   const [isScanning, setIsScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
 
@@ -78,6 +77,10 @@ export default function App() {
   
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // 🟢 Slide Bar Animation State
+  const [menuVisible, setMenuVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current; // ເລີ່ມຕົ້ນຊ້ອນຢູ່ຊ້າຍມື (-width)
 
   useEffect(() => {
     const productsRef = ref(db, 'products');
@@ -107,6 +110,26 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  // 🟢 ຟັງຊັນເປີດ/ປິດ Menu
+  const toggleMenu = (show: boolean) => {
+    if (show) {
+        setMenuVisible(true);
+        Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 300,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+        }).start();
+    } else {
+        Animated.timing(slideAnim, {
+            toValue: -SIDEBAR_WIDTH,
+            duration: 300,
+            easing: Easing.in(Easing.ease),
+            useNativeDriver: true,
+        }).start(() => setMenuVisible(false));
+    }
+  };
 
   const calculateTotalInCurrency = (targetCurrency: 'LAK' | 'THB') => {
     let total = 0;
@@ -158,7 +181,6 @@ export default function App() {
       setShowDatePicker(!showDatePicker);
   };
 
-  // 🟢 ຟັງຊັນເປີດກ້ອງ
   const openScanner = async () => {
     if (!permission?.granted) {
         const { granted } = await requestPermission();
@@ -171,11 +193,10 @@ export default function App() {
     setScanned(false);
   };
 
-  // 🟢 ຟັງຊັນເມື່ອສະແກນເຈິ
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
     setScanned(true);
-    Vibration.vibrate(); // ສັ່ນເຕືອນຕຶດ!
+    Vibration.vibrate();
 
     const product = products.find(p => p.barcode === data);
     
@@ -204,7 +225,6 @@ export default function App() {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
         if (existing.quantity >= product.stock) {
-            // ຖ້າເປັນການສະແກນ ບໍ່ຕ້ອງເຕືອນຊ້ຳໆ ກໍລະນີສິນຄ້າໝົດ
             return prev;
         }
         return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
@@ -275,13 +295,18 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        {/* 🟢 ປຸ່ມ Menu (3 ຂີດ) */}
+        <TouchableOpacity style={styles.iconBtn} onPress={() => toggleMenu(true)}>
+            <Ionicons name="menu" size={28} color={COLORS.text} />
+        </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Soudaphone POS</Text>
-        <View style={{flexDirection: 'row', gap: 10}}>
-            {/* 🟢 ປຸ່ມສະແກນບາໂຄດ */}
+        
+        <View style={{flexDirection: 'row', gap: 5}}>
             <TouchableOpacity style={styles.iconBtn} onPress={openScanner}>
                 <Ionicons name="barcode-outline" size={24} color={COLORS.text} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}><Ionicons name="search" size={24} color={COLORS.text} /></TouchableOpacity>
+            {/* <TouchableOpacity style={styles.iconBtn}><Ionicons name="search" size={24} color={COLORS.text} /></TouchableOpacity> */}
         </View>
       </View>
 
@@ -316,6 +341,63 @@ export default function App() {
           </TouchableOpacity>
         )}
       />
+
+      {/* 🟢 Slide Bar Menu (Sidebar) */}
+      {menuVisible && (
+        <View style={styles.sidebarOverlay}>
+            {/* ພື້ນຫຼັງສີດຳຈາງໆ (ກົດແລ້ວປິດ) */}
+            <TouchableOpacity style={{flex: 1}} onPress={() => toggleMenu(false)} activeOpacity={1} />
+            
+            {/* ຕົວ Slide Bar */}
+            <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
+                <View style={styles.sidebarHeader}>
+                    <View style={styles.avatar}>
+                        <Text style={{color: 'white', fontSize: 24, fontFamily: 'Lao-Bold'}}>S</Text>
+                    </View>
+                    <Text style={styles.sidebarTitle}>Soudaphone POS</Text>
+                    <Text style={styles.sidebarSubtitle}>Admin</Text>
+                </View>
+
+                <ScrollView style={styles.menuContainer}>
+                    <TouchableOpacity style={styles.menuItem}>
+                        <Ionicons name="home-outline" size={24} color={COLORS.text} />
+                        <Text style={styles.menuText}>ໜ້າຫຼັກ</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={styles.menuItem}>
+                        <Ionicons name="receipt-outline" size={24} color={COLORS.text} />
+                        <Text style={styles.menuText}>ປະຫວັດການຂາຍ</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.menuItem}>
+                        <MaterialCommunityIcons name="cube-outline" size={24} color={COLORS.text} />
+                        <Text style={styles.menuText}>ຈັດການສະຕັອກ</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.menuItem}>
+                        <Ionicons name="bar-chart-outline" size={24} color={COLORS.text} />
+                        <Text style={styles.menuText}>ລາຍງານ</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.divider} />
+
+                    <TouchableOpacity style={styles.menuItem}>
+                        <Ionicons name="settings-outline" size={24} color={COLORS.text} />
+                        <Text style={styles.menuText}>ຕັ້ງຄ່າ</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert('Coming Soon', 'ກຳລັງພັດທະນາ')}>
+                        <Ionicons name="print-outline" size={24} color={COLORS.text} />
+                        <Text style={styles.menuText}>ເຊື່ອມຕໍ່ເຄື່ອງພິມ</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+
+                <View style={styles.sidebarFooter}>
+                    <Text style={{color: '#aaa', fontSize: 12}}>Version 1.0.0</Text>
+                </View>
+            </Animated.View>
+        </View>
+      )}
 
       {cart.length > 0 && (
         <TouchableOpacity style={styles.bottomBar} onPress={() => setModalVisible(true)} activeOpacity={0.9}>
@@ -464,7 +546,7 @@ export default function App() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 🟢 Camera Scanner Modal */}
+      {/* Camera Scanner Modal */}
       <Modal animationType="slide" visible={isScanning} onRequestClose={() => setIsScanning(false)}>
         <View style={styles.scannerContainer}>
             <CameraView 
@@ -475,7 +557,6 @@ export default function App() {
                     barcodeTypes: ["qr", "ean13", "ean8", "code128"],
                 }}
             />
-            {/* Overlay */}
             <View style={styles.scannerOverlay}>
                 <View style={styles.scannerHeader}>
                     <Text style={styles.scannerTitle}>ສະແກນບາໂຄດ</Text>
@@ -501,8 +582,8 @@ const styles = StyleSheet.create({
     padding: 15, backgroundColor: 'white', marginTop: 30,
     borderBottomWidth: 1, borderBottomColor: '#E0E0E0'
   },
-  headerTitle: { fontSize: 22, color: COLORS.primaryDark, fontFamily: 'Lao-Bold' }, 
-  iconBtn: { padding: 5, marginLeft: 10 },
+  headerTitle: { fontSize: 20, color: COLORS.primaryDark, fontFamily: 'Lao-Bold' }, 
+  iconBtn: { padding: 5 },
   card: { 
     width: CARD_WIDTH, backgroundColor: 'white', marginBottom: 15, 
     borderRadius: 16, overflow: 'hidden', elevation: 2, 
@@ -587,5 +668,18 @@ const styles = StyleSheet.create({
   scannerTitle: { color: 'white', fontSize: 20, fontFamily: 'Lao-Bold' },
   closeScannerBtn: { padding: 5 },
   scanFrame: { width: 250, height: 250, borderWidth: 2, borderColor: COLORS.secondary, borderRadius: 20, backgroundColor: 'transparent' },
-  scanInstruction: { color: 'white', marginTop: 20, fontFamily: 'Lao-Regular' }
+  scanInstruction: { color: 'white', marginTop: 20, fontFamily: 'Lao-Regular' },
+
+  // Sidebar Styles
+  sidebarOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, flexDirection: 'row' },
+  sidebar: { width: SIDEBAR_WIDTH, backgroundColor: 'white', height: '100%', paddingTop: 50, shadowColor: '#000', shadowOffset: { width: 2, height: 0 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
+  sidebarHeader: { paddingHorizontal: 20, marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 20 },
+  avatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  sidebarTitle: { fontSize: 18, fontFamily: 'Lao-Bold', color: '#333' },
+  sidebarSubtitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#888' },
+  menuContainer: { flex: 1 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20 },
+  menuText: { fontSize: 16, fontFamily: 'Lao-Regular', marginLeft: 15, color: '#333' },
+  divider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 10 },
+  sidebarFooter: { padding: 20, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f0f0f0' }
 });

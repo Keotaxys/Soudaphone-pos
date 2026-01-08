@@ -85,7 +85,6 @@ export default function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   
-  // 🟢 State ເພື່ອກຳນົດວ່າສະແກນເພື່ອຫຍັງ ('sell' = ຂາຍ, 'edit' = ໃສ່ຂໍ້ມູນສິນຄ້າ)
   const [scanMode, setScanMode] = useState<'sell' | 'edit'>('sell');
 
   const [currentScreen, setCurrentScreen] = useState<'home' | 'history' | 'inventory'>('home');
@@ -163,7 +162,6 @@ export default function App() {
       toggleMenu(false); 
   };
 
-  // Product Management
   const openAddProductModal = () => {
       setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' });
       setProductModalVisible(true);
@@ -217,7 +215,6 @@ export default function App() {
       ]);
   };
 
-  // Sale Logic
   const calculateTotalInCurrency = (targetCurrency: 'LAK' | 'THB') => {
     let total = 0;
     cart.forEach(item => {
@@ -262,15 +259,36 @@ export default function App() {
 
   const toggleDatePicker = () => setShowDatePicker(!showDatePicker);
 
-  // 🟢 ຟັງຊັນເປີດກ້ອງ (ຮັບ Parameter ວ່າຈະສະແກນເພື່ອຫຍັງ)
+  // 🟢 ຟັງຊັນເປີດກ້ອງ (ສະບັບແກ້ໄຂ Modal ຊ້ອນ Modal)
   const openScanner = async (mode: 'sell' | 'edit' = 'sell') => {
     if (!permission?.granted) {
         const { granted } = await requestPermission();
         if (!granted) { Alert.alert('ຕ້ອງການສິດ', 'ກະລຸນາອະນຸຍາດໃຫ້ໃຊ້ກ້ອງຖ່າຍຮູບ'); return; }
     }
-    setScanMode(mode); // ກຳນົດໂໝດ
-    setIsScanning(true);
-    setScanned(false);
+    setScanMode(mode); 
+    
+    // ຖ້າເປັນໂໝດ Edit ໃຫ້ປິດ Modal ສິນຄ້າກ່ອນ ແລ້ວຄ່ອຍເປີດກ້ອງ
+    if (mode === 'edit') {
+        setProductModalVisible(false);
+        setTimeout(() => {
+            setIsScanning(true);
+            setScanned(false);
+        }, 300); // ລໍຖ້າໃຫ້ Modal ປິດສະນິດກ່ອນ
+    } else {
+        setIsScanning(true);
+        setScanned(false);
+    }
+  };
+
+  // 🟢 ຟັງຊັນປິດກ້ອງ (Handle Close)
+  const closeScanner = () => {
+      setIsScanning(false);
+      // ຖ້າຫາກໍ່ສະແກນເພື່ອ Edit, ໃຫ້ເປີດ Modal ສິນຄ້າຄືນມາ
+      if (scanMode === 'edit') {
+          setTimeout(() => {
+              setProductModalVisible(true);
+          }, 300);
+      }
   };
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
@@ -278,15 +296,17 @@ export default function App() {
     setScanned(true);
     Vibration.vibrate();
 
-    // 🟢 ຖ້າສະແກນເພື່ອແກ້ໄຂ/ເພີ່ມສິນຄ້າ
+    // 🟢 ກໍລະນີສະແກນເພື່ອແກ້ໄຂ/ເພີ່ມ
     if (scanMode === 'edit') {
-        setEditingProduct({ ...editingProduct, barcode: data }); // ໃສ່ຂໍ້ມູນລົງໃນຟອມ
+        setEditingProduct({ ...editingProduct, barcode: data });
         setIsScanning(false);
-        // Alert.alert('ສຳເລັດ', `ສະແກນບາໂຄດ: ${data} ຮຽບຮ້ອຍ`);
+        setTimeout(() => {
+            setProductModalVisible(true); // ເປີດ Modal ຄືນມາພ້ອມເລກບາໂຄດ
+        }, 300);
         return;
     }
 
-    // 🟢 ຖ້າສະແກນເພື່ອຂາຍ (Logic ເດີມ)
+    // 🟢 ກໍລະນີສະແກນຂາຍ
     const product = products.find(p => p.barcode === data);
     if (product) {
         addToCart(product);
@@ -497,7 +517,6 @@ export default function App() {
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.label}>ລາຄາ</Text>
-                            {/* 🟢 ແກ້ໄຂ: ໃຫ້ Input ໃສ່ຈຸດໄດ້ */}
                             <TextInput 
                                 style={styles.input} 
                                 value={formatNumber(editingProduct.price)} 
@@ -537,7 +556,6 @@ export default function App() {
                                     onChangeText={(t) => setEditingProduct({ ...editingProduct, barcode: t })} 
                                     placeholder="Scan..." 
                                 />
-                                {/* 🟢 ປຸ່ມສະແກນບາໂຄດສຳລັບເພີ່ມສິນຄ້າ */}
                                 <TouchableOpacity onPress={() => openScanner('edit')} style={{padding: 10, backgroundColor: COLORS.secondary, borderRadius: 8, marginLeft: 5}}>
                                     <Ionicons name="barcode-outline" size={24} color="white" />
                                 </TouchableOpacity>
@@ -553,7 +571,7 @@ export default function App() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Sidebar (Menu) */}
+      {/* Sidebar (Same as before) */}
       {menuVisible && (
         <View style={styles.sidebarOverlay}>
             <TouchableOpacity style={{flex: 1}} onPress={() => toggleMenu(false)} activeOpacity={1} />
@@ -588,6 +606,7 @@ export default function App() {
         </TouchableOpacity>
       )}
 
+      {/* Cart Modal */}
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -669,13 +688,14 @@ export default function App() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Scanner Modal */}
       <Modal animationType="slide" visible={isScanning} onRequestClose={() => setIsScanning(false)}>
         <View style={styles.scannerContainer}>
             <CameraView style={StyleSheet.absoluteFillObject} facing="back" onBarcodeScanned={scanned ? undefined : handleBarCodeScanned} barcodeScannerSettings={{ barcodeTypes: ["qr", "ean13", "ean8", "code128"], }} />
             <View style={styles.scannerOverlay}>
                 <View style={styles.scannerHeader}>
                     <Text style={styles.scannerTitle}>ສະແກນບາໂຄດ</Text>
-                    <TouchableOpacity onPress={() => setIsScanning(false)} style={styles.closeScannerBtn}><Ionicons name="close" size={30} color="white" /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setIsScanning(false); closeScanner(); }} style={styles.closeScannerBtn}><Ionicons name="close" size={30} color="white" /></TouchableOpacity>
                 </View>
                 <View style={styles.scanFrame} />
                 <Text style={styles.scanInstruction}>ວາງບາໂຄດໃຫ້ຢູ່ໃນກອບ</Text>

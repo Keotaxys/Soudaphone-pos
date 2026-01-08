@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { CameraView, useCameraPermissions } from 'expo-camera'; // 🟢 1. Import Camera
 import { useFonts } from 'expo-font';
 import { get, onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
 import { db } from '../../src/firebase';
 
 interface Product {
@@ -13,6 +14,7 @@ interface Product {
   stock: number;
   imageUrl?: string;
   priceCurrency?: 'LAK' | 'THB';
+  barcode?: string; // 🟢 ເພີ່ມ Barcode field
 }
 
 interface CartItem extends Product {
@@ -27,7 +29,7 @@ const CARD_WIDTH = (width / COLUMN_COUNT) - 20;
 const COLORS = {
   primary: '#4DB6AC',    
   primaryDark: '#009688', 
-  secondary: '#FFB74D',  // ສີສົ້ມທີ່ເຈົ້າຕ້ອງການ
+  secondary: '#FFB74D',  
   secondaryDark: '#F57C00', 
   background: '#F0F4F4', 
   cardBg: '#FFFFFF',
@@ -56,10 +58,17 @@ export default function App() {
     'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
   });
 
+  // 🟢 Camera Permission Hook
+  const [permission, requestPermission] = useCameraPermissions();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  
+  // 🟢 State ສຳລັບກ້ອງ
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanned, setScanned] = useState(false);
 
   const [saleSource, setSaleSource] = useState<'ໜ້າຮ້ານ' | 'Online'>('ໜ້າຮ້ານ');
   const [paymentCurrency, setPaymentCurrency] = useState<'LAK' | 'THB'>('LAK');
@@ -149,6 +158,43 @@ export default function App() {
       setShowDatePicker(!showDatePicker);
   };
 
+  // 🟢 ຟັງຊັນເປີດກ້ອງ
+  const openScanner = async () => {
+    if (!permission?.granted) {
+        const { granted } = await requestPermission();
+        if (!granted) {
+            Alert.alert('ຕ້ອງການສິດ', 'ກະລຸນາອະນຸຍາດໃຫ້ໃຊ້ກ້ອງຖ່າຍຮູບ');
+            return;
+        }
+    }
+    setIsScanning(true);
+    setScanned(false);
+  };
+
+  // 🟢 ຟັງຊັນເມື່ອສະແກນເຈິ
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    if (scanned) return;
+    setScanned(true);
+    Vibration.vibrate(); // ສັ່ນເຕືອນຕຶດ!
+
+    const product = products.find(p => p.barcode === data);
+    
+    if (product) {
+        addToCart(product);
+        Alert.alert(
+            '✅ ເພີ່ມສິນຄ້າແລ້ວ', 
+            `${product.name}\nລາຄາ: ${formatNumber(product.price)}`,
+            [{ text: 'ສະແກນຕໍ່', onPress: () => setScanned(false) }, { text: 'ປິດ', onPress: () => setIsScanning(false) }]
+        );
+    } else {
+        Alert.alert(
+            '❌ ບໍ່ພົບສິນຄ້າ', 
+            `ລະຫັດບາໂຄດ: ${data} ບໍ່ມີໃນລະບົບ`,
+            [{ text: 'ລອງໃໝ່', onPress: () => setScanned(false) }, { text: 'ປິດ', onPress: () => setIsScanning(false) }]
+        );
+    }
+  };
+
   const addToCart = (product: Product) => {
     if (product.stock <= 0) {
       Alert.alert('ສິນຄ້າໝົດ', 'ບໍ່ມີໃນສະຕັອກ');
@@ -157,7 +203,10 @@ export default function App() {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
-        if (existing.quantity >= product.stock) return prev;
+        if (existing.quantity >= product.stock) {
+            // ຖ້າເປັນການສະແກນ ບໍ່ຕ້ອງເຕືອນຊ້ຳໆ ກໍລະນີສິນຄ້າໝົດ
+            return prev;
+        }
         return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
       }
       return [...prev, { ...product, quantity: 1 }];
@@ -227,7 +276,13 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Soudaphone POS</Text>
-        <TouchableOpacity style={styles.iconBtn}><Ionicons name="search" size={24} color={COLORS.text} /></TouchableOpacity>
+        <View style={{flexDirection: 'row', gap: 10}}>
+            {/* 🟢 ປຸ່ມສະແກນບາໂຄດ */}
+            <TouchableOpacity style={styles.iconBtn} onPress={openScanner}>
+                <Ionicons name="barcode-outline" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn}><Ionicons name="search" size={24} color={COLORS.text} /></TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -282,7 +337,7 @@ export default function App() {
         </TouchableOpacity>
       )}
 
-      {/* Modal */}
+      {/* Cart Modal */}
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -320,38 +375,21 @@ export default function App() {
                     </TouchableOpacity>
                 </View>
 
-                {/* 🟢 ປະຕິທິນ Theme ສີສົ້ມ */}
                 {showDatePicker && (
-                    <View style={{
-                        marginBottom: 15, 
-                        alignItems: 'center', 
-                        backgroundColor: COLORS.secondary, // 🟢 ພື້ນຫຼັງສີສົ້ມ
-                        borderRadius: 12, 
-                        padding: 10, 
-                        overflow: 'hidden'
-                    }}>
+                    <View style={{marginBottom: 15, alignItems: 'center', backgroundColor: COLORS.secondary, borderRadius: 12, padding: 10, overflow: 'hidden'}}>
                         <DateTimePicker
                             testID="dateTimePicker"
                             value={selectedDate}
                             mode="date"
                             display={Platform.OS === 'ios' ? 'inline' : 'default'}
                             onChange={onChangeDate}
-                            textColor="black" // 🟢 ຕົວໜັງສືສີດຳ ເພື່ອໃຫ້ເຫັນໃນພື້ນສົ້ມ
-                            themeVariant="light" // ບັງຄັບ Light Mode ໃຫ້ຕົວເລກເປັນສີດຳ
-                            accentColor="white" // 🟢 ສີວັນທີ່ເລືອກເປັນສີຂາວ (ເດັ່ນໃນພື້ນສົ້ມ)
+                            textColor="black"
+                            themeVariant="light"
+                            accentColor="white"
                             style={Platform.OS === 'ios' ? { width: width - 80, backgroundColor: COLORS.secondary } : undefined} 
                         />
                         {Platform.OS === 'ios' && (
-                            <TouchableOpacity 
-                                onPress={() => setShowDatePicker(false)} 
-                                style={{
-                                    marginTop: 5, 
-                                    padding: 10, 
-                                    backgroundColor: 'rgba(255,255,255,0.2)', // ປຸ່ມສີຂາວຈາງໆ
-                                    borderRadius: 20, 
-                                    paddingHorizontal: 20
-                                }}
-                            >
+                            <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{marginTop: 5, padding: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 20}}>
                                 <Text style={{color: 'white', fontWeight: 'bold'}}>ປິດປະຕິທິນ</Text>
                             </TouchableOpacity>
                         )}
@@ -425,6 +463,32 @@ export default function App() {
             </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* 🟢 Camera Scanner Modal */}
+      <Modal animationType="slide" visible={isScanning} onRequestClose={() => setIsScanning(false)}>
+        <View style={styles.scannerContainer}>
+            <CameraView 
+                style={StyleSheet.absoluteFillObject}
+                facing="back"
+                onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                barcodeScannerSettings={{
+                    barcodeTypes: ["qr", "ean13", "ean8", "code128"],
+                }}
+            />
+            {/* Overlay */}
+            <View style={styles.scannerOverlay}>
+                <View style={styles.scannerHeader}>
+                    <Text style={styles.scannerTitle}>ສະແກນບາໂຄດ</Text>
+                    <TouchableOpacity onPress={() => setIsScanning(false)} style={styles.closeScannerBtn}>
+                        <Ionicons name="close" size={30} color="white" />
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.scanFrame} />
+                <Text style={styles.scanInstruction}>ວາງບາໂຄດໃຫ້ຢູ່ໃນກອບ</Text>
+            </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -438,7 +502,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#E0E0E0'
   },
   headerTitle: { fontSize: 22, color: COLORS.primaryDark, fontFamily: 'Lao-Bold' }, 
-  iconBtn: { padding: 5 },
+  iconBtn: { padding: 5, marginLeft: 10 },
   card: { 
     width: CARD_WIDTH, backgroundColor: 'white', marginBottom: 15, 
     borderRadius: 16, overflow: 'hidden', elevation: 2, 
@@ -514,5 +578,14 @@ const styles = StyleSheet.create({
   currencyBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' },
   currencyBtnText: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#888' },
   confirmBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 15, alignItems: 'center' },
-  confirmBtnText: { color: 'white', fontSize: 18, fontFamily: 'Lao-Bold' }
+  confirmBtnText: { color: 'white', fontSize: 18, fontFamily: 'Lao-Bold' },
+
+  // Scanner Styles
+  scannerContainer: { flex: 1, backgroundColor: 'black' },
+  scannerOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+  scannerHeader: { position: 'absolute', top: 50, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  scannerTitle: { color: 'white', fontSize: 20, fontFamily: 'Lao-Bold' },
+  closeScannerBtn: { padding: 5 },
+  scanFrame: { width: 250, height: 250, borderWidth: 2, borderColor: COLORS.secondary, borderRadius: 20, backgroundColor: 'transparent' },
+  scanInstruction: { color: 'white', marginTop: 20, fontFamily: 'Lao-Regular' }
 });

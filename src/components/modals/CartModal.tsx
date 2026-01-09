@@ -11,35 +11,35 @@ interface CartModalProps {
   updateQuantity: (id: string, delta: number) => void;
   removeFromCart: (id: string) => void;
   onCheckout: (details: any) => void;
-  total: number; 
+  total: number; // ຍອດເງິນກີບ (LAK)
+  exchangeRate: number; // 🟢 ເພີ່ມ: ອັດຕາແລກປ່ຽນ (ເຊັ່ນ: 750)
 }
 
 export default function CartModal({ 
-  visible, onClose, cart, updateQuantity, removeFromCart, onCheckout, total 
+  visible, onClose, cart, updateQuantity, removeFromCart, onCheckout, total, exchangeRate 
 }: CartModalProps) {
   
-  // --- Refs ---
-  // Refs ຕ້ອງສາມາດເປັນ null ໄດ້ໃນຕອນເລີ່ມຕົ້ນ
   const editTotalInputRef = useRef<TextInput>(null);
   const cashInputRef = useRef<TextInput>(null);
 
-  // --- States ---
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
   const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK'); 
   
+  // finalTotal ຈະເກັບຄ່າຕາມສະກຸນເງິນທີ່ເລືອກຢູ່ (ຖ້າເລືອກບາດ ກໍຈະເປັນເລກບາດ)
   const [finalTotal, setFinalTotal] = useState<number>(total); 
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [tempTotalString, setTempTotalString] = useState('');
-
   const [amountReceived, setAmountReceived] = useState<string>('');
   
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saleSource, setSaleSource] = useState<'ໜ້າຮ້ານ' | 'Online'>('ໜ້າຮ້ານ');
 
+  // --- Reset ເມື່ອເປີດ Modal ---
   useEffect(() => {
     if (visible) {
-      setFinalTotal(total); 
+      setCurrency('LAK'); // ເລີ່ມຕົ້ນເປັນກີບສະເໝີ
+      setFinalTotal(total); // ໃຊ້ຍອດກີບເປັນຫຼັກ
       setAmountReceived('');
       setPaymentMethod('CASH');
       setSelectedDate(new Date());
@@ -47,22 +47,46 @@ export default function CartModal({
     }
   }, [visible, total]);
 
+  // --- 🟢 Logic ການປ່ຽນສະກຸນເງິນ ແລະ ຄິດໄລ່ອັດຕາແລກປ່ຽນ ---
+  const handleCurrencyChange = (newCurrency: 'LAK' | 'THB') => {
+    if (newCurrency === currency) return; // ຖ້າກົດອັນເກົ່າບໍ່ຕ້ອງເຮັດຫຍັງ
+
+    let newTotal = 0;
+    
+    // ສູດຄິດໄລ່:
+    if (newCurrency === 'THB') {
+        // ກີບ -> ບາດ (ຫານ)
+        // ຕົວຢ່າງ: total 100,000 / rate 750 = 134 ບາດ (ໃຊ້ Math.ceil ປັດຂຶ້ນເພື່ອບໍ່ໃຫ້ຂາດທຶນ)
+        newTotal = Math.ceil(finalTotal / (exchangeRate || 1));
+    } else {
+        // ບາດ -> ກີບ (ຄູນ)
+        newTotal = Math.floor(finalTotal * (exchangeRate || 1));
+    }
+
+    setCurrency(newCurrency);
+    setFinalTotal(newTotal);
+    // Reset ເງິນຮັບມາ ເພາະສະກຸນເງິນປ່ຽນ
+    setAmountReceived('');
+  };
+
   const received = parseFloat(amountReceived.replace(/,/g, '')) || 0;
   const change = received - finalTotal; 
 
-  // 🟢 ແກ້ໄຂ Type ບ່ອນນີ້: ຕື່ມ | null ໃສ່ໃນ RefObject
+  // --- Ref Select All Function ---
   const handleFocusSelectAll = (ref: React.RefObject<TextInput | null>, valueLength: number) => {
     setTimeout(() => {
-        // ໃສ່ ?. ເພື່ອກວດສອບ null ກ່ອນເອີ້ນ setNativeProps
         ref.current?.setNativeProps({ selection: { start: 0, end: valueLength } });
     }, 50);
   };
 
   const handleConfirm = () => {
+    // ເວລາບັນທຶກ ຖ້າເປັນບາດ ຕ້ອງສົ່ງຂໍ້ມູນໄປວ່າຈ່າຍເປັນບາດ ແລະ rate ເທົ່າໃດ
     onCheckout({
       paymentMethod,
       currency,
-      total: finalTotal,
+      totalPaid: finalTotal, // ຍອດທີ່ຈ່າຍຈິງ (ຕາມສະກຸນເງິນ)
+      baseTotalLAK: currency === 'THB' ? finalTotal * exchangeRate : finalTotal, // ແປງກັບເປັນກີບເພື່ອບັນທຶກຍອດຂາຍລວມ
+      exchangeRateUsed: exchangeRate,
       amountReceived: received,
       change,
       date: selectedDate,
@@ -70,11 +94,13 @@ export default function CartModal({
     });
   };
 
+  // ... (ສ່ວນ DatePicker ຄືເກົ່າ)
   const onChangeDate = (event: any, selected: Date | undefined) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
     if (selected) setSelectedDate(selected);
   };
 
+  // ... (ສ່ວນ Edit Total Logic ຄືເກົ່າ)
   const startEditingTotal = () => {
     setTempTotalString(finalTotal.toString()); 
     setIsEditingTotal(true);
@@ -83,7 +109,6 @@ export default function CartModal({
   const saveNewTotal = () => {
     const cleanNum = tempTotalString.replace(/,/g, '');
     const newAmount = parseFloat(cleanNum);
-    
     if (!isNaN(newAmount) && newAmount >= 0) {
         setFinalTotal(newAmount);
     } else {
@@ -105,6 +130,7 @@ export default function CartModal({
             <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={30} color="#ccc" /></TouchableOpacity>
           </View>
 
+          {/* ... (ສ່ວນ Source & Date ຄືເກົ່າ) ... */}
           <View style={{flexDirection: 'row', gap: 10, marginBottom: 15}}>
              <View style={styles.sourceContainer}>
                 <TouchableOpacity style={[styles.sourceBtn, saleSource === 'ໜ້າຮ້ານ' && styles.sourceBtnActive]} onPress={() => setSaleSource('ໜ້າຮ້ານ')}><Ionicons name="storefront" size={16} color={saleSource === 'ໜ້າຮ້ານ' ? 'white' : COLORS.textLight} /><Text style={[styles.sourceText, saleSource === 'ໜ້າຮ້ານ' && styles.sourceTextActive]}>ໜ້າຮ້ານ</Text></TouchableOpacity>
@@ -115,13 +141,13 @@ export default function CartModal({
                 <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
              </TouchableOpacity>
           </View>
-
           {showDatePicker && (<DateTimePicker value={selectedDate} mode="date" display="default" onChange={onChangeDate} />)}
 
+          {/* ... (ສ່ວນ ScrollView Cart Items ຄືເກົ່າ) ... */}
           <ScrollView style={styles.modalBody}>
             {cart.map(item => (
               <View key={item.id} style={styles.cartItem}>
-                {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.cartItemImage} /> : <View style={[styles.cartItemImage, {backgroundColor: '#eee'}]} />}
+                 {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.cartItemImage} /> : <View style={[styles.cartItemImage, {backgroundColor: '#eee'}]} />}
                 <View style={{flex: 1, paddingHorizontal: 10}}>
                   <Text style={styles.cartItemName} numberOfLines={1}>{item.name}</Text>
                   <Text style={styles.cartItemPrice}>{formatNumber(item.price)} {item.priceCurrency === 'THB' ? '฿' : '₭'}</Text>
@@ -138,10 +164,11 @@ export default function CartModal({
 
           <View style={styles.modalFooter}>
             
+            {/* 🟢 Currency Selector ໃຊ້ handleCurrencyChange */}
             <View style={styles.currencySelector}>
                 <TouchableOpacity 
                     style={[styles.currencyBtn, currency === 'LAK' ? {backgroundColor: COLORS.success, borderColor: COLORS.success} : {borderColor: '#ddd'}]}
-                    onPress={() => setCurrency('LAK')}
+                    onPress={() => handleCurrencyChange('LAK')}
                 >
                     <Text style={[styles.currencyText, currency === 'LAK' ? {color: 'white'} : {color: '#888'}]}>₭ ເງິນກີບ</Text>
                     {currency === 'LAK' && <Ionicons name="checkmark-circle" size={16} color="white" style={{marginLeft: 5}}/>}
@@ -149,7 +176,7 @@ export default function CartModal({
 
                 <TouchableOpacity 
                     style={[styles.currencyBtn, currency === 'THB' ? {backgroundColor: COLORS.secondary, borderColor: COLORS.secondary} : {borderColor: '#ddd'}]}
-                    onPress={() => setCurrency('THB')}
+                    onPress={() => handleCurrencyChange('THB')}
                 >
                     <Text style={[styles.currencyText, currency === 'THB' ? {color: 'white'} : {color: '#888'}]}>฿ ເງິນບາດ</Text>
                     {currency === 'THB' && <Ionicons name="checkmark-circle" size={16} color="white" style={{marginLeft: 5}}/>}
@@ -158,7 +185,6 @@ export default function CartModal({
 
             <View style={styles.totalRow}>
                <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
-               
                {isEditingTotal ? (
                    <View style={styles.editTotalContainer}>
                        <TextInput 
@@ -168,8 +194,7 @@ export default function CartModal({
                            onChangeText={(t) => setTempTotalString(t.replace(/,/g, ''))}
                            keyboardType="numeric"
                            autoFocus
-                           selectTextOnFocus={true} 
-                           // ສົ່ງ Ref ໄປໄດ້ແລ້ວ ບໍ່ມີ Error
+                           // 🟢 ແກ້ໄຂ Type ໃຫ້ຖືກຕ້ອງແລ້ວ
                            onFocus={() => handleFocusSelectAll(editTotalInputRef, formatNumber(tempTotalString).length)}
                            onBlur={saveNewTotal}
                            onSubmitEditing={saveNewTotal}
@@ -185,6 +210,13 @@ export default function CartModal({
                    </TouchableOpacity>
                )}
             </View>
+            
+            {/* 🟢 ສະແດງ Rate ໃຫ້ເຫັນເພື່ອຄວາມຊັດເຈນ */}
+            {currency === 'THB' && (
+                <View style={{alignItems: 'flex-end', marginTop: -10, marginBottom: 10}}>
+                    <Text style={{fontSize: 10, color: '#888'}}>Rate: {exchangeRate}</Text>
+                </View>
+            )}
 
             <View style={{flexDirection:'row', gap: 10, marginBottom: 15}}>
                  <View style={{flexDirection: 'row', backgroundColor:'#f5f5f5', borderRadius: 10, padding: 4}}>
@@ -204,8 +236,7 @@ export default function CartModal({
                             style={styles.cashInputCompact} 
                             placeholder="0" 
                             keyboardType="numeric" 
-                            selectTextOnFocus={true}
-                            // ສົ່ງ Ref ໄປໄດ້ແລ້ວ ບໍ່ມີ Error
+                            // 🟢 ແກ້ໄຂ Type ໃຫ້ຖືກຕ້ອງແລ້ວ
                             onFocus={() => handleFocusSelectAll(cashInputRef, formatNumber(amountReceived).length)}
                             value={formatNumber(amountReceived)} 
                             onChangeText={(t) => setAmountReceived(t.replace(/,/g, ''))} 
@@ -233,6 +264,7 @@ export default function CartModal({
   );
 }
 
+// ... styles ທາງລຸ່ມແມ່ນຄືເກົ່າ ...
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: 'white', borderTopLeftRadius: 25, borderTopRightRadius: 25, height: '90%', padding: 20 },

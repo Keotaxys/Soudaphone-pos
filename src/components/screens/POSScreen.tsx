@@ -1,18 +1,17 @@
-import React from 'react';
-import { View, FlatList, TouchableOpacity, Text, Image, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Product, CartItem, COLORS } from '../../types';
+import React, { useState } from 'react';
+import { Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { CartItem, COLORS, Product } from '../../types';
 
-// 🟢 1. Import Hook ຈາກທາງນອກ src (ຖອຍ 3 ຂັ້ນ)
+// Import Hook ແລະ Modal ຕາມໂຄງສ້າງທີ່ຖືກຕ້ອງ
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
-
-// 🟢 2. Import CartModal ເພື່ອເອົາມາໃຊ້ໃນໜ້ານີ້
 import CartModal from '../modals/CartModal';
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
 const CARD_WIDTH = (width / COLUMN_COUNT) - 20;
 
+// 🟢 ລົບ modalVisible ອອກຈາກ Props ເພາະເຮົາຈະຈັດການເອງ
 interface POSScreenProps {
   products: Product[];
   addToCart: (item: Product) => void;
@@ -20,13 +19,11 @@ interface POSScreenProps {
   openScanner: (mode: 'sell' | 'edit') => void;
   openAddProductModal: () => void;
   cart: CartItem[];
-  setModalVisible: (visible: boolean) => void;
+  // setModalVisible: (visible: boolean) => void; <-- ລົບອອກ
   totalItems: number;
   totalLAK: number;
   formatNumber: (num: number | string) => string;
-
-  // 🟢 3. ເພີ່ມ Props ທີ່ຈຳເປັນສຳລັບ CartModal
-  modalVisible: boolean; // ຕ້ອງຮູ້ວ່າເປີດຢູ່ ຫຼື ບໍ່
+  
   updateQuantity: (id: string, delta: number) => void;
   removeFromCart: (id: string) => void;
   onCheckout: (details: any) => void;
@@ -34,12 +31,14 @@ interface POSScreenProps {
 
 export default function POSScreen({ 
   products, addToCart, openEditProductModal, openScanner, openAddProductModal, 
-  cart, setModalVisible, totalItems, totalLAK, formatNumber,
-  // ຮັບ props ໃໝ່ເຂົ້າມາ
-  modalVisible, updateQuantity, removeFromCart, onCheckout
+  cart, totalItems, totalLAK, formatNumber,
+  updateQuantity, removeFromCart, onCheckout
 }: POSScreenProps) {
   
-  // 🟢 4. ດຶງຄ່າອັດຕາແລກປ່ຽນແບບ Realtime
+  // 🟢 1. ສ້າງ State ຄວບຄຸມ Modal ໄວ້ໃນນີ້ເລີຍ (ແກ້ບັນຫາ Modal ຄ້າງ)
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // ດຶງຄ່າອັດຕາແລກປ່ຽນ
   const exchangeRate = useExchangeRate(); 
 
   return (
@@ -78,7 +77,7 @@ export default function POSScreen({
             )}
         />
         
-        {/* 🟢 5. ປຸ່ມກະຕ່າ (ຮັກສາໂຄງສ້າງເດີມຕາມທີ່ຂໍ) */}
+        {/* 🟢 2. ປຸ່ມເປີດ Modal: ກົດແລ້ວສັ່ງ setModalVisible(true) */}
         {cart.length > 0 && (
             <TouchableOpacity style={styles.floatingCart} onPress={() => setModalVisible(true)}>
                 <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -89,16 +88,16 @@ export default function POSScreen({
             </TouchableOpacity>
         )}
 
-        {/* 🟢 6. ໃສ່ CartModal ໄວ້ຢູ່ນີ້ ແລະ ສົ່ງ exchangeRate ໃຫ້ມັນ */}
+        {/* 🟢 3. ຕົວ Modal: ສົ່ງຄຳສັ່ງປິດທີ່ຖືກຕ້ອງເຂົ້າໄປ */}
         <CartModal 
             visible={modalVisible}
-            onClose={() => setModalVisible(false)}
+            onClose={() => setModalVisible(false)} // ກົດ X ຈະປິດໄດ້ແນ່ນອນ
             cart={cart}
             total={totalLAK}
             updateQuantity={updateQuantity}
             removeFromCart={removeFromCart}
             onCheckout={onCheckout}
-            // ສົ່ງອັດຕາແລກປ່ຽນ (ຖ້າຍັງບໍ່ມາໃຫ້ໃຊ້ 680 ຫຼື 1 ໄປກ່ອນກັນ Error)
+            // ຈາກຮູບພາບ ຖານຂໍ້ມູນມີຄ່າ 680, ຖ້າຍັງດຶງບໍ່ໄດ້ໃຫ້ໃຊ້ຄ່ານີ້ໄປກ່ອນ
             exchangeRate={exchangeRate > 0 ? exchangeRate : 680} 
         />
     </View>

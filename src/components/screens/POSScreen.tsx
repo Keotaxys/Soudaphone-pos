@@ -1,13 +1,12 @@
-import React from 'react';
-import { View, FlatList, TouchableOpacity, Text, Image, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Product, CartItem, COLORS } from '../../types';
+import React from 'react';
+import { Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { CartItem, COLORS, Product } from '../../types';
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
 const CARD_WIDTH = (width / COLUMN_COUNT) - 20;
 
-// 🟢 ແກ້ໄຂ: ເພີ່ມ formatNumber ໃສ່ Interface
 interface POSScreenProps {
   products: Product[];
   addToCart: (item: Product) => void;
@@ -18,12 +17,15 @@ interface POSScreenProps {
   setModalVisible: (visible: boolean) => void;
   totalItems: number;
   totalLAK: number;
-  formatNumber: (num: number | string) => string; 
+  formatNumber: (num: number | string) => string;
+  // 🟢 ເພີ່ມ Prop ນີ້ເພື່ອຮັບຟັງຊັນແກ້ໄຂລາຄາລວມ
+  onEditTotal: () => void; 
 }
 
 export default function POSScreen({ 
   products, addToCart, openEditProductModal, openScanner, openAddProductModal, 
-  cart, setModalVisible, totalItems, totalLAK, formatNumber 
+  cart, setModalVisible, totalItems, totalLAK, formatNumber,
+  onEditTotal // 🟢 ຮັບ prop ມາໃຊ້
 }: POSScreenProps) {
   
   return (
@@ -63,13 +65,26 @@ export default function POSScreen({
         />
         
         {cart.length > 0 && (
-            <TouchableOpacity style={styles.floatingCart} onPress={() => setModalVisible(true)}>
-                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            // 🟢 ປ່ຽນຈາກ TouchableOpacity ເປັນ View ເພື່ອແຍກປຸ່ມ
+            <View style={[styles.floatingCart, { padding: 0 }]}> 
+                {/* ປຸ່ມເບື້ອງຊ້າຍ: ເປີດກະຕ່າ */}
+                <TouchableOpacity 
+                    style={{flex: 1, flexDirection: 'row', alignItems: 'center', padding: 15}} 
+                    onPress={() => setModalVisible(true)}
+                >
                     <View style={styles.cartBadge}><Text style={{color:'white', fontWeight:'bold'}}>{totalItems}</Text></View>
                     <Text style={{color:'white', fontFamily:'Lao-Bold', fontSize: 16, marginLeft: 10}}>ເບິ່ງກະຕ່າ</Text>
-                </View>
-                <Text style={{color:'white', fontFamily:'Lao-Bold', fontSize: 18}}>{formatNumber(totalLAK)} ₭</Text>
-            </TouchableOpacity>
+                </TouchableOpacity>
+
+                {/* ປຸ່ມເບື້ອງຂວາ: ແກ້ໄຂລາຄາ (ສ່ວນຫຼຸດ) */}
+                <TouchableOpacity 
+                    style={{padding: 15, flexDirection: 'row', alignItems: 'center', borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.2)'}} 
+                    onPress={onEditTotal}
+                >
+                    <Ionicons name="pencil" size={14} color="#ccc" style={{marginRight: 6}} />
+                    <Text style={{color:'white', fontFamily:'Lao-Bold', fontSize: 18}}>{formatNumber(totalLAK)} ₭</Text>
+                </TouchableOpacity>
+            </View>
         )}
     </View>
   );
@@ -92,6 +107,7 @@ const styles = StyleSheet.create({
     title: { fontSize: 14, color: '#333', marginBottom: 4, fontFamily: 'Lao-Regular' },
     price: { fontSize: 16, fontFamily: 'Lao-Bold' },
     addBtn: { position: 'absolute', bottom: 10, right: 10, backgroundColor: COLORS.secondary, width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 },
-    floatingCart: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#333', borderRadius: 50, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 10 },
+    // 🟢 ປັບ Style: ເອົາ padding ອອກຈາກ Container ຫຼັກ ເພາະເຮົາຍ້າຍໄປໃສ່ປຸ່ມທາງໃນແທນ
+    floatingCart: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#333', borderRadius: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 10, overflow: 'hidden' },
     cartBadge: { backgroundColor: 'red', width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
 });

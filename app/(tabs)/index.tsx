@@ -18,8 +18,7 @@ import Footer from '../../src/components/ui/Footer';
 import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
-// 🟢 Import Modals
-import CartModal from '../../src/components/modals/CartModal';
+// 🟢 Import Modals (CartModal ບໍ່ຕ້ອງ Import ຢູ່ນີ້ແລ້ວ ເພາະຢູ່ໃນ POSScreen)
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
 
@@ -46,14 +45,12 @@ export default function App() {
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
 
   // --- Modals States ---
-  const [modalVisible, setModalVisible] = useState(false); // Cart Modal
+  // ❌ ລົບ modalVisible ຂອງ Cart ອອກ ເພາະ POSScreen ຈັດການເອງແລ້ວ
   const [productModalVisible, setProductModalVisible] = useState(false); // Product Modal
   const [isScanning, setIsScanning] = useState(false); // Scanner Modal
   
   // --- Sale & Logic States ---
   const [scanMode, setScanMode] = useState<'sell' | 'edit'>('sell');
-  const [paymentCurrency, setPaymentCurrency] = useState<'LAK' | 'THB'>('LAK');
-  const [exchangeRate, setExchangeRate] = useState(700);
   
   // --- Editing State ---
   const [editingProduct, setEditingProduct] = useState<Product>({
@@ -85,15 +82,6 @@ export default function App() {
         } else { setSalesHistory([]); }
     });
 
-    // ດຶງການຕັ້ງຄ່າ
-    const settingsRef = ref(db, 'settings');
-    get(settingsRef).then((snapshot) => {
-        if(snapshot.exists()) {
-            const data = snapshot.val();
-            if (data.exchangeRateTHB) setExchangeRate(Number(data.exchangeRateTHB));
-        }
-    });
-
     return () => { unsubscribeProducts(); unsubscribeSales(); };
   }, []);
 
@@ -109,20 +97,6 @@ export default function App() {
     } else { 
         Animated.timing(slideAnim, { toValue: -SIDEBAR_WIDTH, duration: 300, easing: Easing.in(Easing.ease), useNativeDriver: true }).start(() => setMenuVisible(false)); 
     }
-  };
-
-  // Cart Logic
-  const calculateTotalInCurrency = (targetCurrency: 'LAK' | 'THB') => {
-    let total = 0;
-    cart.forEach(item => {
-        const itemTotal = item.price * item.quantity;
-        if (item.priceCurrency !== 'THB') { // ສິນຄ້າເປັນກີບ
-            if (targetCurrency === 'LAK') total += itemTotal; else total += itemTotal / exchangeRate;
-        } else { // ສິນຄ້າເປັນບາດ
-            if (targetCurrency === 'THB') total += itemTotal; else total += itemTotal * exchangeRate;
-        }
-    });
-    return targetCurrency === 'LAK' ? Math.round(total) : parseFloat(total.toFixed(2));
   };
 
   const addToCart = (product: Product) => {
@@ -151,31 +125,35 @@ export default function App() {
       })); 
   };
 
-  // Checkout Logic
+  // Checkout Logic (ປັບປຸງໃຫ້ຮັບຄ່າຈາກ Modal ໂດຍກົງ)
   const handleCheckout = async (paymentDetails: any) => {
     if (cart.length === 0) return;
     
-    // ຮັບຂໍ້ມູນຈາກ Modal
-    const { paymentMethod, amountReceived, change, date, source } = paymentDetails;
-    const finalTotal = calculateTotalInCurrency(paymentCurrency); // ໃຊ້ລາຄາທີ່ຄຳນວນໄດ້ເລີຍ (ບໍ່ລວມສ່ວນຫຼຸດ manual ໃນຕົວຢ່າງນີ້)
+    // ຮັບຂໍ້ມູນຈາກ Modal (POSScreen -> CartModal -> onCheckout)
+    // 🟢 ຕອນນີ້ Modal ສົ່ງຄ່າ totalPaid, currency ມາໃຫ້ພ້ອມແລ້ວ
+    const { paymentMethod, amountReceived, change, date, source, currency, totalPaid, baseTotalLAK } = paymentDetails;
 
-    if (paymentMethod === 'CASH' && amountReceived < finalTotal) { 
-        Alert.alert('ເງິນບໍ່ພໍ', `ຍັງຂາດອີກ ${formatNumber(finalTotal - amountReceived)}`); 
+    // ກວດສອບເງິນສົດ (Modal ກວດມາແລ້ວລະດັບໜຶ່ງ ແຕ່ກວດຊ້ຳກໍໄດ້)
+    if (paymentMethod === 'CASH' && amountReceived < totalPaid) { 
+        Alert.alert('ເງິນບໍ່ພໍ', `ຍັງຂາດອີກ ${formatNumber(totalPaid - amountReceived)}`); 
         return; 
     }
 
     try {
       const orderData = { 
           items: cart, 
-          subTotal: finalTotal, // ໃນທີ່ນີ້ subTotal = Total (ຖ້າບໍ່ມີ discount)
+          subTotal: baseTotalLAK, // ບັນທຶກເປັນ LAK ສະເໝີເພື່ອສະຫຼຸບຍອດງ່າຍ
           discount: 0, 
-          total: finalTotal, 
-          amountReceived: paymentMethod === 'CASH' ? amountReceived : finalTotal, 
+          total: baseTotalLAK, 
+          
+          // ຂໍ້ມູນການຊຳລະ
+          currency: currency, 
+          totalPaid: totalPaid, // ຍອດທີ່ລູກຄ້າຈ່າຍຈິງ (ຕາມສະກຸນເງິນ)
+          amountReceived: paymentMethod === 'CASH' ? amountReceived : totalPaid, 
           change: paymentMethod === 'CASH' ? change : 0, 
-          currency: paymentCurrency, 
           paymentMethod, 
           source, 
-          date: date.toISOString(), 
+          date: new Date(date).toISOString(), 
           status: 'ສຳເລັດ', 
           createdAt: new Date().toISOString() 
       };
@@ -192,8 +170,11 @@ export default function App() {
       
       Alert.alert('✅ ສຳເລັດ', 'ຂາຍສິນຄ້າຮຽບຮ້ອຍແລ້ວ'); 
       setCart([]); 
-      setModalVisible(false);
-    } catch (error) { Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ'); }
+      // ❌ ບໍ່ຕ້ອງສັ່ງ setModalVisible(false) ຢູ່ນີ້ ເພາະ Modal ມັນປິດເອງ
+    } catch (error) { 
+        console.log(error);
+        Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ'); 
+    }
   };
 
   const deleteSale = (id: string) => { 
@@ -271,10 +252,14 @@ export default function App() {
                     openEditProductModal={openEditProductModal}
                     openAddProductModal={openAddProductModal}
                     openScanner={openScanner}
-                    setModalVisible={setModalVisible}
                     totalItems={totalItems}
                     totalLAK={totalLAK}
                     formatNumber={formatNumber}
+                    
+                    // 🟢 ສົ່ງ Props ທີ່ຂາດໄປໃຫ້ POSScreen
+                    updateQuantity={updateQuantity}
+                    removeFromCart={removeFromCart}
+                    onCheckout={handleCheckout}
                 />
             );
         case 'expense':
@@ -327,17 +312,7 @@ export default function App() {
         onScan={() => openScanner('edit')}
       />
 
-      {/* Cart & Checkout Modal */}
-      <CartModal 
-        visible={modalVisible} 
-        onClose={() => setModalVisible(false)} 
-        cart={cart} 
-        updateQuantity={updateQuantity} 
-        removeFromCart={removeFromCart} 
-        onCheckout={handleCheckout} 
-        total={calculateTotalInCurrency(paymentCurrency)} 
-        currency={paymentCurrency} 
-      />
+      {/* ❌ ລົບ CartModal ອອກຈາກບ່ອນນີ້ ເພາະ POSScreen ຈັດການເອງແລ້ວ */}
 
       {/* Scanner Modal */}
       <ScannerModal 

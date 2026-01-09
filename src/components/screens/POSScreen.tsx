@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CartItem, COLORS, Product } from '../../types';
 
-// Import Hook ແລະ Modal ຕາມໂຄງສ້າງທີ່ຖືກຕ້ອງ
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
 import CartModal from '../modals/CartModal';
 
@@ -11,7 +10,6 @@ const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
 const CARD_WIDTH = (width / COLUMN_COUNT) - 20;
 
-// 🟢 ລົບ modalVisible ອອກຈາກ Props ເພາະເຮົາຈະຈັດການເອງ
 interface POSScreenProps {
   products: Product[];
   addToCart: (item: Product) => void;
@@ -19,11 +17,9 @@ interface POSScreenProps {
   openScanner: (mode: 'sell' | 'edit') => void;
   openAddProductModal: () => void;
   cart: CartItem[];
-  // setModalVisible: (visible: boolean) => void; <-- ລົບອອກ
   totalItems: number;
-  totalLAK: number;
+  totalLAK: number; // ເຮົາຈະບໍ່ໃຊ້ອັນນີ້ໂດຍກົງແລ້ວ
   formatNumber: (num: number | string) => string;
-  
   updateQuantity: (id: string, delta: number) => void;
   removeFromCart: (id: string) => void;
   onCheckout: (details: any) => void;
@@ -35,11 +31,22 @@ export default function POSScreen({
   updateQuantity, removeFromCart, onCheckout
 }: POSScreenProps) {
   
-  // 🟢 1. ສ້າງ State ຄວບຄຸມ Modal ໄວ້ໃນນີ້ເລີຍ (ແກ້ບັນຫາ Modal ຄ້າງ)
   const [modalVisible, setModalVisible] = useState(false);
-
-  // ດຶງຄ່າອັດຕາແລກປ່ຽນ
   const exchangeRate = useExchangeRate(); 
+  
+  // 🟢 1. ຕັ້ງຄ່າ Rate ທີ່ຈະໃຊ້ຄິດໄລ່ (ກັນພາດຖ້າຍັງດຶງບໍ່ໄດ້ໃຫ້ໃຊ້ 680)
+  const currentRate = exchangeRate > 0 ? exchangeRate : 680;
+
+  // 🟢 2. ຄິດໄລ່ຍອດລວມທັງໝົດເປັນກີບ (ລວມທັງສິນຄ້າກີບ ແລະ ບາດ)
+  const grandTotalLAK = cart.reduce((sum, item) => {
+    const itemTotal = item.price * item.quantity;
+    if (item.priceCurrency === 'THB') {
+        // ຖ້າເປັນບາດ ໃຫ້ຄູນ Rate ເພື່ອເປັນກີບ
+        return sum + (itemTotal * currentRate);
+    }
+    // ຖ້າເປັນກີບຢູ່ແລ້ວ ກໍບວກເລີຍ
+    return sum + itemTotal;
+  }, 0);
 
   return (
     <View style={{flex: 1}}>
@@ -77,28 +84,27 @@ export default function POSScreen({
             )}
         />
         
-        {/* 🟢 2. ປຸ່ມເປີດ Modal: ກົດແລ້ວສັ່ງ setModalVisible(true) */}
         {cart.length > 0 && (
             <TouchableOpacity style={styles.floatingCart} onPress={() => setModalVisible(true)}>
                 <View style={{flexDirection: 'row', alignItems: 'center'}}>
                     <View style={styles.cartBadge}><Text style={{color:'white', fontWeight:'bold'}}>{totalItems}</Text></View>
                     <Text style={{color:'white', fontFamily:'Lao-Bold', fontSize: 16, marginLeft: 10}}>ເບິ່ງກະຕ່າ</Text>
                 </View>
-                <Text style={{color:'white', fontFamily:'Lao-Bold', fontSize: 18}}>{formatNumber(totalLAK)} ₭</Text>
+                {/* 🟢 3. ໃຊ້ grandTotalLAK ແທນ totalLAK ເດີມ */}
+                <Text style={{color:'white', fontFamily:'Lao-Bold', fontSize: 18}}>{formatNumber(grandTotalLAK)} ₭</Text>
             </TouchableOpacity>
         )}
 
-        {/* 🟢 3. ຕົວ Modal: ສົ່ງຄຳສັ່ງປິດທີ່ຖືກຕ້ອງເຂົ້າໄປ */}
         <CartModal 
             visible={modalVisible}
-            onClose={() => setModalVisible(false)} // ກົດ X ຈະປິດໄດ້ແນ່ນອນ
+            onClose={() => setModalVisible(false)}
             cart={cart}
-            total={totalLAK}
+            // 🟢 4. ສົ່ງ grandTotalLAK ເຂົ້າໄປ Modal
+            total={grandTotalLAK}
             updateQuantity={updateQuantity}
             removeFromCart={removeFromCart}
             onCheckout={onCheckout}
-            // ຈາກຮູບພາບ ຖານຂໍ້ມູນມີຄ່າ 680, ຖ້າຍັງດຶງບໍ່ໄດ້ໃຫ້ໃຊ້ຄ່ານີ້ໄປກ່ອນ
-            exchangeRate={exchangeRate > 0 ? exchangeRate : 680} 
+            exchangeRate={currentRate} 
         />
     </View>
   );

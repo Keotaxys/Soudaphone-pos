@@ -1,50 +1,51 @@
+// ... (Imports ຕ່າງໆ)
+// 🟢 Import ທີ່ສ້າງໃໝ່
+import { Product, CartItem, SaleRecord, COLORS, formatNumber, formatDate } from '../../src/types';
 import POSScreen from '../../src/components/screens/POSScreen';
-// import DashboardScreen ...
-// import HistoryScreen ...
+import Header from '../../src/components/ui/Header'; // (ສົມມຸດວ່າເຈົ້າສ້າງແລ້ວ)
+import Footer from '../../src/components/ui/Footer'; // (ສົມມຸດວ່າເຈົ້າສ້າງແລ້ວ)
 
 export default function App() {
-  // ... (State ແລະ Firebase Logic ຍັງຢູ່ບ່ອນນີ້ຄືເກົ່າ) ...
+  // ... (State ແລະ Logic Firebase ຍັງຄືເກົ່າ) ...
 
+  // 🟢 Render Content ແບບສະອາດ
   const renderContent = () => {
     switch (currentTab) {
         case 'home':
-            return <DashboardScreen ...props />; // ສົ່ງຂໍ້ມູນເຂົ້າໄປ
+            return <DashboardScreen ... />; // ສ້າງໄຟລ໌ແຍກໃນອະນາຄົດ
         case 'pos':
-            // 🟢 ເອີ້ນໃຊ້ Component ທີ່ແຍກໄວ້ ໂຄ້ດຈະສັ້ນລົງຫຼາຍ!
             return (
                 <POSScreen 
                     products={products}
+                    cart={cart}
                     addToCart={addToCart}
                     openEditProductModal={openEditProductModal}
-                    openScanner={openScanner}
                     openAddProductModal={openAddProductModal}
-                    cart={cart}
+                    openScanner={openScanner}
                     setModalVisible={setModalVisible}
                     totalItems={totalItems}
                     totalLAK={totalLAK}
-                    formatNumber={formatNumber}
                 />
             );
         case 'report':
-            return <HistoryScreen ...props />;
-        // ...
+            return <ReportScreen ... />; // ສ້າງໄຟລ໌ແຍກໃນອະນາຄົດ
+        default:
+            return null;
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <Header ... />
-
-        {/* Content */}
-        <View style={{flex: 1}}>
-            {renderContent()}
-        </View>
-
-        {/* Footer */}
-        <Footer ... />
-
-        {/* Modals ຕ່າງໆ ຈະແຍກໄປອີກກໍໄດ້ ຫຼື ໄວ້ນີ້ກໍໄດ້ */}
+      <Header ... />
+      <View style={{flex: 1, backgroundColor: '#f2f2f2'}}>
+          {renderContent()}
+      </View>
+      <Footer ... />
+      
+      {/* Modals ຕ່າງໆ ຖ້າຢາກໃຫ້ໂຄ້ດສະອາດຂຶ້ນອີກ ກໍແຍກໄປໄວ້ໃນ src/components/modals/ ໄດ້ */}
+      <CartModal ... />
+      <ProductModal ... />
+      <ScannerModal ... />
     </SafeAreaView>
   );
 }

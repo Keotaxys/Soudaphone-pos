@@ -3,6 +3,12 @@ import { View, FlatList, TouchableOpacity, Text, Image, StyleSheet, Dimensions }
 import { Ionicons } from '@expo/vector-icons';
 import { Product, CartItem, COLORS } from '../../types';
 
+// 🟢 1. Import Hook ຈາກທາງນອກ src (ຖອຍ 3 ຂັ້ນ)
+import { useExchangeRate } from '../../../hooks/useExchangeRate';
+
+// 🟢 2. Import CartModal ເພື່ອເອົາມາໃຊ້ໃນໜ້ານີ້
+import CartModal from '../modals/CartModal';
+
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
 const CARD_WIDTH = (width / COLUMN_COUNT) - 20;
@@ -18,13 +24,24 @@ interface POSScreenProps {
   totalItems: number;
   totalLAK: number;
   formatNumber: (num: number | string) => string;
+
+  // 🟢 3. ເພີ່ມ Props ທີ່ຈຳເປັນສຳລັບ CartModal
+  modalVisible: boolean; // ຕ້ອງຮູ້ວ່າເປີດຢູ່ ຫຼື ບໍ່
+  updateQuantity: (id: string, delta: number) => void;
+  removeFromCart: (id: string) => void;
+  onCheckout: (details: any) => void;
 }
 
 export default function POSScreen({ 
   products, addToCart, openEditProductModal, openScanner, openAddProductModal, 
-  cart, setModalVisible, totalItems, totalLAK, formatNumber 
+  cart, setModalVisible, totalItems, totalLAK, formatNumber,
+  // ຮັບ props ໃໝ່ເຂົ້າມາ
+  modalVisible, updateQuantity, removeFromCart, onCheckout
 }: POSScreenProps) {
   
+  // 🟢 4. ດຶງຄ່າອັດຕາແລກປ່ຽນແບບ Realtime
+  const exchangeRate = useExchangeRate(); 
+
   return (
     <View style={{flex: 1}}>
         <View style={styles.toolsBar}>
@@ -61,17 +78,29 @@ export default function POSScreen({
             )}
         />
         
-        {/* ປຸ່ມກະຕ່າລອຍ (Floating Cart) - ກົດແລ້ວເປີດ Modal */}
+        {/* 🟢 5. ປຸ່ມກະຕ່າ (ຮັກສາໂຄງສ້າງເດີມຕາມທີ່ຂໍ) */}
         {cart.length > 0 && (
-            <TouchableOpacity style={styles.floatingCart} onPress={() => setModalVisible(true)} activeOpacity={0.9}>
+            <TouchableOpacity style={styles.floatingCart} onPress={() => setModalVisible(true)}>
                 <View style={{flexDirection: 'row', alignItems: 'center'}}>
                     <View style={styles.cartBadge}><Text style={{color:'white', fontWeight:'bold'}}>{totalItems}</Text></View>
                     <Text style={{color:'white', fontFamily:'Lao-Bold', fontSize: 16, marginLeft: 10}}>ເບິ່ງກະຕ່າ</Text>
                 </View>
-                {/* ສະແດງຍອດເງິນລວມເປັນກີບໄວ້ກ່ອນ */}
                 <Text style={{color:'white', fontFamily:'Lao-Bold', fontSize: 18}}>{formatNumber(totalLAK)} ₭</Text>
             </TouchableOpacity>
         )}
+
+        {/* 🟢 6. ໃສ່ CartModal ໄວ້ຢູ່ນີ້ ແລະ ສົ່ງ exchangeRate ໃຫ້ມັນ */}
+        <CartModal 
+            visible={modalVisible}
+            onClose={() => setModalVisible(false)}
+            cart={cart}
+            total={totalLAK}
+            updateQuantity={updateQuantity}
+            removeFromCart={removeFromCart}
+            onCheckout={onCheckout}
+            // ສົ່ງອັດຕາແລກປ່ຽນ (ຖ້າຍັງບໍ່ມາໃຫ້ໃຊ້ 680 ຫຼື 1 ໄປກ່ອນກັນ Error)
+            exchangeRate={exchangeRate > 0 ? exchangeRate : 680} 
+        />
     </View>
   );
 }

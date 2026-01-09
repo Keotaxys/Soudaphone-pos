@@ -5,14 +5,17 @@ import { useFonts } from 'expo-font';
 import * as ImagePicker from 'expo-image-picker';
 import { get, onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Easing, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { db } from '../../src/firebase';
+import { ActivityIndicator, Alert, Animated, Dimensions, Easing, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'; // 🟢 Import Dimensions
+import { db } from '../../src/firebase'; // 🟢 ຖ້າຍັງ Error ໃຫ້ກວດເບິ່ງວ່າໄຟລ໌ firebase.ts ຢູ່ໃນ src ແທ້ບໍ່?
 
 // 🟢 Import Components
 import POSScreen from '../../src/components/screens/POSScreen';
 import Footer from '../../src/components/ui/Footer';
 import Header from '../../src/components/ui/Header';
 import { CartItem, COLORS, formatDate, formatNumber, Product, SaleRecord, SIDEBAR_WIDTH } from '../../src/types';
+
+// 🟢 ປະກາດ width ຢູ່ບ່ອນນີ້
+const { width } = Dimensions.get('window');
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -219,7 +222,7 @@ export default function App() {
 
       <Footer currentTab={currentTab} onTabChange={setCurrentTab} />
 
-      {/* Modals ທີ່ຍັງຄ້າງຢູ່ (ຍ້າຍໄປ components/modals ໄດ້ໃນອະນາຄົດ) */}
+      {/* Cart Modal */}
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -301,6 +304,7 @@ export default function App() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Product Modal */}
       <Modal animationType="slide" transparent={true} visible={productModalVisible} onRequestClose={() => setProductModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>

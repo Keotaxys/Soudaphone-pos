@@ -1,8 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { CARD_WIDTH, CartItem, COLORS, COLUMN_COUNT, formatNumber, Product } from '../../types';
+import { Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { CartItem, COLORS, Product } from '../../types';
 
+const { width } = Dimensions.get('window');
+const COLUMN_COUNT = 2;
+const CARD_WIDTH = (width / COLUMN_COUNT) - 20;
+
+// 🟢 ແກ້ໄຂ: ເພີ່ມ formatNumber ໃສ່ Interface
 interface POSScreenProps {
   products: Product[];
   addToCart: (item: Product) => void;
@@ -13,11 +18,12 @@ interface POSScreenProps {
   setModalVisible: (visible: boolean) => void;
   totalItems: number;
   totalLAK: number;
+  formatNumber: (num: number | string) => string; 
 }
 
 export default function POSScreen({ 
   products, addToCart, openEditProductModal, openScanner, openAddProductModal, 
-  cart, setModalVisible, totalItems, totalLAK 
+  cart, setModalVisible, totalItems, totalLAK, formatNumber 
 }: POSScreenProps) {
   
   return (
@@ -25,7 +31,7 @@ export default function POSScreen({
         <View style={styles.toolsBar}>
             <TouchableOpacity style={styles.toolBtn} onPress={() => openScanner('sell')}>
                 <Ionicons name="barcode-outline" size={24} color="white" />
-                <Text style={styles.toolText}>ສະແກນຂາຍ</Text>
+                <Text style={styles.toolText}>ສະແກນ</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.toolBtn} onPress={openAddProductModal}>
                 <Ionicons name="add-circle-outline" size={24} color="white" />
@@ -44,7 +50,7 @@ export default function POSScreen({
                 <TouchableOpacity style={styles.card} onPress={() => addToCart(item)} onLongPress={() => openEditProductModal(item)} activeOpacity={0.8}>
                     <View style={styles.imageContainer}>
                         {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.productImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.placeholderText}>{item.name.charAt(0)}</Text></View>}
-                        <View style={[styles.currencyBadge, { backgroundColor: item.priceCurrency === 'THB' ? COLORS.secondary : COLORS.primary }]}><Text style={styles.currencyText}>{item.priceCurrency || 'LAK'}</Text></View>
+                        <View style={[styles.currencyBadge, { backgroundColor: item.priceCurrency === 'THB' ? COLORS.secondary : COLORS.success }]}><Text style={styles.currencyText}>{item.priceCurrency || 'LAK'}</Text></View>
                         {item.stock <= 5 && <View style={styles.stockBadge}><Text style={styles.stockText}>{item.stock}</Text></View>}
                     </View>
                     <View style={styles.cardContent}>

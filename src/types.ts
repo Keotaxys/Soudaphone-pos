@@ -64,3 +64,12 @@ export const formatDate = (dateString: string | Date) => {
   const y = date.getFullYear();
   return `${d}/${m}/${y}`;
 };
+// ... (Interface ເດີມ)
+
+export interface ExpenseRecord {
+  id: string;
+  title: string;
+  amount: number;
+  date: string;
+  category: string;
+}

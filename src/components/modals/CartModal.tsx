@@ -15,6 +15,7 @@ interface CartModalProps {
   currency: 'LAK' | 'THB';
 }
 
+// 🟢 ແກ້ໄຂບ່ອນນີ້: ຕ້ອງມີຄຳວ່າ "export default"
 export default function CartModal({ 
   visible, onClose, cart, updateQuantity, removeFromCart, onCheckout, total, currency 
 }: CartModalProps) {

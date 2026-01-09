@@ -1,262 +1,97 @@
-import { ShoppingCart, Trash2 } from 'lucide-react-native';
-import React, { useState } from 'react';
-import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import React from 'react';
+import { View, FlatList, TouchableOpacity, Text, Image, StyleSheet, Dimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Product, CartItem, COLORS } from '../../types';
 
-// --- Types ---
-interface Product {
-  id: string;
-  name: string;
-  price: number;
+const { width } = Dimensions.get('window');
+const COLUMN_COUNT = 2;
+const CARD_WIDTH = (width / COLUMN_COUNT) - 20;
+
+// 🟢 ແກ້ໄຂ: ເພີ່ມ formatNumber ໃສ່ Interface
+interface POSScreenProps {
+  products: Product[];
+  addToCart: (item: Product) => void;
+  openEditProductModal: (item: Product) => void;
+  openScanner: (mode: 'sell' | 'edit') => void;
+  openAddProductModal: () => void;
+  cart: CartItem[];
+  setModalVisible: (visible: boolean) => void;
+  totalItems: number;
+  totalLAK: number;
+  formatNumber: (num: number | string) => string; 
 }
 
-interface CartItem extends Product {
-  qty: number;
-}
-
-export default function POSScreen() {
-  // --- Mock Data ---
-  const products: Product[] = [
-    { id: '1', name: 'ນ້ຳມັນເຄື່ອງ 1 ລິດ', price: 50000 },
-    { id: '2', name: 'ຫົວທຽນ', price: 25000 },
-    { id: '3', name: 'ຢາງນອກ', price: 120000 },
-    { id: '4', name: 'ກອງນ້ຳມັນ', price: 15000 },
-    { id: '5', name: 'ໂສ້', price: 65000 },
-    { id: '6', name: 'ນ້ຳມັນເບກ', price: 20000 },
-  ];
-
-  // --- States ---
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [currency, setCurrency] = useState<'LAK' | 'THB' | 'USD'>('LAK');
-  const [overrideTotal, setOverrideTotal] = useState<string>('');
-  const [amountReceived, setAmountReceived] = useState<string>('');
-
-  // --- Logic ---
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const finalTotal = overrideTotal !== '' ? parseFloat(overrideTotal) : subtotal;
-  const calculatedDiscount = subtotal - finalTotal;
-  const received = parseFloat(amountReceived) || 0;
-  const change = received - finalTotal;
-
-  // --- Functions ---
-  const addToCart = (product: Product) => {
-    setCart(prev => {
-      const existing = prev.find(p => p.id === product.id);
-      if (existing) {
-        return prev.map(p => p.id === product.id ? { ...p, qty: p.qty + 1 } : p);
-      }
-      return [...prev, { ...product, qty: 1 }];
-    });
-    setOverrideTotal(''); 
-  };
-
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(p => p.id !== id));
-    setOverrideTotal('');
-  };
-
-  const handleConfirmSale = () => {
-    Alert.alert("Success", "ບັນທຶກການຂາຍສຳເລັດ!");
-    setCart([]);
-    setAmountReceived('');
-    setOverrideTotal('');
-  };
-
+export default function POSScreen({ 
+  products, addToCart, openEditProductModal, openScanner, openAddProductModal, 
+  cart, setModalVisible, totalItems, totalLAK, formatNumber 
+}: POSScreenProps) {
+  
   return (
-    <View style={styles.container}>
-      
-      {/* --- Top: Product List (Horizontal Scroll) --- */}
-      <View style={styles.sectionHeader}>
-        <ShoppingCart size={20} color="#333" />
-        <Text style={styles.headerTitle}>ລາຍການສິນຄ້າ</Text>
-      </View>
-      
-      <View style={{ height: 120 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.productList}>
-          {products.map(product => (
-            <TouchableOpacity
-              key={product.id}
-              onPress={() => addToCart(product)}
-              style={styles.productCard}
-            >
-              <Text style={styles.productName}>{product.name}</Text>
-              <Text style={styles.productPrice}>{product.price.toLocaleString()} LAK</Text>
+    <View style={{flex: 1}}>
+        <View style={styles.toolsBar}>
+            <TouchableOpacity style={styles.toolBtn} onPress={() => openScanner('sell')}>
+                <Ionicons name="barcode-outline" size={24} color="white" />
+                <Text style={styles.toolText}>ສະແກນ</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            <TouchableOpacity style={styles.toolBtn} onPress={openAddProductModal}>
+                <Ionicons name="add-circle-outline" size={24} color="white" />
+                <Text style={styles.toolText}>ເພີ່ມສິນຄ້າ</Text>
+            </TouchableOpacity>
+        </View>
 
-      {/* --- Middle: Cart Items (Vertical Scroll) --- */}
-      <View style={[styles.sectionHeader, { marginTop: 10 }]}>
-         <Text style={styles.headerTitle}>ກະຕ່າສິນຄ້າ ({cart.length})</Text>
-      </View>
-
-      <ScrollView style={styles.cartContainer}>
-        {cart.length === 0 ? (
-          <Text style={styles.emptyText}>ຍັງບໍ່ມີລາຍການ</Text>
-        ) : (
-          cart.map(item => (
-            <View key={item.id} style={styles.cartItem}>
-              <View>
-                <Text style={styles.cartItemName}>{item.name}</Text>
-                <Text style={styles.cartItemDetail}>
-                  {item.price.toLocaleString()} x {item.qty}
-                </Text>
-              </View>
-              <View style={styles.cartRight}>
-                <Text style={styles.cartItemTotal}>{(item.price * item.qty).toLocaleString()}</Text>
-                <TouchableOpacity onPress={() => removeFromCart(item.id)}>
-                  <Trash2 size={20} color="red" />
+        <FlatList 
+            key="pos-grid"
+            data={products}
+            keyExtractor={item => item.id!}
+            numColumns={COLUMN_COUNT}
+            columnWrapperStyle={{ justifyContent: 'space-between', paddingHorizontal: 10 }}
+            contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
+            renderItem={({ item }) => (
+                <TouchableOpacity style={styles.card} onPress={() => addToCart(item)} onLongPress={() => openEditProductModal(item)} activeOpacity={0.8}>
+                    <View style={styles.imageContainer}>
+                        {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.productImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.placeholderText}>{item.name.charAt(0)}</Text></View>}
+                        <View style={[styles.currencyBadge, { backgroundColor: item.priceCurrency === 'THB' ? COLORS.secondary : COLORS.success }]}><Text style={styles.currencyText}>{item.priceCurrency || 'LAK'}</Text></View>
+                        {item.stock <= 5 && <View style={styles.stockBadge}><Text style={styles.stockText}>{item.stock}</Text></View>}
+                    </View>
+                    <View style={styles.cardContent}>
+                        <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
+                        <Text style={[styles.price, { color: item.priceCurrency === 'THB' ? COLORS.secondaryDark : COLORS.primaryDark }]}>{formatNumber(item.price)} {item.priceCurrency === 'THB' ? '฿' : '₭'}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.addBtn} onPress={() => addToCart(item)}><Ionicons name="add" size={24} color="white" /></TouchableOpacity>
                 </TouchableOpacity>
-              </View>
-            </View>
-          ))
-        )}
-      </ScrollView>
-
-      {/* --- Bottom: Payment Section --- */}
-      <View style={styles.paymentSection}>
+            )}
+        />
         
-        {/* Currency Selector */}
-        <View style={styles.rowBetween}>
-          <Text style={styles.label}>ສະກຸນເງິນ:</Text>
-          <View style={styles.currencyRow}>
-            {(['LAK', 'THB', 'USD'] as const).map((curr) => (
-              <TouchableOpacity
-                key={curr}
-                onPress={() => setCurrency(curr)}
-                style={[styles.currencyBtn, currency === curr && styles.currencyBtnActive]}
-              >
-                <Text style={[styles.currencyText, currency === curr && styles.currencyTextActive]}>
-                  {curr}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* Totals */}
-        <View style={styles.rowBetween}>
-          <Text style={styles.subText}>ລວມລາຄາສິນຄ້າ:</Text>
-          <Text style={styles.subText}>{subtotal.toLocaleString()}</Text>
-        </View>
-        
-        {calculatedDiscount > 0 && (
-          <View style={styles.rowBetween}>
-            <Text style={styles.discountText}>ສ່ວນຫຼຸດ:</Text>
-            <Text style={styles.discountText}>-{calculatedDiscount.toLocaleString()}</Text>
-          </View>
+        {cart.length > 0 && (
+            <TouchableOpacity style={styles.floatingCart} onPress={() => setModalVisible(true)}>
+                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                    <View style={styles.cartBadge}><Text style={{color:'white', fontWeight:'bold'}}>{totalItems}</Text></View>
+                    <Text style={{color:'white', fontFamily:'Lao-Bold', fontSize: 16, marginLeft: 10}}>ເບິ່ງກະຕ່າ</Text>
+                </View>
+                <Text style={{color:'white', fontFamily:'Lao-Bold', fontSize: 18}}>{formatNumber(totalLAK)} ₭</Text>
+            </TouchableOpacity>
         )}
-
-        <View style={[styles.rowBetween, { marginTop: 5 }]}>
-          <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
-          <View style={styles.inputWrapper}>
-             <TextInput
-                value={overrideTotal !== '' ? overrideTotal : (subtotal === 0 ? '' : subtotal.toString())}
-                onChangeText={setOverrideTotal}
-                keyboardType="numeric"
-                style={styles.totalInput}
-                placeholder="0"
-             />
-             <Text style={styles.currencySuffix}>{currency}</Text>
-          </View>
-        </View>
-
-        {/* Payment Inputs */}
-        <View style={styles.paymentBox}>
-           <Text style={styles.inputLabel}>ຮັບເງິນມາ:</Text>
-           <TextInput
-              value={amountReceived}
-              onChangeText={setAmountReceived}
-              keyboardType="numeric"
-              style={styles.moneyInput}
-              placeholder="ປ້ອນຈຳນວນເງິນ..."
-           />
-           <View style={styles.rowBetween}>
-              <Text style={styles.changeLabel}>ເງິນທອນ:</Text>
-              <Text style={[styles.changeValue, { color: change < 0 ? 'red' : 'green' }]}>
-                {change.toLocaleString()} {currency}
-              </Text>
-           </View>
-        </View>
-
-        {/* Submit Button */}
-        <TouchableOpacity 
-          onPress={handleConfirmSale}
-          disabled={cart.length === 0}
-          style={[styles.confirmBtn, cart.length === 0 && styles.disabledBtn]}
-        >
-          <Text style={styles.confirmBtnText}>ຢືນຢັນການຂາຍ</Text>
-        </TouchableOpacity>
-
-      </View>
     </View>
   );
 }
 
-// --- Styles ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 10 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  
-  // Product List
-  productList: { paddingRight: 20 },
-  productCard: { 
-    width: 140, height: 100, backgroundColor: 'white', borderRadius: 8, padding: 10, marginRight: 10,
-    justifyContent: 'center', borderWidth: 1, borderColor: '#eee'
-  },
-  productName: { fontWeight: 'bold', fontSize: 14, marginBottom: 5 },
-  productPrice: { color: 'green', fontSize: 12 },
-
-  // Cart
-  cartContainer: { flex: 1, backgroundColor: 'white', borderRadius: 8, padding: 10, marginBottom: 10 },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 20 },
-  cartItem: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 8 },
-  cartItemName: { fontWeight: '500' },
-  cartItemDetail: { fontSize: 12, color: '#666' },
-  cartRight: { alignItems: 'flex-end' },
-  cartItemTotal: { fontWeight: 'bold', marginBottom: 4 },
-
-  // Payment Section
-  paymentSection: { backgroundColor: 'white', padding: 15, borderRadius: 12, elevation: 3 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-  label: { fontSize: 14, color: '#444' },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 8 },
-  subText: { fontSize: 14, color: '#666' },
-  discountText: { fontSize: 14, color: 'green' },
-  totalLabel: { fontSize: 16, fontWeight: 'bold' },
-  
-  // Inputs
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: '#ccc', width: '50%' },
-  totalInput: { flex: 1, fontSize: 18, fontWeight: 'bold', textAlign: 'right', color: 'blue', padding: 2 },
-  currencySuffix: { fontSize: 12, color: '#888', marginLeft: 4 },
-  
-  // Currency Btns
-  currencyRow: { flexDirection: 'row', gap: 5 },
-  currencyBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 4, borderWidth: 1, borderColor: '#ddd' },
-  currencyBtnActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-  currencyText: { fontSize: 12, color: '#333' },
-  currencyTextActive: { color: 'white' },
-
-  // Payment Box
-  paymentBox: { backgroundColor: '#f9f9f9', padding: 10, borderRadius: 8, marginTop: 10, marginBottom: 10 },
-  inputLabel: { fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 4 },
-  moneyInput: { backgroundColor: 'white', borderWidth: 1, borderColor: '#ddd', borderRadius: 4, padding: 8, fontSize: 16, marginBottom: 8 },
-  changeLabel: { fontSize: 14, fontWeight: 'bold' },
-  changeValue: { fontSize: 18, fontWeight: 'bold' },
-
-  // Confirm Btn
-  confirmBtn: { backgroundColor: '#22c55e', padding: 12, borderRadius: 8, alignItems: 'center' },
-  disabledBtn: { backgroundColor: '#ccc' },
-  confirmBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+    toolsBar: { flexDirection: 'row', padding: 10, gap: 10 },
+    toolBtn: { flexDirection: 'row', backgroundColor: COLORS.secondary, padding: 10, borderRadius: 8, alignItems: 'center', gap: 5, flex: 1, justifyContent: 'center' },
+    toolText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 12 },
+    card: { width: CARD_WIDTH, backgroundColor: 'white', marginBottom: 15, borderRadius: 16, overflow: 'hidden', elevation: 2, shadowColor: COLORS.primary, shadowOpacity: 0.1, shadowRadius: 5 },
+    imageContainer: { height: 130, width: '100%', backgroundColor: '#f0f0f0', position: 'relative' },
+    productImage: { width: '100%', height: '100%' },
+    imagePlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+    placeholderText: { fontSize: 30, color: '#ccc', fontFamily: 'Lao-Bold' },
+    currencyBadge: { position: 'absolute', top: 8, left: 8, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    currencyText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
+    stockBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: COLORS.danger, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
+    stockText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
+    cardContent: { padding: 12 },
+    title: { fontSize: 14, color: '#333', marginBottom: 4, fontFamily: 'Lao-Regular' },
+    price: { fontSize: 16, fontFamily: 'Lao-Bold' },
+    addBtn: { position: 'absolute', bottom: 10, right: 10, backgroundColor: COLORS.secondary, width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 },
+    floatingCart: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#333', borderRadius: 50, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 10 },
+    cartBadge: { backgroundColor: 'red', width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
 });

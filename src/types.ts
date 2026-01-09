@@ -70,6 +70,6 @@ export interface ExpenseRecord {
   id: string;
   title: string;
   amount: number;
-  date: string;
+  date: string; // ISO String
   category: string;
 }

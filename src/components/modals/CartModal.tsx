@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CartItem, COLORS, formatDate, formatNumber } from '../../types';
 
@@ -18,24 +18,25 @@ export default function CartModal({
   visible, onClose, cart, updateQuantity, removeFromCart, onCheckout, total 
 }: CartModalProps) {
   
+  // --- Refs ---
+  // Refs ຕ້ອງສາມາດເປັນ null ໄດ້ໃນຕອນເລີ່ມຕົ້ນ
+  const editTotalInputRef = useRef<TextInput>(null);
+  const cashInputRef = useRef<TextInput>(null);
+
   // --- States ---
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
   const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK'); 
   
-  // State ສຳລັບແກ້ໄຂຍອດເງິນ
   const [finalTotal, setFinalTotal] = useState<number>(total); 
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [tempTotalString, setTempTotalString] = useState('');
 
-  // State ການຮັບເງິນ
   const [amountReceived, setAmountReceived] = useState<string>('');
   
-  // State ອື່ນໆ
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saleSource, setSaleSource] = useState<'ໜ້າຮ້ານ' | 'Online'>('ໜ້າຮ້ານ');
 
-  // --- Effects ---
   useEffect(() => {
     if (visible) {
       setFinalTotal(total); 
@@ -46,12 +47,17 @@ export default function CartModal({
     }
   }, [visible, total]);
 
-  // --- Calculations ---
-  // ແປງ string ທີ່ມີຈຸດ ໃຫ້ເປັນຕົວເລກເພື່ອຄິດໄລ່
   const received = parseFloat(amountReceived.replace(/,/g, '')) || 0;
   const change = received - finalTotal; 
 
-  // --- Handlers ---
+  // 🟢 ແກ້ໄຂ Type ບ່ອນນີ້: ຕື່ມ | null ໃສ່ໃນ RefObject
+  const handleFocusSelectAll = (ref: React.RefObject<TextInput | null>, valueLength: number) => {
+    setTimeout(() => {
+        // ໃສ່ ?. ເພື່ອກວດສອບ null ກ່ອນເອີ້ນ setNativeProps
+        ref.current?.setNativeProps({ selection: { start: 0, end: valueLength } });
+    }, 50);
+  };
+
   const handleConfirm = () => {
     onCheckout({
       paymentMethod,
@@ -69,16 +75,12 @@ export default function CartModal({
     if (selected) setSelectedDate(selected);
   };
 
-  // ເລີ່ມແກ້ໄຂຍອດເງິນ
   const startEditingTotal = () => {
-    // ຕັ້ງຄ່າເລີ່ມຕົ້ນໃຫ້ເປັນ string ແບບບໍ່ມີຈຸດ ເພື່ອໃຫ້ພ້ອມແກ້ໄຂ
     setTempTotalString(finalTotal.toString()); 
     setIsEditingTotal(true);
   };
 
-  // ບັນທຶກຍອດເງິນໃໝ່
   const saveNewTotal = () => {
-    // ລົບຈຸດອອກກ່ອນແປງເປັນຕົວເລກ
     const cleanNum = tempTotalString.replace(/,/g, '');
     const newAmount = parseFloat(cleanNum);
     
@@ -98,13 +100,11 @@ export default function CartModal({
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           
-          {/* --- HEADER --- */}
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>ກະຕ່າສິນຄ້າ ({cart.length})</Text>
             <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={30} color="#ccc" /></TouchableOpacity>
           </View>
 
-          {/* --- SETTINGS ROW --- */}
           <View style={{flexDirection: 'row', gap: 10, marginBottom: 15}}>
              <View style={styles.sourceContainer}>
                 <TouchableOpacity style={[styles.sourceBtn, saleSource === 'ໜ້າຮ້ານ' && styles.sourceBtnActive]} onPress={() => setSaleSource('ໜ້າຮ້ານ')}><Ionicons name="storefront" size={16} color={saleSource === 'ໜ້າຮ້ານ' ? 'white' : COLORS.textLight} /><Text style={[styles.sourceText, saleSource === 'ໜ້າຮ້ານ' && styles.sourceTextActive]}>ໜ້າຮ້ານ</Text></TouchableOpacity>
@@ -118,7 +118,6 @@ export default function CartModal({
 
           {showDatePicker && (<DateTimePicker value={selectedDate} mode="date" display="default" onChange={onChangeDate} />)}
 
-          {/* --- CART ITEMS LIST --- */}
           <ScrollView style={styles.modalBody}>
             {cart.map(item => (
               <View key={item.id} style={styles.cartItem}>
@@ -137,10 +136,8 @@ export default function CartModal({
             ))}
           </ScrollView>
 
-          {/* --- FOOTER --- */}
           <View style={styles.modalFooter}>
             
-            {/* 1. Currency Selector */}
             <View style={styles.currencySelector}>
                 <TouchableOpacity 
                     style={[styles.currencyBtn, currency === 'LAK' ? {backgroundColor: COLORS.success, borderColor: COLORS.success} : {borderColor: '#ddd'}]}
@@ -159,21 +156,21 @@ export default function CartModal({
                 </TouchableOpacity>
             </View>
 
-            {/* 2. Total Amount (Editable) */}
             <View style={styles.totalRow}>
                <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
                
                {isEditingTotal ? (
                    <View style={styles.editTotalContainer}>
                        <TextInput 
+                           ref={editTotalInputRef}
                            style={[styles.editTotalInput, {color: activeColor}]} 
-                           // 🟢 1. ໃຊ້ formatNumber ເພື່ອໂຊຈຸດຂັ້ນຫຼັກພັນ
                            value={formatNumber(tempTotalString)} 
-                           // 🟢 2. ເວລາພິມ ໃຫ້ລົບຈຸດອອກກ່ອນ set state
                            onChangeText={(t) => setTempTotalString(t.replace(/,/g, ''))}
                            keyboardType="numeric"
                            autoFocus
-                           selectTextOnFocus={true} // 🟢 3. ກົດແລ້ວທາສີເລືອກທັງໝົດ ພິມທັບໄດ້ເລີຍ
+                           selectTextOnFocus={true} 
+                           // ສົ່ງ Ref ໄປໄດ້ແລ້ວ ບໍ່ມີ Error
+                           onFocus={() => handleFocusSelectAll(editTotalInputRef, formatNumber(tempTotalString).length)}
                            onBlur={saveNewTotal}
                            onSubmitEditing={saveNewTotal}
                        />
@@ -189,9 +186,7 @@ export default function CartModal({
                )}
             </View>
 
-            {/* 3. Payment Method & Cash Input */}
             <View style={{flexDirection:'row', gap: 10, marginBottom: 15}}>
-                 {/* Payment Type Buttons */}
                  <View style={{flexDirection: 'row', backgroundColor:'#f5f5f5', borderRadius: 10, padding: 4}}>
                     <TouchableOpacity style={[styles.miniMethodBtn, paymentMethod === 'CASH' && {backgroundColor: 'white', shadowOpacity: 0.1}]} onPress={() => setPaymentMethod('CASH')}>
                         <Ionicons name="cash-outline" size={18} color={paymentMethod === 'CASH' ? activeColor : '#888'} />
@@ -201,25 +196,24 @@ export default function CartModal({
                     </TouchableOpacity>
                  </View>
 
-                 {/* Cash Input Field */}
                  {paymentMethod === 'CASH' && (
                      <View style={styles.cashInputWrapper}>
                         <Text style={{fontSize: 12, color: '#888', marginRight: 5}}>ຮັບ:</Text>
                         <TextInput 
+                            ref={cashInputRef}
                             style={styles.cashInputCompact} 
                             placeholder="0" 
                             keyboardType="numeric" 
-                            selectTextOnFocus={true} // 🟢 4. ກົດແລ້ວທາສີເລືອກທັງໝົດ
-                            // 🟢 5. ສະແດງຜົນແບບມີຈຸດ
+                            selectTextOnFocus={true}
+                            // ສົ່ງ Ref ໄປໄດ້ແລ້ວ ບໍ່ມີ Error
+                            onFocus={() => handleFocusSelectAll(cashInputRef, formatNumber(amountReceived).length)}
                             value={formatNumber(amountReceived)} 
-                            // 🟢 6. ເກັບຄ່າແບບບໍ່ມີຈຸດ
                             onChangeText={(t) => setAmountReceived(t.replace(/,/g, ''))} 
                         />
                      </View>
                  )}
             </View>
 
-            {/* 4. Change Display */}
             {paymentMethod === 'CASH' && (
                 <View style={{flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 15}}>
                     <Text style={{fontFamily: 'Lao-Regular', color:'#888', marginRight: 10}}>ເງິນທອນ:</Text>
@@ -229,7 +223,6 @@ export default function CartModal({
                 </View>
             )}
 
-            {/* 5. Confirm Button */}
             <TouchableOpacity style={[styles.confirmBtn, {backgroundColor: activeColor}]} onPress={handleConfirm}>
               <Text style={styles.confirmBtnText}>ຢືນຢັນການຊຳລະ</Text>
             </TouchableOpacity>

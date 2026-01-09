@@ -1,5 +1,6 @@
 import { Dimensions } from 'react-native';
 
+// Interfaces
 export interface Product {
   id?: string;
   name: string;
@@ -26,11 +27,13 @@ export interface SaleRecord {
   change?: number;
 }
 
+// Constants
 export const { width } = Dimensions.get('window');
 export const COLUMN_COUNT = 2;
 export const CARD_WIDTH = (width / COLUMN_COUNT) - 20;
 export const SIDEBAR_WIDTH = width * 0.75;
 
+// Theme Colors (Green & Orange)
 export const COLORS = {
   primary: '#4DB6AC',    
   primaryDark: '#009688', 
@@ -46,6 +49,7 @@ export const COLORS = {
   white: '#FFFFFF'
 };
 
+// Helper Functions
 export const formatNumber = (num: number | string) => {
   if (!num && num !== 0) return '';
   const parts = num.toString().split('.');

@@ -5,18 +5,19 @@ import { CARD_WIDTH, CartItem, COLORS, COLUMN_COUNT, formatNumber, Product } fro
 
 interface POSScreenProps {
   products: Product[];
-  cart: CartItem[];
   addToCart: (item: Product) => void;
   openEditProductModal: (item: Product) => void;
-  openAddProductModal: () => void;
   openScanner: (mode: 'sell' | 'edit') => void;
+  openAddProductModal: () => void;
+  cart: CartItem[];
   setModalVisible: (visible: boolean) => void;
   totalItems: number;
   totalLAK: number;
 }
 
-export default function POSScreen({
-  products, cart, addToCart, openEditProductModal, openAddProductModal, openScanner, setModalVisible, totalItems, totalLAK
+export default function POSScreen({ 
+  products, addToCart, openEditProductModal, openScanner, openAddProductModal, 
+  cart, setModalVisible, totalItems, totalLAK 
 }: POSScreenProps) {
   
   return (
@@ -43,7 +44,7 @@ export default function POSScreen({
                 <TouchableOpacity style={styles.card} onPress={() => addToCart(item)} onLongPress={() => openEditProductModal(item)} activeOpacity={0.8}>
                     <View style={styles.imageContainer}>
                         {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.productImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.placeholderText}>{item.name.charAt(0)}</Text></View>}
-                        <View style={[styles.currencyBadge, { backgroundColor: item.priceCurrency === 'THB' ? COLORS.secondary : COLORS.success }]}><Text style={styles.currencyText}>{item.priceCurrency || 'LAK'}</Text></View>
+                        <View style={[styles.currencyBadge, { backgroundColor: item.priceCurrency === 'THB' ? COLORS.secondary : COLORS.primary }]}><Text style={styles.currencyText}>{item.priceCurrency || 'LAK'}</Text></View>
                         {item.stock <= 5 && <View style={styles.stockBadge}><Text style={styles.stockText}>{item.stock}</Text></View>}
                     </View>
                     <View style={styles.cardContent}>

@@ -11,7 +11,7 @@ interface CartModalProps {
   updateQuantity: (id: string, delta: number) => void;
   removeFromCart: (id: string) => void;
   onCheckout: (details: any) => void;
-  total: number; // ຍອດລວມເລີ່ມຕົ້ນ
+  total: number; 
 }
 
 export default function CartModal({ 
@@ -19,26 +19,26 @@ export default function CartModal({
 }: CartModalProps) {
   
   // --- States ---
-  // 1. ການຊຳລະ ແລະ ສະກຸນເງິນ
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
   const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK'); 
   
-  // 2. ການແກ້ໄຂຍອດເງິນ (Discount/Override)
-  const [finalTotal, setFinalTotal] = useState<number>(total); // ຍອດເງິນສຸດທ້າຍ (ທີ່ອາດຈະຖືກແກ້)
+  // State ສຳລັບແກ້ໄຂຍອດເງິນ
+  const [finalTotal, setFinalTotal] = useState<number>(total); 
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [tempTotalString, setTempTotalString] = useState('');
 
-  // 3. ການຮັບເງິນ ແລະ ວັນທີ
+  // State ການຮັບເງິນ
   const [amountReceived, setAmountReceived] = useState<string>('');
+  
+  // State ອື່ນໆ
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saleSource, setSaleSource] = useState<'ໜ້າຮ້ານ' | 'Online'>('ໜ້າຮ້ານ');
 
   // --- Effects ---
-  // Reset ຄ່າເມື່ອເປີດ Modal ຫຼື ຍອດລວມປ່ຽນ
   useEffect(() => {
     if (visible) {
-      setFinalTotal(total); // Reset ກັບໄປຫາຍອດຈິງ
+      setFinalTotal(total); 
       setAmountReceived('');
       setPaymentMethod('CASH');
       setSelectedDate(new Date());
@@ -47,15 +47,16 @@ export default function CartModal({
   }, [visible, total]);
 
   // --- Calculations ---
+  // ແປງ string ທີ່ມີຈຸດ ໃຫ້ເປັນຕົວເລກເພື່ອຄິດໄລ່
   const received = parseFloat(amountReceived.replace(/,/g, '')) || 0;
-  const change = received - finalTotal; // ຄິດໄລ່ເງິນທອນຈາກຍອດທີ່ (ອາດຈະ) ຖືກແກ້ໄຂແລ້ວ
+  const change = received - finalTotal; 
 
   // --- Handlers ---
   const handleConfirm = () => {
     onCheckout({
       paymentMethod,
       currency,
-      total: finalTotal, // ສົ່ງຍອດທີ່ແກ້ໄຂແລ້ວໄປ
+      total: finalTotal,
       amountReceived: received,
       change,
       date: selectedDate,
@@ -68,26 +69,29 @@ export default function CartModal({
     if (selected) setSelectedDate(selected);
   };
 
-  // ຟັງຊັນເລີ່ມແກ້ໄຂຍອດເງິນ
+  // ເລີ່ມແກ້ໄຂຍອດເງິນ
   const startEditingTotal = () => {
-    setTempTotalString(finalTotal.toString());
+    // ຕັ້ງຄ່າເລີ່ມຕົ້ນໃຫ້ເປັນ string ແບບບໍ່ມີຈຸດ ເພື່ອໃຫ້ພ້ອມແກ້ໄຂ
+    setTempTotalString(finalTotal.toString()); 
     setIsEditingTotal(true);
   };
 
-  // ຟັງຊັນບັນທຶກຍອດເງິນໃໝ່
+  // ບັນທຶກຍອດເງິນໃໝ່
   const saveNewTotal = () => {
-    const newAmount = parseFloat(tempTotalString.replace(/,/g, ''));
+    // ລົບຈຸດອອກກ່ອນແປງເປັນຕົວເລກ
+    const cleanNum = tempTotalString.replace(/,/g, '');
+    const newAmount = parseFloat(cleanNum);
+    
     if (!isNaN(newAmount) && newAmount >= 0) {
         setFinalTotal(newAmount);
     } else {
-        setFinalTotal(total); // ຖ້າໃສ່ເລກຜິດ ໃຫ້ກັບໄປຄ່າເດີມ
+        setFinalTotal(total); 
     }
     setIsEditingTotal(false);
     Keyboard.dismiss();
   };
 
-  // ກຳນົດສີ Theme ຕາມສະກຸນເງິນ
-  const activeColor = currency === 'LAK' ? COLORS.success : COLORS.secondary; // Green vs Orange
+  const activeColor = currency === 'LAK' ? COLORS.success : COLORS.secondary; 
 
   return (
     <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
@@ -100,7 +104,7 @@ export default function CartModal({
             <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={30} color="#ccc" /></TouchableOpacity>
           </View>
 
-          {/* --- SETTINGS ROW (Source & Date) --- */}
+          {/* --- SETTINGS ROW --- */}
           <View style={{flexDirection: 'row', gap: 10, marginBottom: 15}}>
              <View style={styles.sourceContainer}>
                 <TouchableOpacity style={[styles.sourceBtn, saleSource === 'ໜ້າຮ້ານ' && styles.sourceBtnActive]} onPress={() => setSaleSource('ໜ້າຮ້ານ')}><Ionicons name="storefront" size={16} color={saleSource === 'ໜ້າຮ້ານ' ? 'white' : COLORS.textLight} /><Text style={[styles.sourceText, saleSource === 'ໜ້າຮ້ານ' && styles.sourceTextActive]}>ໜ້າຮ້ານ</Text></TouchableOpacity>
@@ -133,10 +137,10 @@ export default function CartModal({
             ))}
           </ScrollView>
 
-          {/* --- FOOTER (Payment Section) --- */}
+          {/* --- FOOTER --- */}
           <View style={styles.modalFooter}>
             
-            {/* 1. Currency Selector (LAK/THB) */}
+            {/* 1. Currency Selector */}
             <View style={styles.currencySelector}>
                 <TouchableOpacity 
                     style={[styles.currencyBtn, currency === 'LAK' ? {backgroundColor: COLORS.success, borderColor: COLORS.success} : {borderColor: '#ddd'}]}
@@ -163,10 +167,13 @@ export default function CartModal({
                    <View style={styles.editTotalContainer}>
                        <TextInput 
                            style={[styles.editTotalInput, {color: activeColor}]} 
-                           value={tempTotalString}
-                           onChangeText={setTempTotalString}
+                           // 🟢 1. ໃຊ້ formatNumber ເພື່ອໂຊຈຸດຂັ້ນຫຼັກພັນ
+                           value={formatNumber(tempTotalString)} 
+                           // 🟢 2. ເວລາພິມ ໃຫ້ລົບຈຸດອອກກ່ອນ set state
+                           onChangeText={(t) => setTempTotalString(t.replace(/,/g, ''))}
                            keyboardType="numeric"
                            autoFocus
+                           selectTextOnFocus={true} // 🟢 3. ກົດແລ້ວທາສີເລືອກທັງໝົດ ພິມທັບໄດ້ເລີຍ
                            onBlur={saveNewTotal}
                            onSubmitEditing={saveNewTotal}
                        />
@@ -184,7 +191,7 @@ export default function CartModal({
 
             {/* 3. Payment Method & Cash Input */}
             <View style={{flexDirection:'row', gap: 10, marginBottom: 15}}>
-                 {/* Payment Type */}
+                 {/* Payment Type Buttons */}
                  <View style={{flexDirection: 'row', backgroundColor:'#f5f5f5', borderRadius: 10, padding: 4}}>
                     <TouchableOpacity style={[styles.miniMethodBtn, paymentMethod === 'CASH' && {backgroundColor: 'white', shadowOpacity: 0.1}]} onPress={() => setPaymentMethod('CASH')}>
                         <Ionicons name="cash-outline" size={18} color={paymentMethod === 'CASH' ? activeColor : '#888'} />
@@ -202,14 +209,17 @@ export default function CartModal({
                             style={styles.cashInputCompact} 
                             placeholder="0" 
                             keyboardType="numeric" 
+                            selectTextOnFocus={true} // 🟢 4. ກົດແລ້ວທາສີເລືອກທັງໝົດ
+                            // 🟢 5. ສະແດງຜົນແບບມີຈຸດ
                             value={formatNumber(amountReceived)} 
+                            // 🟢 6. ເກັບຄ່າແບບບໍ່ມີຈຸດ
                             onChangeText={(t) => setAmountReceived(t.replace(/,/g, ''))} 
                         />
                      </View>
                  )}
             </View>
 
-            {/* 4. Change Display (If Cash) */}
+            {/* 4. Change Display */}
             {paymentMethod === 'CASH' && (
                 <View style={{flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 15}}>
                     <Text style={{fontFamily: 'Lao-Regular', color:'#888', marginRight: 10}}>ເງິນທອນ:</Text>
@@ -254,7 +264,6 @@ const styles = StyleSheet.create({
   qtyBtn: { padding: 5, width: 30, alignItems: 'center' },
   qtyText: { fontSize: 14, fontFamily: 'Lao-Bold', width: 20, textAlign: 'center' },
 
-  // Styles for Footer Updates
   currencySelector: { flexDirection: 'row', gap: 10, marginBottom: 15 },
   currencyBtn: { flex: 1, flexDirection: 'row', paddingVertical: 10, borderWidth: 1, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   currencyText: { fontFamily: 'Lao-Bold', fontSize: 14 },
@@ -264,8 +273,8 @@ const styles = StyleSheet.create({
   totalDisplayBtn: { flexDirection: 'row', alignItems: 'center', padding: 5, borderRadius: 5, backgroundColor: '#f9f9f9' },
   totalValue: { fontSize: 24, fontFamily: 'Lao-Bold' },
   
-  editTotalContainer: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#ddd' },
-  editTotalInput: { fontSize: 24, fontFamily: 'Lao-Bold', minWidth: 100, textAlign: 'right', padding: 0 },
+  editTotalContainer: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#ddd', flex: 1, justifyContent: 'flex-end', gap: 10 },
+  editTotalInput: { fontSize: 24, fontFamily: 'Lao-Bold', minWidth: 120, textAlign: 'right', padding: 0 },
 
   miniMethodBtn: { padding: 10, paddingHorizontal: 20, borderRadius: 8 },
   cashInputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: 10, paddingHorizontal: 10,  },

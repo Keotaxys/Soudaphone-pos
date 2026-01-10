@@ -1,6 +1,6 @@
 // src/types.ts
 
-// 🟢 1. Product Interface (ຮັກສາ category ໄວ້ຄືເກົ່າ)
+// 🟢 1. Product Interface (ຮັກສາ category ໄວ້)
 export interface Product {
   id?: string;
   name: string;
@@ -9,7 +9,7 @@ export interface Product {
   priceCurrency: 'LAK' | 'THB';
   imageUrl?: string;
   barcode?: string;
-  category?: string; // ຢ່າລຶບອັນນີ້ອອກເດີ້!
+  category?: string;
 }
 
 // 🟢 2. CartItem Interface
@@ -35,32 +35,32 @@ export interface SaleRecord {
   createdAt: string;
 }
 
-// 🟢 4. COLORS (ປ່ຽນ Theme ໃໝ່ຢູ່ນີ້!)
+// 🟢 4. COLORS (ປ່ຽນ Theme ໃໝ່ຕາມຮູບ PMS 320 2X!)
 export const COLORS = {
-  // 🔵 ສີຟ້າພາສເທວ (Primary): ໃຊ້ກັບ Header, Footer, ປຸ່ມຕົກລົງ
-  primary: '#64B5F6',      // Pastel Blue (Blue 300)
-  primaryDark: '#1565C0',  // Darker Blue (ສຳລັບຕົວໜັງສື ຫຼື ຕອນກົດ)
+  // 🔵 ສີຫຼັກ (Teal/Turquoise): ຕາມຮູບທີ່ສົ່ງມາ
+  primary: '#008B94',      // ສີຂຽວອົມຟ້າເຂັ້ມ (Teal PMS 320 style)
+  primaryDark: '#006064',  // ສີເຂັ້ມກວ່າສຳລັບ Text ຫຼື ກົດຄ້າງ
   
-  // 🟠 ສີສົ້ມພາສເທວ (Secondary): ໃຊ້ກັບປຸ່ມຍົກເລີກ, ຫຼື ຈຸດເນັ້ນຕ່າງໆ
-  secondary: '#FFB74D',    // Pastel Orange (Orange 300)
-  secondaryDark: '#EF6C00',// Darker Orange
+  // 🟠 ສີຮອງ (Secondary): ໃຊ້ສີສົ້ມຄຳ (Gold/Orange) ເພື່ອຕັດກັບສີ Teal ຢ່າງໂດດເດັ່ນ
+  secondary: '#FFB300',    // Amber 600
+  secondaryDark: '#FF8F00',// Amber 800
   
-  // ⚪️ ພື້ນຫຼັງ (Background): ປ່ຽນເປັນສີຟ້າອ່ອນໆຈາງໆ ໃຫ້ສະບາຍຕາ
-  background: '#F0F8FF',   // AliceBlue (Very light blue)
+  // ⚪️ ພື້ນຫຼັງ (Background): ສີຂາວສະອາດ ຫຼື ຟ້າອ່ອນຈາງໆສຸດໆ
+  background: '#F5F9FA',   // Mint Cream / Azure mist
   
-  text: '#4A5568',         // ສີຕົວໜັງສືເທົາເຂັ້ມ (Cool Gray)
-  textLight: '#A0AEC0',
+  text: '#37474F',         // Blue Gray (ອ່ານງ່າຍ ສະບາຍຕາ)
+  textLight: '#90A4AE',
   
-  success: '#81C784',      // ສີຂຽວ (ເກັບໄວ້ໃຊ້ສະແດງສະຖານະສຳເລັດ)
-  danger: '#E57373',       // ສີແດງ (ສຳລັບລຶບ ຫຼື Error)
+  success: '#43A047',      // Green
+  danger: '#E53935',       // Red
   
   white: '#FFFFFF',
-  gray: '#F7FAFC'
+  gray: '#ECEFF1'
 };
 
 export const SIDEBAR_WIDTH = 250;
 
-// 🟢 5. Helper Functions (ຄືເກົ່າ)
+// 🟢 5. Helper Functions
 export const formatNumber = (num: number | string | undefined) => {
   if (num === undefined || num === null || num === '') return '0';
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");

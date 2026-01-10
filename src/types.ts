@@ -9,10 +9,10 @@ export interface Product {
   priceCurrency: 'LAK' | 'THB';
   imageUrl?: string;
   barcode?: string;
-  category?: string; // ໝວດໝູ່ສິນຄ້າ
+  category?: string;
 }
 
-// 🟢 2. CartItem Interface (ສິນຄ້າໃນກະຕ່າ)
+// 🟢 2. CartItem Interface
 export interface CartItem extends Product {
   quantity: number;
 }
@@ -27,7 +27,7 @@ export interface SaleRecord {
   amountReceived: number;
   change: number;
   currency: 'LAK' | 'THB';
-  totalPaid?: number; // ຍອດທີ່ຈ່າຍຈິງຕາມສະກຸນເງິນ
+  totalPaid?: number;
   paymentMethod: 'CASH' | 'QR';
   source: string;
   date: string;
@@ -35,54 +35,59 @@ export interface SaleRecord {
   createdAt: string;
 }
 
-// 🟢 4. ExpenseRecord Interface (ປະຫວັດລາຍຈ່າຍ - ໃໝ່!)
+// 🟢 4. ExpenseRecord Interface (ລາຍຈ່າຍ)
 export interface ExpenseRecord {
   id?: string;
-  date: string;       // ວັນທີບັນທຶກ (ISO String)
-  category: string;   // ໝວດໝູ່ລາຍຈ່າຍ
-  description: string;// ລາຍລະອຽດ
-  amount: number;     // ຈຳນວນເງິນ
-  createdAt: string;  // ວັນທີສ້າງ record
+  date: string;
+  category: string;
+  description: string;
+  amount: number;
+  createdAt: string;
 }
 
-// 🟢 5. COLORS (Theme ສີ Teal + Orange)
+// 🟢 5. CustomerOrder Interface (ຕິດຕາມຄຳສັ່ງຊື້ - 🟢 ເພີ່ມບ່ອນນີ້!)
+export interface CustomerOrder {
+  id?: string;
+  customerName: string;
+  date: string;
+  productName: string;
+  source: string;
+  quantity: number;
+  costPrice: number;
+  salePrice: number;
+  link?: string;
+  imageUrl?: string;
+  status: 'ຮັບອໍເດີ້' | 'ສັ່ງເຄື່ອງແລ້ວ' | 'ເຄື່ອງຮອດແລ້ວ' | 'ຈັດສົ່ງສຳເລັດ';
+  createdAt: string;
+}
+
+// 🟢 6. COLORS (Theme Teal + Orange)
 export const COLORS = {
-  // 🔵 ສີຫຼັກ (Teal/Turquoise):
-  primary: '#008B94',      // ສີຂຽວອົມຟ້າເຂັ້ມ (Teal PMS 320 style)
-  primaryDark: '#006064',  // ສີເຂັ້ມກວ່າສຳລັບ Text ຫຼື ກົດຄ້າງ
-  
-  // 🟠 ສີຮອງ (Secondary):
-  secondary: '#FFB300',    // Amber 600 (ສີສົ້ມຄຳ)
-  secondaryDark: '#FF8F00',// Amber 800
-  
-  // ⚪️ ພື້ນຫຼັງ (Background):
-  background: '#F5F9FA',   // Mint Cream / Azure mist
-  
-  text: '#37474F',         // Blue Gray
+  primary: '#008B94',      // Teal
+  primaryDark: '#006064',
+  secondary: '#FFB300',    // Orange
+  secondaryDark: '#FF8F00',
+  background: '#F5F9FA',
+  text: '#37474F',
   textLight: '#90A4AE',
-  
-  success: '#43A047',      // Green
-  danger: '#E53935',       // Red
-  
+  success: '#43A047',
+  danger: '#E53935',
   white: '#FFFFFF',
   gray: '#ECEFF1'
 };
 
 export const SIDEBAR_WIDTH = 250;
 
-// 🟢 6. Helper Functions (ຟັງຊັນຊ່ວຍເຫຼືອ)
-
-// ຈັດຮູບແບບຕົວເລກ (ມີຈຸດຂັ້ນຫຼັກພັນ)
+// 🟢 7. Helper Functions
 export const formatNumber = (num: number | string | undefined) => {
   if (num === undefined || num === null || num === '') return '0';
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
-// ຈັດຮູບແບບວັນທີ (DD/MM/YYYY)
 export const formatDate = (date: Date) => {
     const d = new Date(date);
     const day = `0${d.getDate()}`.slice(-2);
     const month = `0${d.getMonth() + 1}`.slice(-2);
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
-};
+};  

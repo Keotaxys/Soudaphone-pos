@@ -1,24 +1,39 @@
 import { useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import * as ImagePicker from 'expo-image-picker';
-import { get, onValue, push, ref, remove, update } from 'firebase/database';
+import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Easing, SafeAreaView, StyleSheet, View } from 'react-native';
+// 🟢 ແກ້ໄຂ Error Text: ຕ້ອງໃຫ້ແນ່ໃຈວ່າ Text ມາຈາກ react-native ເທົ່ານັ້ນ
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native';
+
 import { db } from '../../src/firebase';
 
-// 🟢 Import Types & Helpers
+// Import Types & Helpers
 import { CartItem, COLORS, formatNumber, Product, SaleRecord, SIDEBAR_WIDTH } from '../../src/types';
 
-// 🟢 Import Components (Screens & UI)
+// Import Screens
 import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
 import ReportScreen from '../../src/components/screens/ReportScreen';
+// 🟢 ແກ້ໄຂ Error Default Export: Import ເຂົ້າມາໂດຍກົງຈາກ path ທີ່ຖືກຕ້ອງ
+import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
+
+// Import UI Components
 import Footer from '../../src/components/ui/Footer';
 import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
-// 🟢 Import Modals (CartModal ບໍ່ຕ້ອງ Import ຢູ່ນີ້ແລ້ວ ເພາະຢູ່ໃນ POSScreen)
+// Import Modals
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
 
@@ -38,30 +53,21 @@ export default function App() {
   
   // --- UI & Navigation States ---
   const [loading, setLoading] = useState(true);
-  const [currentTab, setCurrentTab] = useState<'home' | 'pos' | 'expense' | 'report'>('pos');
+  const [currentTab, setCurrentTab] = useState<string>('home'); 
   const [menuVisible, setMenuVisible] = useState(false);
   
-  // Animation ສຳລັບ Sidebar
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
 
   // --- Modals States ---
-  // ❌ ລົບ modalVisible ຂອງ Cart ອອກ ເພາະ POSScreen ຈັດການເອງແລ້ວ
-  const [productModalVisible, setProductModalVisible] = useState(false); // Product Modal
-  const [isScanning, setIsScanning] = useState(false); // Scanner Modal
-  
-  // --- Sale & Logic States ---
+  const [productModalVisible, setProductModalVisible] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [scanMode, setScanMode] = useState<'sell' | 'edit'>('sell');
-  
-  // --- Editing State ---
   const [editingProduct, setEditingProduct] = useState<Product>({
       name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: ''
   });
 
-  // ============================================================
-  // 1. Firebase Listeners (ດຶງຂໍ້ມູນ)
-  // ============================================================
+  // Firebase Listeners
   useEffect(() => {
-    // ດຶງສິນຄ້າ
     const productsRef = ref(db, 'products');
     const unsubscribeProducts = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -72,7 +78,6 @@ export default function App() {
       setLoading(false);
     });
 
-    // ດຶງປະຫວັດການຂາຍ
     const salesRef = ref(db, 'sales');
     const unsubscribeSales = onValue(salesRef, (snapshot) => {
         if(snapshot.exists()){
@@ -85,11 +90,6 @@ export default function App() {
     return () => { unsubscribeProducts(); unsubscribeSales(); };
   }, []);
 
-  // ============================================================
-  // 2. Logic Functions (ການເຮັດວຽກຕ່າງໆ)
-  // ============================================================
-
-  // Sidebar Logic
   const toggleMenu = (show: boolean) => {
     if (show) { 
         setMenuVisible(true); 
@@ -125,63 +125,32 @@ export default function App() {
       })); 
   };
 
-  // Checkout Logic (ປັບປຸງໃຫ້ຮັບຄ່າຈາກ Modal ໂດຍກົງ)
   const handleCheckout = async (paymentDetails: any) => {
     if (cart.length === 0) return;
-    
-    // ຮັບຂໍ້ມູນຈາກ Modal (POSScreen -> CartModal -> onCheckout)
-    // 🟢 ຕອນນີ້ Modal ສົ່ງຄ່າ totalPaid, currency ມາໃຫ້ພ້ອມແລ້ວ
     const { paymentMethod, amountReceived, change, date, source, currency, totalPaid, baseTotalLAK } = paymentDetails;
-
-    // ກວດສອບເງິນສົດ (Modal ກວດມາແລ້ວລະດັບໜຶ່ງ ແຕ່ກວດຊ້ຳກໍໄດ້)
-    if (paymentMethod === 'CASH' && amountReceived < totalPaid) { 
-        Alert.alert('ເງິນບໍ່ພໍ', `ຍັງຂາດອີກ ${formatNumber(totalPaid - amountReceived)}`); 
-        return; 
-    }
-
     try {
       const orderData = { 
-          items: cart, 
-          subTotal: baseTotalLAK, // ບັນທຶກເປັນ LAK ສະເໝີເພື່ອສະຫຼຸບຍອດງ່າຍ
-          discount: 0, 
-          total: baseTotalLAK, 
-          
-          // ຂໍ້ມູນການຊຳລະ
-          currency: currency, 
-          totalPaid: totalPaid, // ຍອດທີ່ລູກຄ້າຈ່າຍຈິງ (ຕາມສະກຸນເງິນ)
+          items: cart, subTotal: baseTotalLAK, discount: 0, total: baseTotalLAK, currency, totalPaid, 
           amountReceived: paymentMethod === 'CASH' ? amountReceived : totalPaid, 
-          change: paymentMethod === 'CASH' ? change : 0, 
-          paymentMethod, 
-          source, 
-          date: new Date(date).toISOString(), 
-          status: 'ສຳເລັດ', 
-          createdAt: new Date().toISOString() 
+          change: paymentMethod === 'CASH' ? change : 0, paymentMethod, source, 
+          date: new Date(date).toISOString(), status: 'ສຳເລັດ', createdAt: new Date().toISOString() 
       };
-
       await push(ref(db, 'sales'), orderData);
-      
-      // ຕັດສະຕັອກ
       const updates: any = {};
       cart.forEach(item => { 
           const product = products.find(p => p.id === item.id); 
           if (product) updates[`products/${item.id}/stock`] = product.stock - item.quantity; 
       });
       await update(ref(db), updates);
-      
       Alert.alert('✅ ສຳເລັດ', 'ຂາຍສິນຄ້າຮຽບຮ້ອຍແລ້ວ'); 
       setCart([]); 
-      // ❌ ບໍ່ຕ້ອງສັ່ງ setModalVisible(false) ຢູ່ນີ້ ເພາະ Modal ມັນປິດເອງ
-    } catch (error) { 
-        console.log(error);
-        Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ'); 
-    }
+    } catch (error) { Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ'); }
   };
 
   const deleteSale = (id: string) => { 
       Alert.alert('ຢືນຢັນ', 'ຕ້ອງການລຶບລາຍການນີ້ບໍ່?', [{ text: 'ຍົກເລີກ', style: 'cancel' }, { text: 'ລຶບ', style: 'destructive', onPress: async () => { try { await remove(ref(db, `sales/${id}`)); } catch(e) { Alert.alert('Error', 'ລຶບບໍ່ໄດ້'); } } }]); 
   };
 
-  // Product Management Logic
   const openAddProductModal = () => { setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); setProductModalVisible(true); };
   const openEditProductModal = (product: Product) => { setEditingProduct({ ...product }); setProductModalVisible(true); };
   
@@ -193,134 +162,72 @@ export default function App() {
   const saveProduct = async () => { 
       if (!editingProduct.name || !editingProduct.price) { Alert.alert('ຂໍ້ມູນບໍ່ຄົບ'); return; } 
       try { 
-          if (editingProduct.id) { await update(ref(db, `products/${editingProduct.id}`), editingProduct); Alert.alert('ສຳເລັດ', 'ແກ້ໄຂແລ້ວ'); } 
-          else { await push(ref(db, `products`), editingProduct); Alert.alert('ສຳເລັດ', 'ເພີ່ມສິນຄ້າແລ້ວ'); } 
+          if (editingProduct.id) { await update(ref(db, `products/${editingProduct.id}`), editingProduct); } 
+          else { await push(ref(db, `products`), editingProduct); } 
           setProductModalVisible(false); 
       } catch (error) { Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້'); } 
   };
   
-  const deleteProduct = (id: string) => { Alert.alert('ຢືນຢັນ', 'ລຶບສິນຄ້ານີ້ບໍ່?', [{ text: 'ຍົກເລີກ', style: 'cancel' }, { text: 'ລຶບ', style: 'destructive', onPress: async () => { try { await remove(ref(db, `products/${id}`)); } catch(e) { Alert.alert('Error'); } } }]); };
-
-  // Scanner Logic
   const openScanner = async (mode: 'sell' | 'edit' = 'sell') => {
-    if (!permission?.granted) { const { granted } = await requestPermission(); if (!granted) { Alert.alert('ຕ້ອງການສິດ', 'ກະລຸນາອະນຸຍາດໃຫ້ໃຊ້ກ້ອງ'); return; } }
+    if (!permission?.granted) { const { granted } = await requestPermission(); if (!granted) return; }
     setScanMode(mode);
-    if (mode === 'edit') { setProductModalVisible(false); setTimeout(() => { setIsScanning(true); }, 300); } 
-    else { setIsScanning(true); }
+    setIsScanning(true);
   };
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
-    if (isScanning === false) return; // ກັນ Scan ຊ້ຳ
-    
+    if (isScanning === false) return; 
     if (scanMode === 'edit') { 
         setEditingProduct({ ...editingProduct, barcode: data }); 
-        setIsScanning(false); 
-        setTimeout(() => { setProductModalVisible(true); }, 300); 
+        setIsScanning(false); setProductModalVisible(true); 
         return; 
     }
-    
     const product = products.find(p => p.barcode === data);
-    if (product) { 
-        addToCart(product); 
-        setIsScanning(false);
-        Alert.alert('✅ ເພີ່ມສິນຄ້າແລ້ວ', `${product.name}`); 
-    } else { 
-        setIsScanning(false);
-        Alert.alert('❌ ບໍ່ພົບສິນຄ້າ', `Barcode: ${data}`); 
-    }
+    if (product) { addToCart(product); setIsScanning(false); } 
+    else { setIsScanning(false); Alert.alert('❌ ບໍ່ພົບສິນຄ້າ', `Barcode: ${data}`); }
   };
 
-  // Totals Calculation
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
   if (!fontsLoaded || loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
-  // ============================================================
-  // 3. Render Content Switcher
-  // ============================================================
   const renderContent = () => {
     switch (currentTab) {
-        case 'home':
-            return <HomeScreen salesHistory={salesHistory} products={products} />;
-        case 'pos':
-            return (
+        case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
+        case 'pos': return (
                 <POSScreen 
-                    products={products}
-                    cart={cart}
-                    addToCart={addToCart}
-                    openEditProductModal={openEditProductModal}
-                    openAddProductModal={openAddProductModal}
-                    openScanner={openScanner}
-                    totalItems={totalItems}
-                    totalLAK={totalLAK}
-                    formatNumber={formatNumber}
-                    
-                    // 🟢 ສົ່ງ Props ທີ່ຂາດໄປໃຫ້ POSScreen
-                    updateQuantity={updateQuantity}
-                    removeFromCart={removeFromCart}
-                    onCheckout={handleCheckout}
+                    products={products} cart={cart} addToCart={addToCart}
+                    openEditProductModal={openEditProductModal} openAddProductModal={openAddProductModal}
+                    openScanner={openScanner} totalItems={totalItems} totalLAK={totalLAK}
+                    formatNumber={formatNumber} updateQuantity={updateQuantity}
+                    removeFromCart={removeFromCart} onCheckout={handleCheckout}
                 />
             );
-        case 'expense':
-            return <ExpenseScreen />;
-        case 'report':
-            return <ReportScreen salesHistory={salesHistory} onDeleteSale={deleteSale} />;
-        default:
-            return null;
+        case 'expense': return <ExpenseScreen />;
+        case 'report': return <ReportScreen salesHistory={salesHistory} onDeleteSale={deleteSale} />;
+        // 🟢 ສະແດງໜ້າຕິດຕາມຄຳສັ່ງຊື້
+        case 'orders': return <OrderTrackingScreen />; 
+        default: return <View style={styles.center}><Text>Coming Soon: {currentTab}</Text></View>;
     }
   };
 
-  // ============================================================
-  // 4. Main UI
-  // ============================================================
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <Header onMenuPress={() => toggleMenu(true)} />
-
-      {/* Main Content Area */}
       <View style={{flex: 1, backgroundColor: COLORS.background}}>
           {renderContent()}
       </View>
-
-      {/* Footer Navigation */}
-      <Footer currentTab={currentTab} onTabChange={setCurrentTab} />
-
-      {/* --- Modals & Overlays --- */}
-      
-      {/* Sidebar Menu */}
+      <Footer currentTab={currentTab} onTabChange={(tab) => setCurrentTab(tab)} />
       <Sidebar 
-        visible={menuVisible}
-        slideAnim={slideAnim}
-        onClose={() => toggleMenu(false)}
-        currentTab={currentTab}
-        onNavigate={(tab) => {
-            setCurrentTab(tab);
-            toggleMenu(false);
-        }}
+        visible={menuVisible} slideAnim={slideAnim} onClose={() => toggleMenu(false)}
+        currentTab={currentTab} onNavigate={(tab) => { setCurrentTab(tab); toggleMenu(false); }}
       />
-
-      {/* Product Management Modal */}
       <ProductModal 
-        visible={productModalVisible} 
-        onClose={() => setProductModalVisible(false)} 
-        product={editingProduct} 
-        setProduct={setEditingProduct} 
-        onSave={saveProduct} 
-        onPickImage={pickImage} 
-        onScan={() => openScanner('edit')}
+        visible={productModalVisible} onClose={() => setProductModalVisible(false)} 
+        product={editingProduct} setProduct={setEditingProduct} onSave={saveProduct} 
+        onPickImage={pickImage} onScan={() => openScanner('edit')}
       />
-
-      {/* ❌ ລົບ CartModal ອອກຈາກບ່ອນນີ້ ເພາະ POSScreen ຈັດການເອງແລ້ວ */}
-
-      {/* Scanner Modal */}
-      <ScannerModal 
-        visible={isScanning} 
-        onClose={() => setIsScanning(false)} 
-        onScanned={handleBarCodeScanned} 
-      />
-
+      <ScannerModal visible={isScanning} onClose={() => setIsScanning(false)} onScanned={handleBarCodeScanned} />
     </SafeAreaView>
   );
 }

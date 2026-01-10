@@ -8,28 +8,34 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
+    ActivityIndicator,
+    ScrollView, // 🟢 ເພີ່ມບ່ອນນີ້ເພື່ອແກ້ Error ScrollView
+    SafeAreaView
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber, SaleRecord } from '../../types';
 
-type FilterType = 'day' | 'week' | 'month' | 'year';
+type FilterType = 'day' | 'week' | 'month' | 'year' | 'all';
 
-// 🟢 ເພີ່ມ Interface ເພື່ອຮັບ Props
 interface ReportScreenProps {
     salesHistory: SaleRecord[];
 }
 
 export default function ReportScreen({ salesHistory }: ReportScreenProps) {
-    // --- States ---
     const [filteredSales, setFilteredSales] = useState<SaleRecord[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [filterType, setFilterType] = useState<FilterType>('day');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
 
-    // 🟢 ກັ່ນຕອງຂໍ້ມູນຈາກ salesHistory ທີ່ສົ່ງມາຈາກ App.tsx
+    // 🟢 ກັ່ນຕອງຂໍ້ມູນແບບຍືດຫຍຸ່ນເພື່ອໃຫ້ຂໍ້ມູນຂຶ້ນຄືກັບໃນ Web App
     useEffect(() => {
+        if (filterType === 'all') {
+            setFilteredSales(salesHistory);
+            return;
+        }
+
         const start = new Date(currentDate);
         const end = new Date(currentDate);
         start.setHours(0, 0, 0, 0);
@@ -52,11 +58,12 @@ export default function ReportScreen({ salesHistory }: ReportScreenProps) {
         }
 
         const filtered = salesHistory.filter(sale => {
+            if (!sale.date) return false;
             const d = new Date(sale.date);
-            return d >= start && d <= end;
+            return d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
         });
 
-        setFilteredSales(filtered); 
+        setFilteredSales(filtered);
     }, [salesHistory, filterType, currentDate]);
 
     const handleNavigate = (dir: 'prev' | 'next') => {
@@ -79,27 +86,31 @@ export default function ReportScreen({ salesHistory }: ReportScreenProps) {
     return (
         <View style={styles.container}>
             <View style={styles.filterSection}>
-                <View style={styles.tabRow}>
-                    {['day', 'week', 'month', 'year'].map((t) => (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
+                    {['day', 'week', 'month', 'year', 'all'].map((t) => (
                         <TouchableOpacity 
                             key={t} 
                             style={[styles.tab, filterType === t && styles.activeTab]}
                             onPress={() => setFilterType(t as FilterType)}
                         >
                             <Text style={[styles.tabText, filterType === t && styles.activeTabText]}>
-                                {t === 'day' ? 'ມື້' : t === 'week' ? 'ອາທິດ' : t === 'month' ? 'ເດືອນ' : 'ປີ'}
+                                {t === 'day' ? 'ມື້' : t === 'week' ? 'ອາທິດ' : t === 'month' ? 'ເດືອນ' : t === 'year' ? 'ປີ' : 'ທັງໝົດ'}
                             </Text>
                         </TouchableOpacity>
                     ))}
-                </View>
+                </ScrollView>
 
-                <View style={styles.navRow}>
-                    <TouchableOpacity onPress={() => handleNavigate('prev')}><Ionicons name="chevron-back" size={24} color={COLORS.primary} /></TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-                        <Text style={styles.dateLabel}>{filterType === 'day' ? formatDate(currentDate) : currentDate.toLocaleDateString('lo-LA', { month: 'long', year: 'numeric' })}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleNavigate('next')}><Ionicons name="chevron-forward" size={24} color={COLORS.primary} /></TouchableOpacity>
-                </View>
+                {filterType !== 'all' && (
+                    <View style={styles.navRow}>
+                        <TouchableOpacity onPress={() => handleNavigate('prev')}><Ionicons name="chevron-back" size={24} color={COLORS.primary} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                            <Text style={styles.dateLabel}>
+                                {filterType === 'day' ? formatDate(currentDate) : currentDate.toLocaleDateString('lo-LA', { month: 'long', year: 'numeric' })}
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleNavigate('next')}><Ionicons name="chevron-forward" size={24} color={COLORS.primary} /></TouchableOpacity>
+                    </View>
+                )}
             </View>
 
             <FlatList
@@ -149,7 +160,12 @@ export default function ReportScreen({ salesHistory }: ReportScreenProps) {
                         </View>
                     );
                 }}
-                ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີລາຍການຂາຍໃນຊ່ວງເວລານີ້</Text>}
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Ionicons name="receipt-outline" size={60} color="#ccc" />
+                        <Text style={styles.emptyText}>ບໍ່ມີລາຍການຂາຍໃນຊ່ວງເວລານີ້</Text>
+                    </View>
+                }
             />
 
             {showDatePicker && (
@@ -162,14 +178,14 @@ export default function ReportScreen({ salesHistory }: ReportScreenProps) {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
     filterSection: { backgroundColor: 'white', paddingBottom: 15, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 5 },
-    tabRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 10, marginBottom: 15 },
-    tab: { paddingHorizontal: 20, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0' },
+    tabRow: { paddingHorizontal: 15, marginTop: 10, marginBottom: 15 },
+    tab: { paddingHorizontal: 15, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 10 },
     activeTab: { backgroundColor: COLORS.primary },
     tabText: { fontFamily: 'Lao-Regular', color: '#666', fontSize: 12 },
     activeTabText: { color: 'white', fontFamily: 'Lao-Bold' },
     navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 30 },
     dateLabel: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
-    card: { backgroundColor: 'white', borderRadius: 15, marginBottom: 10, overflow: 'hidden', marginHorizontal: 1 },
+    card: { backgroundColor: 'white', borderRadius: 15, marginBottom: 10, overflow: 'hidden', marginHorizontal: 1, elevation: 2 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     iconCircle: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
@@ -186,5 +202,6 @@ const styles = StyleSheet.create({
     prodPrice: { fontFamily: 'Lao-Bold', fontSize: 13 },
     delBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginTop: 10, gap: 5 },
     delBtnText: { color: COLORS.danger, fontFamily: 'Lao-Bold', fontSize: 12 },
-    emptyText: { textAlign: 'center', marginTop: 50, color: '#ccc', fontFamily: 'Lao-Regular' }
+    emptyContainer: { alignItems: 'center', marginTop: 100 },
+    emptyText: { textAlign: 'center', marginTop: 10, color: '#ccc', fontFamily: 'Lao-Bold' }
 });

@@ -81,7 +81,7 @@ export default function App() {
       setLoading(false);
     });
 
-    // ດຶງຂໍ້ມູນການຂາຍ (Real-time)
+    // ດຶງຂໍ້ມູນການຂາຍ (Real-time) ຈາກ Path 'sales'
     const salesRef = ref(db, 'sales');
     const unsubscribeSales = onValue(salesRef, (snapshot) => {
         if(snapshot.exists()){
@@ -216,8 +216,12 @@ export default function App() {
                 />
             );
         case 'expense': return <ExpenseScreen />;
-        // 🟢 ສົ່ງ salesHistory ທີ່ອັບເດດແລ້ວໃຫ້ ReportScreen
-        case 'report': return <ReportScreen salesHistory={salesHistory} />;
+        
+        // 🟢 ແກ້ໄຂບ່ອນນີ້: ເພີ່ມ case 'history' ໃຫ້ຕົງກັບຄ່າທີ່ Footer/Sidebar ສົ່ງມາ
+        case 'report':
+        case 'history': 
+            return <ReportScreen salesHistory={salesHistory} />;
+            
         case 'orders': return <OrderTrackingScreen />; 
         default: return <View style={styles.center}><Text style={{fontFamily: 'Lao-Regular'}}>Coming Soon: {currentTab}</Text></View>;
     }

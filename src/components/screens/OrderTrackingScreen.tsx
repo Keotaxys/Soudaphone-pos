@@ -9,8 +9,7 @@ import {
     Image,
     Linking,
     Modal,
-    SafeAreaView // 🟢 Import SafeAreaView ມາຮຽບຮ້ອຍແລ້ວ
-    ,
+    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
@@ -21,16 +20,13 @@ import {
 import { db } from '../../firebase';
 import { COLORS, CustomerOrder, formatDate, formatNumber } from '../../types';
 
-// 🟢 ຂໍ້ມູນທາງເລືອກ (ຕົງຕາມ Web App)
 const SOURCES = ['ຈີນ', 'ຫວຽດ', 'ໄທ', 'ອື່ນໆ'];
 const STATUSES = ['ຮັບອໍເດີ້', 'ສັ່ງເຄື່ອງແລ້ວ', 'ເຄື່ອງຮອດແລ້ວ', 'ຈັດສົ່ງສຳເລັດ'];
 
 export default function OrderTrackingScreen() {
-    // --- Data States ---
     const [orders, setOrders] = useState<CustomerOrder[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // --- Form States (ຄົບຕາມຮູບ 4) ---
     const [id, setId] = useState<string | null>(null);
     const [customerName, setCustomerName] = useState('');
     const [productName, setProductName] = useState('');
@@ -43,12 +39,10 @@ export default function OrderTrackingScreen() {
     const [status, setStatus] = useState('ຮັບອໍເດີ້');
     const [selectedDate, setSelectedDate] = useState(new Date());
 
-    // --- UI States ---
     const [showForm, setShowForm] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [viewImage, setViewImage] = useState<string | null>(null); 
+    const [viewImage, setViewImage] = useState<string | null>(null);
 
-    // 1. ດຶງຂໍ້ມູນ Real-time
     useEffect(() => {
         const orderRef = ref(db, 'customer_orders');
         const unsubscribe = onValue(orderRef, (snapshot) => {
@@ -63,7 +57,6 @@ export default function OrderTrackingScreen() {
         return () => unsubscribe();
     }, []);
 
-    // 2. ຟັງຊັນບັນທຶກລາຍການ
     const handleSave = async () => {
         if (!customerName || !productName) {
             Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ລູກຄ້າ ແລະ ຊື່ສິນຄ້າ');
@@ -128,14 +121,13 @@ export default function OrderTrackingScreen() {
         if (s === 'ຮັບອໍເດີ້') return COLORS.secondary;
         if (s === 'ສັ່ງເຄື່ອງແລ້ວ') return '#3498db';
         if (s === 'ເຄື່ອງຮອດແລ້ວ') return '#9b59b6';
-        return COLORS.success;
+        return COLORS.primary; // ໃຊ້ສີ Teal ຂອງ Theme ເປັນສີສຳເລັດ
     };
 
     return (
         <View style={styles.container}>
-            {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>📋 ປະຫວັດຄຳສັ່ງຊື້ (Real-time)</Text>
+                <Text style={styles.headerTitle}>📋 ປະຫວັດຄຳສັ່ງຊື້</Text>
                 <TouchableOpacity style={styles.addBtn} onPress={() => { resetForm(); setShowForm(true); }}>
                     <Ionicons name="add-circle" size={24} color="white" />
                     <Text style={styles.addBtnText}>ເພີ່ມອໍເດີ</Text>
@@ -145,6 +137,7 @@ export default function OrderTrackingScreen() {
             <FlatList
                 data={orders}
                 keyExtractor={item => item.id!}
+                contentContainerStyle={{ paddingBottom: 20 }}
                 renderItem={({ item }) => (
                     <View style={styles.card}>
                         <View style={styles.cardTop}>
@@ -190,25 +183,24 @@ export default function OrderTrackingScreen() {
                 )}
             />
 
-            {/* --- Form Modal (ຄົບຕາມຮູບ 4) --- */}
             <Modal visible={showForm} animationType="slide">
-                <SafeAreaView style={{flex: 1}}>
+                <SafeAreaView style={{flex: 1, backgroundColor: 'white'}}>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>{id ? 'ແກ້ໄຂຄຳສັ່ງຊື້' : 'ເພີ່ມຄຳສັ່ງຊື້'}</Text>
                         <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={30} /></TouchableOpacity>
                     </View>
                     <ScrollView style={styles.formBody} contentContainerStyle={{paddingBottom: 40}}>
-                        <Text style={styles.label}>ຊື່ລູກຄ້າ *</Text>
-                        <TextInput style={styles.input} value={customerName} onChangeText={setCustomerName} placeholder="ປ້ອນຊື່ລູກຄ້າ..." />
-                        
                         <Text style={styles.label}>ວັນທີ *</Text>
                         <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
-                            <Text>{formatDate(selectedDate)}</Text>
-                            <Ionicons name="calendar-outline" size={20} />
+                            <Text style={styles.inputText}>{formatDate(selectedDate)}</Text>
+                            <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
                         </TouchableOpacity>
 
+                        <Text style={styles.label}>ຊື່ລູກຄ້າ *</Text>
+                        <TextInput style={styles.input} value={customerName} onChangeText={setCustomerName} placeholder="ປ້ອນຊື່ລູກຄ້າ..." placeholderTextColor="#999" />
+                        
                         <Text style={styles.label}>ສິນຄ້າ *</Text>
-                        <TextInput style={styles.input} value={productName} onChangeText={setProductName} placeholder="ຕົວຢ່າງ: ເສື້ອຢືດ..." />
+                        <TextInput style={styles.input} value={productName} onChangeText={setProductName} placeholder="ຕົວຢ່າງ: ເສື້ອຢືດ..." placeholderTextColor="#999" />
 
                         <View style={styles.row}>
                             <View style={{flex: 1}}>
@@ -217,15 +209,15 @@ export default function OrderTrackingScreen() {
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                         {SOURCES.map(s => (
                                             <TouchableOpacity key={s} onPress={() => setSource(s)} style={[styles.sourceChip, source === s && styles.sourceChipActive]}>
-                                                <Text style={{color: source === s ? 'white' : '#666'}}>{s}</Text>
+                                                <Text style={[styles.chipText, {color: source === s ? 'white' : '#666'}]}>{s}</Text>
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
                                 </View>
                             </View>
-                            <View style={{width: 80, marginLeft: 10}}>
+                            <View style={{width: 90, marginLeft: 10}}>
                                 <Text style={styles.label}>ຈຳນວນ *</Text>
-                                <TextInput style={styles.input} value={quantity} onChangeText={setQuantity} keyboardType="numeric" />
+                                <TextInput style={styles.input} value={quantity} onChangeText={setQuantity} keyboardType="numeric" textAlign="center" />
                             </View>
                         </View>
 
@@ -241,7 +233,7 @@ export default function OrderTrackingScreen() {
                         </View>
 
                         <Text style={styles.label}>ລິ້ງເວັບໄຊ</Text>
-                        <TextInput style={styles.input} value={link} onChangeText={setLink} placeholder="https://..." />
+                        <TextInput style={styles.input} value={link} onChangeText={setLink} placeholder="https://..." placeholderTextColor="#999" />
 
                         <Text style={styles.label}>ຮູບພາບສິນຄ້າ</Text>
                         <TouchableOpacity style={styles.imgPickBtn} onPress={pickImage}>
@@ -252,19 +244,18 @@ export default function OrderTrackingScreen() {
                         <View style={styles.statusRow}>
                             {STATUSES.map(s => (
                                 <TouchableOpacity key={s} onPress={() => setStatus(s as any)} style={[styles.statusChip, status === s && {backgroundColor: getStatusColor(s)}]}>
-                                    <Text style={{color: status === s ? 'white' : '#666', fontSize: 12}}>{s}</Text>
+                                    <Text style={[styles.chipText, {color: status === s ? 'white' : '#666'}]}>{s}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
 
                         <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                            <Text style={styles.saveBtnText}>ບັນທຶກຄຳສັ່ງຊື້</Text>
+                            <Text style={styles.saveBtnText}>{id ? 'ອັບເດດຄຳສັ່ງຊື້' : 'ບັນທຶກຄຳສັ່ງຊື້'}</Text>
                         </TouchableOpacity>
                     </ScrollView>
                 </SafeAreaView>
             </Modal>
 
-            {/* Modal ເບິ່ງຮູບໃຫຍ່ */}
             <Modal visible={!!viewImage} transparent={true} animationType="fade">
                 <TouchableOpacity style={styles.imgOverlay} onPress={() => setViewImage(null)}>
                     <Image source={{uri: viewImage || ''}} style={styles.fullImg} resizeMode="contain" />
@@ -278,48 +269,47 @@ export default function OrderTrackingScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, backgroundColor: 'white' },
-    headerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primary },
-    addBtn: { flexDirection: 'row', backgroundColor: COLORS.success, padding: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center' },
-    addBtnText: { color: 'white', fontFamily: 'Lao-Bold', marginLeft: 5 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
+    headerTitle: { fontFamily: 'Lao-Bold', fontSize: 20, color: COLORS.primary },
+    addBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, padding: 8, paddingHorizontal: 15, borderRadius: 10, alignItems: 'center' },
+    addBtnText: { color: 'white', fontFamily: 'Lao-Bold', marginLeft: 5, fontSize: 14 },
     
-    // Card Styles
-    card: { backgroundColor: 'white', margin: 10, borderRadius: 12, padding: 15, elevation: 3 },
-    cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-    custName: { fontFamily: 'Lao-Bold', fontSize: 16 },
-    statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-    statusText: { color: 'white', fontSize: 11, fontFamily: 'Lao-Bold' },
-    cardMid: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 10 },
-    prodImg: { width: 70, height: 70, borderRadius: 8, backgroundColor: '#f9f9f9' },
-    prodInfo: { flex: 1, marginLeft: 12 },
-    prodName: { fontFamily: 'Lao-Bold', fontSize: 15 },
-    subInfo: { fontSize: 12, color: '#666', marginTop: 4 },
-    linkText: { fontSize: 12, color: COLORS.primary, marginTop: 4, textDecorationLine: 'underline' },
-    cardBot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
-    priceLabel: { fontSize: 11, color: '#888' },
-    priceVal: { fontFamily: 'Lao-Bold', color: COLORS.secondaryDark, fontSize: 16 },
+    card: { backgroundColor: 'white', marginHorizontal: 15, marginTop: 15, borderRadius: 15, padding: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5 },
+    cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+    custName: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
+    statusBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
+    statusText: { color: 'white', fontSize: 12, fontFamily: 'Lao-Bold' },
+    cardMid: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f5f5f5', paddingBottom: 15 },
+    prodImg: { width: 80, height: 80, borderRadius: 12, backgroundColor: '#f9f9f9', borderWidth: 1, borderColor: '#eee' },
+    prodInfo: { flex: 1, marginLeft: 15 },
+    prodName: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
+    subInfo: { fontSize: 13, color: COLORS.textLight, marginTop: 5, fontFamily: 'Lao-Regular' },
+    linkText: { fontSize: 13, color: COLORS.primary, marginTop: 5, textDecorationLine: 'underline', fontFamily: 'Lao-Regular' },
+    cardBot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
+    priceLabel: { fontSize: 12, color: COLORS.textLight, fontFamily: 'Lao-Regular' },
+    priceVal: { fontFamily: 'Lao-Bold', color: COLORS.secondaryDark, fontSize: 18 },
     actionBtns: { flexDirection: 'row', gap: 15 },
-    editBtn: { backgroundColor: '#f0f9f9', padding: 5, borderRadius: 5 },
+    editBtn: { backgroundColor: '#f0fcfc', padding: 8, borderRadius: 10 },
 
-    // Modal & Form
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
-    modalTitle: { fontSize: 20, fontFamily: 'Lao-Bold' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
+    modalTitle: { fontSize: 22, fontFamily: 'Lao-Bold', color: COLORS.text },
     formBody: { padding: 20 },
-    label: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#444', marginBottom: 8, marginTop: 15 },
-    input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#eee' },
-    dateInput: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#eee' },
+    label: { fontFamily: 'Lao-Bold', fontSize: 15, color: COLORS.text, marginBottom: 8, marginTop: 15 },
+    input: { backgroundColor: '#f9f9f9', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Regular', fontSize: 16, color: COLORS.text },
+    inputText: { fontFamily: 'Lao-Regular', fontSize: 16, color: COLORS.text },
+    dateInput: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9f9f9', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#eee' },
     row: { flexDirection: 'row' },
-    pickerWrapper: { flex: 1, height: 45 },
-    sourceChip: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, backgroundColor: '#eee', marginRight: 10, height: 35 },
+    pickerWrapper: { flex: 1, marginTop: 5 },
+    sourceChip: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 25, backgroundColor: '#f0f0f0', marginRight: 10 },
     sourceChipActive: { backgroundColor: COLORS.primary },
-    imgPickBtn: { width: 100, height: 100, backgroundColor: '#f5f5f5', borderRadius: 15, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+    chipText: { fontSize: 14, fontFamily: 'Lao-Bold' },
+    imgPickBtn: { width: 120, height: 120, backgroundColor: '#f9f9f9', borderRadius: 15, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: '#eee', marginTop: 5 },
     formImg: { width: '100%', height: '100%' },
-    statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-    statusChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15, backgroundColor: '#eee' },
-    saveBtn: { backgroundColor: COLORS.success, padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 30 },
+    statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 5 },
+    statusChip: { paddingHorizontal: 15, paddingVertical: 10, borderRadius: 25, backgroundColor: '#f0f0f0' },
+    saveBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 35, elevation: 2 },
     saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },
 
-    // Full Image Preview
     imgOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
-    fullImg: { width: '90%', height: '80%' }
+    fullImg: { width: '95%', height: '85%' }
 });

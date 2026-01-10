@@ -3,7 +3,7 @@ import { useFonts } from 'expo-font';
 import * as ImagePicker from 'expo-image-picker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
-// 🟢 ແກ້ໄຂ Error Text: ຕ້ອງໃຫ້ແນ່ໃຈວ່າ Text ມາຈາກ react-native ເທົ່ານັ້ນ
+// 🟢 ຕ້ອງແນ່ໃຈວ່າ Text ມາຈາກ react-native ເທົ່ານັ້ນ
 import {
   ActivityIndicator,
   Alert,
@@ -25,7 +25,7 @@ import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
 import ReportScreen from '../../src/components/screens/ReportScreen';
-// 🟢 ແກ້ໄຂ Error Default Export: Import ເຂົ້າມາໂດຍກົງຈາກ path ທີ່ຖືກຕ້ອງ
+// 🟢 Import ໜ້າຕິດຕາມຄຳສັ່ງຊື້
 import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
 
 // Import UI Components
@@ -66,8 +66,11 @@ export default function App() {
       name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: ''
   });
 
+  // ============================================================
   // Firebase Listeners
+  // ============================================================
   useEffect(() => {
+    // ດຶງຂໍ້ມູນສິນຄ້າ
     const productsRef = ref(db, 'products');
     const unsubscribeProducts = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -78,17 +81,23 @@ export default function App() {
       setLoading(false);
     });
 
+    // ດຶງຂໍ້ມູນການຂາຍ (Real-time)
     const salesRef = ref(db, 'sales');
     const unsubscribeSales = onValue(salesRef, (snapshot) => {
         if(snapshot.exists()){
             const data = snapshot.val();
             const salesList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+            // ລຽງຈາກໃໝ່ຫາເກົ່າ ແລະ ສົ່ງໃຫ້ state ຫຼັກ
             setSalesHistory(salesList.reverse() as SaleRecord[]);
         } else { setSalesHistory([]); }
     });
 
     return () => { unsubscribeProducts(); unsubscribeSales(); };
   }, []);
+
+  // ============================================================
+  // Logic Functions
+  // ============================================================
 
   const toggleMenu = (show: boolean) => {
     if (show) { 
@@ -191,6 +200,9 @@ export default function App() {
 
   if (!fontsLoaded || loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
+  // ============================================================
+  // Render Content Switcher
+  // ============================================================
   const renderContent = () => {
     switch (currentTab) {
         case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
@@ -204,30 +216,51 @@ export default function App() {
                 />
             );
         case 'expense': return <ExpenseScreen />;
-        case 'report': return <ReportScreen salesHistory={salesHistory} onDeleteSale={deleteSale} />;
-        // 🟢 ສະແດງໜ້າຕິດຕາມຄຳສັ່ງຊື້
+        // 🟢 ສົ່ງ salesHistory ທີ່ອັບເດດແລ້ວໃຫ້ ReportScreen
+        case 'report': return <ReportScreen salesHistory={salesHistory} />;
         case 'orders': return <OrderTrackingScreen />; 
-        default: return <View style={styles.center}><Text>Coming Soon: {currentTab}</Text></View>;
+        default: return <View style={styles.center}><Text style={{fontFamily: 'Lao-Regular'}}>Coming Soon: {currentTab}</Text></View>;
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <Header onMenuPress={() => toggleMenu(true)} />
+
+      {/* Main Content Area */}
       <View style={{flex: 1, backgroundColor: COLORS.background}}>
           {renderContent()}
       </View>
+
+      {/* Footer Navigation */}
       <Footer currentTab={currentTab} onTabChange={(tab) => setCurrentTab(tab)} />
+
+      {/* Sidebar Menu */}
       <Sidebar 
-        visible={menuVisible} slideAnim={slideAnim} onClose={() => toggleMenu(false)}
-        currentTab={currentTab} onNavigate={(tab) => { setCurrentTab(tab); toggleMenu(false); }}
+        visible={menuVisible} 
+        slideAnim={slideAnim} 
+        onClose={() => toggleMenu(false)}
+        currentTab={currentTab} 
+        onNavigate={(tab) => { 
+            setCurrentTab(tab); 
+            toggleMenu(false); 
+        }} 
       />
+
+      {/* Modals */}
       <ProductModal 
-        visible={productModalVisible} onClose={() => setProductModalVisible(false)} 
-        product={editingProduct} setProduct={setEditingProduct} onSave={saveProduct} 
-        onPickImage={pickImage} onScan={() => openScanner('edit')}
+        visible={productModalVisible} 
+        onClose={() => setProductModalVisible(false)} 
+        product={editingProduct} 
+        setProduct={setEditingProduct} 
+        onSave={saveProduct} 
+        onPickImage={pickImage} 
+        onScan={() => openScanner('edit')}
       />
+
       <ScannerModal visible={isScanning} onClose={() => setIsScanning(false)} onScanned={handleBarCodeScanned} />
+
     </SafeAreaView>
   );
 }

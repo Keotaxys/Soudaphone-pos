@@ -1,11 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { onValue, ref, remove } from 'firebase/database';
+import { ref, remove } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
     FlatList,
-    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -16,33 +15,20 @@ import { COLORS, formatDate, formatNumber, SaleRecord } from '../../types';
 
 type FilterType = 'day' | 'week' | 'month' | 'year';
 
-export default function ReportScreen() {
-    // --- Data States ---
-    const [allSales, setAllSales] = useState<SaleRecord[]>([]);
-    const [filteredSales, setFilteredSales] = useState<SaleRecord[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
+// 🟢 ເພີ່ມ Interface ເພື່ອຮັບ Props
+interface ReportScreenProps {
+    salesHistory: SaleRecord[];
+}
 
-    // --- Filter States ---
+export default function ReportScreen({ salesHistory }: ReportScreenProps) {
+    // --- States ---
+    const [filteredSales, setFilteredSales] = useState<SaleRecord[]>([]);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
     const [filterType, setFilterType] = useState<FilterType>('day');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
 
-    // 1. ດຶງຂໍ້ມູນທັງໝົດມາໄວ້ໃນ State
-    useEffect(() => {
-        const salesRef = ref(db, 'sales');
-        const unsubscribe = onValue(salesRef, (snapshot) => {
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-                setAllSales(list as SaleRecord[]);
-            } else { setAllSales([]); }
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, []);
-
-    // 2. ກັ່ນຕອງຂໍ້ມູນເມື່ອວັນທີ ຫຼື ປະເພດ Filter ປ່ຽນແປງ
+    // 🟢 ກັ່ນຕອງຂໍ້ມູນຈາກ salesHistory ທີ່ສົ່ງມາຈາກ App.tsx
     useEffect(() => {
         const start = new Date(currentDate);
         const end = new Date(currentDate);
@@ -54,23 +40,25 @@ export default function ReportScreen() {
             const diff = start.getDate() - day + (day === 0 ? -6 : 1);
             start.setDate(diff);
             end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
         } else if (filterType === 'month') {
             start.setDate(1);
             end.setMonth(start.getMonth() + 1, 0);
+            end.setHours(23, 59, 59, 999);
         } else if (filterType === 'year') {
             start.setMonth(0, 1);
             end.setMonth(11, 31);
+            end.setHours(23, 59, 59, 999);
         }
 
-        const filtered = allSales.filter(sale => {
+        const filtered = salesHistory.filter(sale => {
             const d = new Date(sale.date);
             return d >= start && d <= end;
         });
 
-        setFilteredSales(filtered.reverse());
-    }, [allSales, filterType, currentDate]);
+        setFilteredSales(filtered); 
+    }, [salesHistory, filterType, currentDate]);
 
-    // Navigation Helpers
     const handleNavigate = (dir: 'prev' | 'next') => {
         const newDate = new Date(currentDate);
         const val = dir === 'next' ? 1 : -1;
@@ -79,13 +67,6 @@ export default function ReportScreen() {
         else if (filterType === 'month') newDate.setMonth(newDate.getMonth() + val);
         else if (filterType === 'year') newDate.setFullYear(newDate.getFullYear() + val);
         setCurrentDate(newDate);
-    };
-
-    const getDateLabel = () => {
-        if (filterType === 'day') return formatDate(currentDate);
-        if (filterType === 'month') return currentDate.toLocaleDateString('lo-LA', { month: 'long', year: 'numeric' });
-        if (filterType === 'year') return currentDate.getFullYear().toString();
-        return "ຊ່ວງເວລານີ້";
     };
 
     const handleDelete = (id: string) => {
@@ -97,7 +78,6 @@ export default function ReportScreen() {
 
     return (
         <View style={styles.container}>
-            {/* --- Filter Bar --- */}
             <View style={styles.filterSection}>
                 <View style={styles.tabRow}>
                     {['day', 'week', 'month', 'year'].map((t) => (
@@ -116,13 +96,12 @@ export default function ReportScreen() {
                 <View style={styles.navRow}>
                     <TouchableOpacity onPress={() => handleNavigate('prev')}><Ionicons name="chevron-back" size={24} color={COLORS.primary} /></TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-                        <Text style={styles.dateLabel}>{getDateLabel()}</Text>
+                        <Text style={styles.dateLabel}>{filterType === 'day' ? formatDate(currentDate) : currentDate.toLocaleDateString('lo-LA', { month: 'long', year: 'numeric' })}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleNavigate('next')}><Ionicons name="chevron-forward" size={24} color={COLORS.primary} /></TouchableOpacity>
                 </View>
             </View>
 
-            {/* --- Sales List --- */}
             <FlatList
                 data={filteredSales}
                 keyExtractor={(item) => item.id!}
@@ -190,7 +169,6 @@ const styles = StyleSheet.create({
     activeTabText: { color: 'white', fontFamily: 'Lao-Bold' },
     navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 30 },
     dateLabel: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
-
     card: { backgroundColor: 'white', borderRadius: 15, marginBottom: 10, overflow: 'hidden', marginHorizontal: 1 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -199,7 +177,6 @@ const styles = StyleSheet.create({
     billTime: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#999' },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     billTotal: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
-
     details: { padding: 15, backgroundColor: '#fcfcfc', borderTopWidth: 1, borderTopColor: '#f0f0f0' },
     infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
     infoText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },

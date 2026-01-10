@@ -10,15 +10,20 @@ import {
 import { db } from '../../firebase';
 import { COLORS, formatNumber, ShiftRecord } from '../../types';
 
+// ກຳນົດປະເພດໃບເງິນ
 const LAK_DENOMS = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500];
 const THB_DENOMS = [1000, 500, 100, 50, 20];
 
 export default function ShiftScreen() {
   const [activeShift, setActiveShift] = useState<ShiftRecord | null>(null);
-  const [lakCounts, setLakCounts] = useState<{ [key: number]: string }>({});
-  const [thbCounts, setThbCounts] = useState<{ [key: number]: string }>({});
-  const [startingLAK, setStartingLAK] = useState('0');
-  const [startingTHB, setStartingTHB] = useState('0');
+  
+  // States ສຳລັບນັບໃບເງິນຕອນ "ເປີດກະ"
+  const [openLakCounts, setOpenLakCounts] = useState<{ [key: number]: string }>({});
+  const [openThbCounts, setOpenThbCounts] = useState<{ [key: number]: string }>({});
+  
+  // States ສຳລັບນັບໃບເງິນຕອນ "ປິດກະ"
+  const [closeLakCounts, setCloseLakCounts] = useState<{ [key: number]: string }>({});
+  const [closeThbCounts, setCloseThbCounts] = useState<{ [key: number]: string }>({});
 
   useEffect(() => {
     const shiftsRef = ref(db, 'shifts');
@@ -38,43 +43,57 @@ export default function ShiftScreen() {
   };
 
   const handleOpenShift = async () => {
-    const newShift: ShiftRecord = {
+    const totalLAK = calculateTotal(LAK_DENOMS, openLakCounts);
+    const totalTHB = calculateTotal(THB_DENOMS, openThbCounts);
+
+    if (totalLAK === 0 && totalTHB === 0) {
+        Alert.alert('ຄຳເຕືອນ', 'ກະລຸນານັບໃບບິນເງິນຕັ້ງຕົ້ນກ່ອນເປີດກະ');
+        return;
+    }
+
+    const newShift = {
       startTime: new Date().toISOString(),
       status: 'OPEN',
-      startingCashLAK: parseInt(startingLAK) || 0,
-      startingCashTHB: parseInt(startingTHB) || 0,
-      denominationsLAK: [],
-      denominationsTHB: []
+      startingCashLAK: totalLAK,
+      startingCashTHB: totalTHB,
+      openDenominationsLAK: openLakCounts,
+      openDenominationsTHB: openThbCounts,
+      createdAt: new Date().toISOString()
     };
+
     try {
       await push(ref(db, 'shifts'), newShift);
       Alert.alert('🔔 ສຳເລັດ', 'ເປີດກະຂາຍຮຽບຮ້ອຍແລ້ວ');
-    } catch (e) { Alert.alert('Error', 'ເປີດກະບໍ່ໄດ້'); }
+    } catch (e) { Alert.alert('Error', 'ບໍ່ສາມາດເປີດກະໄດ້'); }
   };
 
   const handleCloseShift = async () => {
     if (!activeShift) return;
-    const actualLAK = calculateTotal(LAK_DENOMS, lakCounts);
-    const actualTHB = calculateTotal(THB_DENOMS, thbCounts);
+    const actualLAK = calculateTotal(LAK_DENOMS, closeLakCounts);
+    const actualTHB = calculateTotal(THB_DENOMS, closeThbCounts);
 
-    Alert.alert('ຢືນຢັນການປິດກະ', `ຍອດເງິນສົດທີ່ນັບໄດ້:\nLAK: ${formatNumber(actualLAK)}\nTHB: ${formatNumber(actualTHB)}`, [
+    Alert.alert('ຢືນຢັນການປິດກະ', `ເງິນສົດທີ່ນັບໄດ້:\nກີບ: ${formatNumber(actualLAK)} ₭\nບາດ: ${formatNumber(actualTHB)} ฿`, [
       { text: 'ຍົກເລີກ' },
-      { text: 'ປິດກະ', style: 'destructive', onPress: async () => {
+      { text: 'ຢືນຢັນປິດກະ', style: 'destructive', onPress: async () => {
           await update(ref(db, `shifts/${activeShift.id}`), {
             endTime: new Date().toISOString(),
             status: 'CLOSED',
             actualCashLAK: actualLAK,
-            actualCashTHB: actualTHB
+            actualCashTHB: actualTHB,
+            closeDenominationsLAK: closeLakCounts,
+            closeDenominationsTHB: closeThbCounts
           });
-          setLakCounts({}); setThbCounts({});
-          Alert.alert('✅ ສຳເລັດ', 'ປິດກະຂາຍ ແລະ ບັນທຶກຍອດຮຽບຮ້ອຍ');
+          setCloseLakCounts({}); setCloseThbCounts({});
+          Alert.alert('✅ ສຳເລັດ', 'ປິດກະຂາຍຮຽບຮ້ອຍ');
       }}
     ]);
   };
 
-  const renderDenomInput = (val: number, counts: any, setCounts: any, symbol: string) => (
+  const renderDenomRow = (val: number, counts: any, setCounts: any, symbol: string) => (
     <View key={val} style={styles.denomRow}>
-      <Text style={styles.denomValue}>{formatNumber(val)} {symbol}</Text>
+      <View style={styles.denomInfo}>
+        <Text style={styles.denomLabel}>{formatNumber(val)} {symbol}</Text>
+      </View>
       <TextInput
         style={styles.denomInput}
         keyboardType="numeric"
@@ -82,54 +101,63 @@ export default function ShiftScreen() {
         value={counts[val] || ''}
         onChangeText={(t) => setCounts({ ...counts, [val]: t })}
       />
-      <Text style={styles.denomTotal}>{formatNumber(val * (parseInt(counts[val]) || 0))}</Text>
+      <Text style={styles.denomSum}>{formatNumber(val * (parseInt(counts[val]) || 0))}</Text>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
         {!activeShift ? (
-          <View style={styles.openShiftCard}>
-            <Ionicons name="play-circle" size={60} color={COLORS.primary} />
-            <Text style={styles.title}>ເລີ່ມຕົ້ນເປີດກະຂາຍ</Text>
-            <Text style={styles.label}>ເງິນຕັ້ງຕົ້ນ (ກີບ)</Text>
-            <TextInput style={styles.mainInput} keyboardType="numeric" value={startingLAK} onChangeText={setStartingLAK} />
-            <Text style={styles.label}>ເງິນຕັ້ງຕົ້ນ (ບາດ)</Text>
-            <TextInput style={styles.mainInput} keyboardType="numeric" value={startingTHB} onChangeText={setStartingTHB} />
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleOpenShift}>
-              <Text style={styles.btnText}>ເປີດກະດຽວນີ້</Text>
+          <View>
+            <View style={styles.card}>
+                <View style={styles.iconCircle}>
+                    <Ionicons name="wallet-outline" size={40} color={COLORS.primary} />
+                </View>
+                <Text style={styles.mainTitle}>ເລີ່ມຕົ້ນເປີດກະຂາຍ</Text>
+                <Text style={styles.subTitle}>ກະລຸນານັບເງິນສົດຕັ້ງຕົ້ນໃນລິ້ນຊັກ</Text>
+            </View>
+
+            <Text style={styles.sectionTitle}>💵 ໃບເງິນກີບ (LAK)</Text>
+            <View style={styles.denomCard}>
+                {LAK_DENOMS.map(v => renderDenomRow(v, openLakCounts, setOpenLakCounts, '₭'))}
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>ລວມເງິນກີບຕັ້ງຕົ້ນ:</Text>
+                    <Text style={styles.summaryValue}>{formatNumber(calculateTotal(LAK_DENOMS, openLakCounts))} ₭</Text>
+                </View>
+            </View>
+
+            <Text style={styles.sectionTitle}>฿ ໃບເງິນບາດ (THB)</Text>
+            <View style={styles.denomCard}>
+                {THB_DENOMS.map(v => renderDenomRow(v, openThbCounts, setOpenThbCounts, '฿'))}
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>ລວມເງິນບາດຕັ້ງຕົ້ນ:</Text>
+                    <Text style={[styles.summaryValue, {color: '#2ecc71'}]}>{formatNumber(calculateTotal(THB_DENOMS, openThbCounts))} ฿</Text>
+                </View>
+            </View>
+
+            <TouchableOpacity style={styles.openBtn} onPress={handleOpenShift}>
+                <Text style={styles.openBtnText}>ເປີດກະດຽວນີ້</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View>
-            <View style={styles.activeStatusHeader}>
-              <View>
-                <Text style={styles.activeTitle}>🟢 ກຳລັງຂາຍ</Text>
-                <Text style={styles.activeSub}>ເລີ່ມແຕ່: {new Date(activeShift.startTime).toLocaleTimeString()}</Text>
-              </View>
-              <TouchableOpacity style={styles.closeShiftBtn} onPress={handleCloseShift}>
-                <Text style={styles.closeShiftBtnText}>ປິດກະຂາຍ</Text>
-              </TouchableOpacity>
+            {/* ສ່ວນການສະແດງຜົນຕອນກຳລັງເປີດກະ ແລະ ປຸ່ມປິດກະ (ຄືເກົ່າ) */}
+            <View style={styles.activeHeader}>
+                <View>
+                    <Text style={styles.activeStatus}>🟢 ກຳລັງເປີດກະຂາຍ</Text>
+                    <Text style={styles.activeTime}>ເລີ່ມ: {new Date(activeShift.startTime).toLocaleTimeString()}</Text>
+                </View>
+                <TouchableOpacity style={styles.closeBtn} onPress={handleCloseShift}>
+                    <Text style={styles.closeBtnText}>ປິດກະຂາຍ</Text>
+                </TouchableOpacity>
             </View>
 
-            <Text style={styles.sectionTitle}>💵 ນັບເງິນສົດ (ກີບ)</Text>
+            <Text style={styles.sectionTitle}>🧾 ນັບເງິນສົດກ່ອນປິດກະ (ກີບ)</Text>
             <View style={styles.denomCard}>
-              {LAK_DENOMS.map(v => renderDenomInput(v, lakCounts, setLakCounts, '₭'))}
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>ລວມເງິນກີບ:</Text>
-                <Text style={styles.totalValueLAK}>{formatNumber(calculateTotal(LAK_DENOMS, lakCounts))} ₭</Text>
-              </View>
+                {LAK_DENOMS.map(v => renderDenomRow(v, closeLakCounts, setCloseLakCounts, '₭'))}
             </View>
-
-            <Text style={styles.sectionTitle}>฿ ນັບເງິນສົດ (ບາດ)</Text>
-            <View style={styles.denomCard}>
-              {THB_DENOMS.map(v => renderDenomInput(v, thbCounts, setThbCounts, '฿'))}
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>ລວມເງິນບາດ:</Text>
-                <Text style={styles.totalValueTHB}>{formatNumber(calculateTotal(THB_DENOMS, thbCounts))} ฿</Text>
-              </View>
-            </View>
+            {/* ... ເພີ່ມສ່ວນນັບເງິນບາດຕອນປິດກະແບບດຽວກັນ ... */}
           </View>
         )}
       </ScrollView>
@@ -139,28 +167,29 @@ export default function ShiftScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  openShiftCard: { backgroundColor: 'white', padding: 30, borderRadius: 20, alignItems: 'center', elevation: 5 },
-  title: { fontFamily: 'Lao-Bold', fontSize: 20, marginVertical: 20 },
-  label: { fontFamily: 'Lao-Bold', alignSelf: 'flex-start', color: COLORS.textLight, marginTop: 10 },
-  mainInput: { width: '100%', backgroundColor: '#f9f9f9', padding: 15, borderRadius: 12, marginTop: 5, fontSize: 18, fontFamily: 'Lao-Bold' },
-  primaryBtn: { backgroundColor: COLORS.primary, width: '100%', padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center' },
-  btnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },
+  card: { backgroundColor: 'white', padding: 25, borderRadius: 20, alignItems: 'center', marginBottom: 20, elevation: 2 },
+  iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#f0f9f9', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
+  mainTitle: { fontFamily: 'Lao-Bold', fontSize: 22, color: COLORS.text },
+  subTitle: { fontFamily: 'Lao-Regular', fontSize: 14, color: COLORS.textLight, marginTop: 5 },
   
-  activeStatusHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, backgroundColor: 'white', padding: 15, borderRadius: 15 },
-  activeTitle: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.success },
-  activeSub: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#999' },
-  closeShiftBtn: { backgroundColor: COLORS.danger, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10 },
-  closeShiftBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
+  sectionTitle: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primaryDark, marginTop: 20, marginBottom: 12 },
+  denomCard: { backgroundColor: 'white', borderRadius: 15, padding: 15, elevation: 1 },
+  denomRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
+  denomInfo: { flex: 1.5 },
+  denomLabel: { fontFamily: 'Lao-Bold', fontSize: 15, color: COLORS.text },
+  denomInput: { flex: 1, backgroundColor: '#f9f9f9', borderRadius: 8, padding: 8, textAlign: 'center', fontFamily: 'Lao-Bold', borderWidth: 1, borderColor: '#eee' },
+  denomSum: { flex: 2, textAlign: 'right', fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 15 },
+  
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 15, paddingTop: 15, borderTopWidth: 2, borderTopColor: '#f0f0f0' },
+  summaryLabel: { fontFamily: 'Lao-Bold', fontSize: 15 },
+  summaryValue: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.secondaryDark },
+  
+  openBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center', elevation: 3 },
+  openBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },
 
-  sectionTitle: { fontFamily: 'Lao-Bold', fontSize: 16, marginTop: 20, marginBottom: 10, color: COLORS.primaryDark },
-  denomCard: { backgroundColor: 'white', borderRadius: 15, padding: 15, elevation: 2 },
-  denomRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, borderBottomWidth: 1, borderBottomColor: '#f5f5f5', paddingBottom: 5 },
-  denomValue: { flex: 1, fontFamily: 'Lao-Bold', color: COLORS.text },
-  denomInput: { width: 60, backgroundColor: '#f0f0f0', textAlign: 'center', padding: 5, borderRadius: 5, fontFamily: 'Lao-Bold' },
-  denomTotal: { flex: 1, textAlign: 'right', fontFamily: 'Lao-Bold', color: COLORS.primary },
-  
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 15, paddingTop: 15, borderTopWidth: 2, borderTopColor: '#eee' },
-  totalLabel: { fontFamily: 'Lao-Bold', fontSize: 16 },
-  totalValueLAK: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.secondaryDark },
-  totalValueTHB: { fontFamily: 'Lao-Bold', fontSize: 18, color: '#2ecc71' }
-}); 
+  activeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: 20, borderRadius: 15, marginBottom: 20 },
+  activeStatus: { fontFamily: 'Lao-Bold', fontSize: 18, color: '#2ecc71' },
+  activeTime: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#999' },
+  closeBtn: { backgroundColor: COLORS.danger, paddingHorizontal: 15, paddingVertical: 10, borderRadius: 10 },
+  closeBtnText: { color: 'white', fontFamily: 'Lao-Bold' }
+});

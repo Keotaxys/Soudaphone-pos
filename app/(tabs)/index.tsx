@@ -25,7 +25,6 @@ import HomeScreen from '../../src/components/screens/HomeScreen';
 import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
 import ReportScreen from '../../src/components/screens/ReportScreen';
-// 🟢 ເພີ່ມການ Import ໜ້າຈັດການກະຂາຍ
 import ShiftScreen from '../../src/components/screens/ShiftScreen';
 
 // Import UI Components
@@ -132,54 +131,6 @@ export default function App() {
     } catch (error) { Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ'); }
   };
 
-  if (!fontsLoaded || loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
-
-  // ============================================================
-  // Render Content Switcher (ຈັດການປ່ຽນໜ້າຈໍ)
-  // ============================================================
-  const renderContent = () => {
-    switch (currentTab) {
-        case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
-        case 'pos': return (
-                <POSScreen 
-                    products={products} cart={cart} addToCart={addToCart}
-                    openEditProductModal={(p) => { setEditingProduct(p); setProductModalVisible(true); }} 
-                    openAddProductModal={() => { setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); setProductModalVisible(true); }}
-                    openScanner={openScanner} totalItems={totalItems} totalLAK={totalLAK}
-                    formatNumber={formatNumber} updateQuantity={(id, d) => updateQuantity(id, d)}
-                    removeFromCart={(id) => removeFromCart(id)} onCheckout={handleCheckout}
-                />
-            );
-        case 'expense': return <ExpenseScreen />;
-        case 'report':
-        case 'history': return <ReportScreen salesHistory={salesHistory} />;
-        case 'orders': return <OrderTrackingScreen />; 
-        
-        // 🟢 Case ສຳລັບໜ້າ "ຈັດການກະຂາຍ"
-        case 'shifts': return <ShiftScreen />; 
-
-        default: return (
-            <View style={styles.center}>
-                <Text style={{fontFamily: 'Lao-Bold'}}>Coming Soon: {currentTab}</Text>
-            </View>
-        );
-    }
-  };
-
-  const updateQuantity = (id: string, delta: number) => { 
-      setCart(prev => prev.map(item => { 
-          if (item.id === id) { 
-              const product = products.find(p => p.id === id); 
-              const maxStock = product ? product.stock : item.quantity; 
-              const newQty = Math.max(1, Math.min(maxStock, item.quantity + delta)); 
-              return { ...item, quantity: newQty }; 
-          } 
-          return item; 
-      })); 
-  };
-
-  const removeFromCart = (id: string) => { setCart(prev => prev.filter(item => item.id !== id)); };
-
   const openScanner = async (mode: 'sell' | 'edit' = 'sell') => {
     if (!permission?.granted) { const { granted } = await requestPermission(); if (!granted) return; }
     setScanMode(mode);
@@ -209,6 +160,52 @@ export default function App() {
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
+
+  if (!fontsLoaded || loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+
+  // ============================================================
+  // Render Content Switcher
+  // ============================================================
+  const renderContent = () => {
+    switch (currentTab) {
+        case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
+        case 'pos': return (
+                <POSScreen 
+                    products={products} cart={cart} addToCart={addToCart}
+                    openEditProductModal={(p) => { setEditingProduct(p); setProductModalVisible(true); }} 
+                    openAddProductModal={() => { setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); setProductModalVisible(true); }}
+                    openScanner={openScanner} totalItems={totalItems} totalLAK={totalLAK}
+                    formatNumber={formatNumber} updateQuantity={(id, d) => {
+                        setCart(prev => prev.map(item => { 
+                            if (item.id === id) { 
+                                const product = products.find(p => p.id === id); 
+                                const maxStock = product ? product.stock : item.quantity; 
+                                return { ...item, quantity: Math.max(1, Math.min(maxStock, item.quantity + d)) }; 
+                            } 
+                            return item; 
+                        }));
+                    }}
+                    removeFromCart={(id) => setCart(prev => prev.filter(item => item.id !== id))} 
+                    onCheckout={handleCheckout}
+                />
+            );
+        case 'expense': return <ExpenseScreen />;
+        case 'report':
+        case 'history': return <ReportScreen salesHistory={salesHistory} />;
+        case 'orders': return <OrderTrackingScreen />; 
+        
+        // 🟢 ແກ້ໄຂ: ເພີ່ມ Case 'shift' ໃຫ້ຕົງກັບຄ່າທີ່ Sidebar ສົ່ງມາ
+        case 'shifts':
+        case 'shift': 
+            return <ShiftScreen />; 
+
+        default: return (
+            <View style={styles.center}>
+                <Text style={{fontFamily: 'Lao-Bold', fontSize: 18}}>Coming Soon: {currentTab}</Text>
+            </View>
+        );
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>

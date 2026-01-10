@@ -1,6 +1,6 @@
 // src/types.ts
 
-// 🟢 1. Product Interface (ສິນຄ້າ)
+// 🟢 1. Product Interface (ສິນຄ້າໃນສະຕັອກ)
 export interface Product {
   id?: string;
   name: string;
@@ -12,12 +12,12 @@ export interface Product {
   category?: string;
 }
 
-// 🟢 2. CartItem Interface
+// 🟢 2. CartItem Interface (ສິນຄ້າໃນກະຕ່າຂາຍ)
 export interface CartItem extends Product {
   quantity: number;
 }
 
-// 🟢 3. SaleRecord Interface (ປະຫວັດການຂາຍ)
+// 🟢 3. SaleRecord Interface (ປະຫວັດການຂາຍໜ້າຮ້ານ)
 export interface SaleRecord {
   id?: string;
   items: CartItem[];
@@ -45,28 +45,39 @@ export interface ExpenseRecord {
   createdAt: string;
 }
 
-// 🟢 5. CustomerOrder Interface (ຕິດຕາມຄຳສັ່ງຊື້ - 🟢 ເພີ່ມບ່ອນນີ້!)
-export interface CustomerOrder {
-  id?: string;
-  customerName: string;
-  date: string;
+// 🟢 5. OrderItem Interface (ລາຍຊື່ສິນຄ້າຍ່ອຍໃນອໍເດີ Online)
+export interface OrderItem {
+  id: string;
   productName: string;
-  source: string;
+  source: string; // ຈີນ, ຫວຽດ, ໄທ
   quantity: number;
   costPrice: number;
   salePrice: number;
   link?: string;
   imageUrl?: string;
-  status: 'ຮັບອໍເດີ້' | 'ສັ່ງເຄື່ອງແລ້ວ' | 'ເຄື່ອງຮອດແລ້ວ' | 'ຈັດສົ່ງສຳເລັດ';
+  status: 'ຮັບອໍເດີ້' | 'ສັ່ງເຄື່ອງແລ້ວ' | 'ເຄື່ອງຮອດແລ້ວ' | 'ຈັດສົ່ງສຳເລັດ'; // ສະຖານະແຍກແຕ່ລະຊິ້ນ
+}
+
+// 🟢 6. CustomerOrder Interface (ຕິດຕາມຄຳສັ່ງຊື້ລວມ)
+export interface CustomerOrder {
+  id?: string;
+  customerName: string;
+  date: string;
+  items: OrderItem[]; // ຮອງຮັບ 1 ລູກຄ້າສັ່ງຫຼາຍຢ່າງ
+  totalAmount: number;
   createdAt: string;
 }
 
-// 🟢 6. COLORS (Theme Teal + Orange)
+// 🟢 7. COLORS (Theme Teal + Orange)
 export const COLORS = {
-  primary: '#008B94',      // Teal
+  // ສີ Teal ຕາມ PMS 320 2X
+  primary: '#008B94',      
   primaryDark: '#006064',
-  secondary: '#FFB300',    // Orange
+  
+  // ສີສົ້ມພາສເທວສຳລັບຈຸດເນັ້ນ
+  secondary: '#FFB300',    
   secondaryDark: '#FF8F00',
+  
   background: '#F5F9FA',
   text: '#37474F',
   textLight: '#90A4AE',
@@ -78,16 +89,18 @@ export const COLORS = {
 
 export const SIDEBAR_WIDTH = 250;
 
-// 🟢 7. Helper Functions
+// 🟢 8. Helper Functions
+// ຟັງຊັນຈັດຮູບແບບຕົວເລກ (Noto Sans Lao)
 export const formatNumber = (num: number | string | undefined) => {
   if (num === undefined || num === null || num === '') return '0';
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
+// ຟັງຊັນຈັດຮູບແບບວັນທີ
 export const formatDate = (date: Date) => {
     const d = new Date(date);
     const day = `0${d.getDate()}`.slice(-2);
     const month = `0${d.getMonth() + 1}`.slice(-2);
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
-};  
+};

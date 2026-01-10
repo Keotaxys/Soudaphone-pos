@@ -104,3 +104,25 @@ export const formatDate = (date: Date) => {
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
 };
+// ເພີ່ມເຂົ້າໃນ src/types.ts
+
+export interface CashDenomination {
+  value: number;
+  count: number;
+}
+
+export interface ShiftRecord {
+  id?: string;
+  startTime: string;
+  endTime?: string;
+  status: 'OPEN' | 'CLOSED';
+  startingCashLAK: number;
+  startingCashTHB: number;
+  denominationsLAK: CashDenomination[];
+  denominationsTHB: CashDenomination[];
+  totalSalesLAK?: number;
+  totalSalesTHB?: number;
+  actualCashLAK?: number;
+  actualCashTHB?: number;
+  note?: string;
+}

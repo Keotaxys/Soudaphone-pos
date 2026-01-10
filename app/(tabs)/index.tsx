@@ -1,9 +1,8 @@
 import { useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import * as ImagePicker from 'expo-image-picker';
-import { onValue, push, ref, remove, update } from 'firebase/database';
+import { onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
-// 🟢 ຕ້ອງແນ່ໃຈວ່າ Text ມາຈາກ react-native ເທົ່ານັ້ນ
 import {
   ActivityIndicator,
   Alert,
@@ -23,10 +22,11 @@ import { CartItem, COLORS, formatNumber, Product, SaleRecord, SIDEBAR_WIDTH } fr
 // Import Screens
 import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
+import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
 import ReportScreen from '../../src/components/screens/ReportScreen';
-// 🟢 Import ໜ້າຕິດຕາມຄຳສັ່ງຊື້
-import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
+// 🟢 ເພີ່ມການ Import ໜ້າຈັດການກະຂາຍ
+import ShiftScreen from '../../src/components/screens/ShiftScreen';
 
 // Import UI Components
 import Footer from '../../src/components/ui/Footer';
@@ -38,7 +38,6 @@ import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
 
 export default function App() {
-  // Load Fonts
   const [fontsLoaded] = useFonts({
     'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'),
     'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
@@ -66,11 +65,8 @@ export default function App() {
       name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: ''
   });
 
-  // ============================================================
   // Firebase Listeners
-  // ============================================================
   useEffect(() => {
-    // ດຶງຂໍ້ມູນສິນຄ້າ
     const productsRef = ref(db, 'products');
     const unsubscribeProducts = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -81,23 +77,17 @@ export default function App() {
       setLoading(false);
     });
 
-    // ດຶງຂໍ້ມູນການຂາຍ (Real-time) ຈາກ Path 'sales'
     const salesRef = ref(db, 'sales');
     const unsubscribeSales = onValue(salesRef, (snapshot) => {
         if(snapshot.exists()){
             const data = snapshot.val();
             const salesList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-            // ລຽງຈາກໃໝ່ຫາເກົ່າ ແລະ ສົ່ງໃຫ້ state ຫຼັກ
             setSalesHistory(salesList.reverse() as SaleRecord[]);
         } else { setSalesHistory([]); }
     });
 
     return () => { unsubscribeProducts(); unsubscribeSales(); };
   }, []);
-
-  // ============================================================
-  // Logic Functions
-  // ============================================================
 
   const toggleMenu = (show: boolean) => {
     if (show) { 
@@ -118,20 +108,6 @@ export default function App() {
         } 
         return [...prev, { ...product, quantity: 1 } as CartItem]; 
     });
-  };
-
-  const removeFromCart = (id: string) => { setCart(prev => prev.filter(item => item.id !== id)); };
-
-  const updateQuantity = (id: string, delta: number) => { 
-      setCart(prev => prev.map(item => { 
-          if (item.id === id) { 
-              const product = products.find(p => p.id === id); 
-              const maxStock = product ? product.stock : item.quantity; 
-              const newQty = Math.max(1, Math.min(maxStock, item.quantity + delta)); 
-              return { ...item, quantity: newQty }; 
-          } 
-          return item; 
-      })); 
   };
 
   const handleCheckout = async (paymentDetails: any) => {
@@ -156,27 +132,54 @@ export default function App() {
     } catch (error) { Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ'); }
   };
 
-  const deleteSale = (id: string) => { 
-      Alert.alert('ຢືນຢັນ', 'ຕ້ອງການລຶບລາຍການນີ້ບໍ່?', [{ text: 'ຍົກເລີກ', style: 'cancel' }, { text: 'ລຶບ', style: 'destructive', onPress: async () => { try { await remove(ref(db, `sales/${id}`)); } catch(e) { Alert.alert('Error', 'ລຶບບໍ່ໄດ້'); } } }]); 
+  if (!fontsLoaded || loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+
+  // ============================================================
+  // Render Content Switcher (ຈັດການປ່ຽນໜ້າຈໍ)
+  // ============================================================
+  const renderContent = () => {
+    switch (currentTab) {
+        case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
+        case 'pos': return (
+                <POSScreen 
+                    products={products} cart={cart} addToCart={addToCart}
+                    openEditProductModal={(p) => { setEditingProduct(p); setProductModalVisible(true); }} 
+                    openAddProductModal={() => { setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); setProductModalVisible(true); }}
+                    openScanner={openScanner} totalItems={totalItems} totalLAK={totalLAK}
+                    formatNumber={formatNumber} updateQuantity={(id, d) => updateQuantity(id, d)}
+                    removeFromCart={(id) => removeFromCart(id)} onCheckout={handleCheckout}
+                />
+            );
+        case 'expense': return <ExpenseScreen />;
+        case 'report':
+        case 'history': return <ReportScreen salesHistory={salesHistory} />;
+        case 'orders': return <OrderTrackingScreen />; 
+        
+        // 🟢 Case ສຳລັບໜ້າ "ຈັດການກະຂາຍ"
+        case 'shifts': return <ShiftScreen />; 
+
+        default: return (
+            <View style={styles.center}>
+                <Text style={{fontFamily: 'Lao-Bold'}}>Coming Soon: {currentTab}</Text>
+            </View>
+        );
+    }
   };
 
-  const openAddProductModal = () => { setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); setProductModalVisible(true); };
-  const openEditProductModal = (product: Product) => { setEditingProduct({ ...product }); setProductModalVisible(true); };
-  
-  const pickImage = async () => { 
-      let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true }); 
-      if (!result.canceled) { const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`; setEditingProduct({ ...editingProduct, imageUrl: base64Img }); } 
+  const updateQuantity = (id: string, delta: number) => { 
+      setCart(prev => prev.map(item => { 
+          if (item.id === id) { 
+              const product = products.find(p => p.id === id); 
+              const maxStock = product ? product.stock : item.quantity; 
+              const newQty = Math.max(1, Math.min(maxStock, item.quantity + delta)); 
+              return { ...item, quantity: newQty }; 
+          } 
+          return item; 
+      })); 
   };
-  
-  const saveProduct = async () => { 
-      if (!editingProduct.name || !editingProduct.price) { Alert.alert('ຂໍ້ມູນບໍ່ຄົບ'); return; } 
-      try { 
-          if (editingProduct.id) { await update(ref(db, `products/${editingProduct.id}`), editingProduct); } 
-          else { await push(ref(db, `products`), editingProduct); } 
-          setProductModalVisible(false); 
-      } catch (error) { Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້'); } 
-  };
-  
+
+  const removeFromCart = (id: string) => { setCart(prev => prev.filter(item => item.id !== id)); };
+
   const openScanner = async (mode: 'sell' | 'edit' = 'sell') => {
     if (!permission?.granted) { const { granted } = await requestPermission(); if (!granted) return; }
     setScanMode(mode);
@@ -195,76 +198,39 @@ export default function App() {
     else { setIsScanning(false); Alert.alert('❌ ບໍ່ພົບສິນຄ້າ', `Barcode: ${data}`); }
   };
 
+  const saveProduct = async () => { 
+      if (!editingProduct.name || !editingProduct.price) { Alert.alert('ຂໍ້ມູນບໍ່ຄົບ'); return; } 
+      try { 
+          if (editingProduct.id) { await update(ref(db, `products/${editingProduct.id}`), editingProduct); } 
+          else { await push(ref(db, `products`), editingProduct); } 
+          setProductModalVisible(false); 
+      } catch (error) { Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້'); } 
+  };
+
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
-  if (!fontsLoaded || loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
-
-  // ============================================================
-  // Render Content Switcher
-  // ============================================================
-  const renderContent = () => {
-    switch (currentTab) {
-        case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
-        case 'pos': return (
-                <POSScreen 
-                    products={products} cart={cart} addToCart={addToCart}
-                    openEditProductModal={openEditProductModal} openAddProductModal={openAddProductModal}
-                    openScanner={openScanner} totalItems={totalItems} totalLAK={totalLAK}
-                    formatNumber={formatNumber} updateQuantity={updateQuantity}
-                    removeFromCart={removeFromCart} onCheckout={handleCheckout}
-                />
-            );
-        case 'expense': return <ExpenseScreen />;
-        
-        // 🟢 ແກ້ໄຂບ່ອນນີ້: ເພີ່ມ case 'history' ໃຫ້ຕົງກັບຄ່າທີ່ Footer/Sidebar ສົ່ງມາ
-        case 'report':
-        case 'history': 
-            return <ReportScreen salesHistory={salesHistory} />;
-            
-        case 'orders': return <OrderTrackingScreen />; 
-        default: return <View style={styles.center}><Text style={{fontFamily: 'Lao-Regular'}}>Coming Soon: {currentTab}</Text></View>;
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <Header onMenuPress={() => toggleMenu(true)} />
-
-      {/* Main Content Area */}
       <View style={{flex: 1, backgroundColor: COLORS.background}}>
           {renderContent()}
       </View>
-
-      {/* Footer Navigation */}
       <Footer currentTab={currentTab} onTabChange={(tab) => setCurrentTab(tab)} />
-
-      {/* Sidebar Menu */}
       <Sidebar 
-        visible={menuVisible} 
-        slideAnim={slideAnim} 
-        onClose={() => toggleMenu(false)}
-        currentTab={currentTab} 
-        onNavigate={(tab) => { 
-            setCurrentTab(tab); 
-            toggleMenu(false); 
-        }} 
+        visible={menuVisible} slideAnim={slideAnim} onClose={() => toggleMenu(false)}
+        currentTab={currentTab} onNavigate={(tab) => { setCurrentTab(tab); toggleMenu(false); }}
       />
-
-      {/* Modals */}
       <ProductModal 
-        visible={productModalVisible} 
-        onClose={() => setProductModalVisible(false)} 
-        product={editingProduct} 
-        setProduct={setEditingProduct} 
-        onSave={saveProduct} 
-        onPickImage={pickImage} 
+        visible={productModalVisible} onClose={() => setProductModalVisible(false)} 
+        product={editingProduct} setProduct={setEditingProduct} onSave={saveProduct} 
+        onPickImage={async () => {
+            let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true }); 
+            if (!result.canceled) { setEditingProduct({ ...editingProduct, imageUrl: `data:image/jpeg;base64,${result.assets[0].base64}` }); }
+        }} 
         onScan={() => openScanner('edit')}
       />
-
       <ScannerModal visible={isScanning} onClose={() => setIsScanning(false)} onScanned={handleBarCodeScanned} />
-
     </SafeAreaView>
   );
 }

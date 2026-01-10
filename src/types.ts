@@ -1,75 +1,68 @@
-import { Dimensions } from 'react-native';
+// src/types.ts
 
-// Interfaces
+// 🟢 1. Product Interface (ເພີ່ມ category)
 export interface Product {
   id?: string;
   name: string;
   price: number;
   stock: number;
+  priceCurrency: 'LAK' | 'THB';
   imageUrl?: string;
-  priceCurrency?: 'LAK' | 'THB';
   barcode?: string;
+  category?: string; // 🟢 ຕ້ອງເພີ່ມແຖວນີ້ເຂົ້າໄປ ບັນຫາຈຶ່ງຈະຫາຍ!
 }
 
+// 🟢 2. CartItem Interface (ສືບທອດຈາກ Product)
 export interface CartItem extends Product {
   quantity: number;
-  id: string;
 }
 
+// 🟢 3. SaleRecord Interface (ສຳລັບບັນທຶກການຂາຍ)
 export interface SaleRecord {
-  id: string;
-  date: string;
-  total: number;
+  id?: string;
   items: CartItem[];
+  subTotal: number;
+  discount: number;
+  total: number;
+  amountReceived: number;
+  change: number;
   currency: 'LAK' | 'THB';
+  totalPaid?: number; // ຍອດທີ່ຈ່າຍຈິງຕາມສະກຸນເງິນ
   paymentMethod: 'CASH' | 'QR';
-  amountReceived?: number;
-  change?: number;
+  source: string;
+  date: string;
+  status: string;
+  createdAt: string;
 }
 
-// Constants
-export const { width } = Dimensions.get('window');
-export const COLUMN_COUNT = 2;
-export const CARD_WIDTH = (width / COLUMN_COUNT) - 20;
-export const SIDEBAR_WIDTH = width * 0.75;
-
-// Theme Colors (Green & Orange)
+// 🟢 4. Constants & Colors (ສີ Theme ພາສເທວ)
 export const COLORS = {
-  primary: '#4DB6AC',    
-  primaryDark: '#009688', 
-  secondary: '#FFB74D',  
-  secondaryDark: '#F57C00', 
-  background: '#F0F4F4', 
-  cardBg: '#FFFFFF',
-  text: '#424242',
-  textLight: '#757575',
-  danger: '#EF5350',
-  success: '#66BB6A',
-  blue: '#42A5F5',
-  white: '#FFFFFF'
+  primary: '#88C9A1',      // Pastel Green (Main)
+  primaryDark: '#557C55',  // Darker Green (Text)
+  secondary: '#FFD3B6',    // Pastel Orange (Accent)
+  secondaryDark: '#E09E72',// Darker Orange (Text)
+  background: '#F9FBF9',   // Off-white Greenish
+  text: '#4A4A4A',
+  textLight: '#888888',
+  success: '#81C784',      // Green Success
+  danger: '#E57373',       // Red Danger
+  white: '#FFFFFF',
+  gray: '#F0F0F0'
 };
 
-// Helper Functions
-export const formatNumber = (num: number | string) => {
-  if (!num && num !== 0) return '';
-  const parts = num.toString().split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return parts.join('.');
+export const SIDEBAR_WIDTH = 250;
+
+// 🟢 5. Helper Functions
+export const formatNumber = (num: number | string | undefined) => {
+  if (num === undefined || num === null || num === '') return '0';
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
-export const formatDate = (dateString: string | Date) => {
-  const date = new Date(dateString);
-  const d = date.getDate().toString().padStart(2, '0');
-  const m = (date.getMonth() + 1).toString().padStart(2, '0');
-  const y = date.getFullYear();
-  return `${d}/${m}/${y}`;
+export const formatDate = (date: Date) => {
+    // Format: DD/MM/YYYY
+    const d = new Date(date);
+    const day = `0${d.getDate()}`.slice(-2);
+    const month = `0${d.getMonth() + 1}`.slice(-2);
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
 };
-// ... (Interface ເດີມ)
-
-export interface ExpenseRecord {
-  id: string;
-  title: string;
-  amount: number;
-  date: string; // ISO String
-  category: string;
-}

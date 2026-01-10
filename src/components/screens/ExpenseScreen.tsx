@@ -17,16 +17,22 @@ import {
 import { db } from '../../firebase';
 import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
 
-// 🟢 ໝວດໝູ່ລາຍຈ່າຍ (ອ້າງອີງຈາກ Web App ຮູບ 7.png)
+// 🟢 ລາຍຊື່ໝວດໝູ່ (ລຽງຕາມຮູບທີ່ສົ່ງມາ)
 const EXPENSE_CATEGORIES = [
-    'ສັ່ງສິນຄ້າ',
-    'ຄ່ານ້ຳ/ຄ່າໄຟ',
-    'ເງິນເດືອນພະນັກງານ',
-    'ຄ່າເຊົ່າສະຖານທີ່',
+    'ຄ່າເຊົ່າ',
     'ປັບປຸງສະຖານທີ່',
-    'ອຸປະກອນສິ້ນເປືອງ',
-    'ການຕະຫຼາດ/ໂຄສະນາ',
-    'ອື່ນໆ'
+    'ໄຟຟ້າ',
+    'ນ້ຳປະປາ',
+    'ອິນເຕີເນັດ',
+    'ພະນັກງານ',
+    'ດອກເບ້ຍເງິນກູ້',
+    'ດອກເບ້ຍບັດເຄຣດິດ',
+    'ຂົນສົ່ງ',
+    'ພາຫະນະຮັບໃຊ້',
+    'ຖົງ ແລະ ເຄື່ອງແພັກ',
+    'ໂຄສະນາ ແລະ ການຕະຫຼາດ',
+    'ບໍລິການອອນລາຍ',
+    'ສັ່ງສິນຄ້າ'
 ];
 
 export default function ExpenseScreen() {
@@ -36,17 +42,20 @@ export default function ExpenseScreen() {
     const [loading, setLoading] = useState(true);
 
     // --- State ຟອມບັນທຶກ ---
-    const [id, setId] = useState<string | null>(null); // ຖ້າມີ ID ແປວ່າກຳລັງແກ້ໄຂ
+    const [id, setId] = useState<string | null>(null);
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
-    const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
+    
+    // 🟢 ຕັ້ງຄ່າເລີ່ມຕົ້ນເປັນ "ສັ່ງສິນຄ້າ"
+    const [category, setCategory] = useState('ສັ່ງສິນຄ້າ'); 
+    
     const [selectedDate, setSelectedDate] = useState(new Date());
     
     // --- UI States ---
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
-    // 🟢 1. ດຶງຂໍ້ມູນຈາກ Firebase Realtime Database
+    // 1. ດຶງຂໍ້ມູນຈາກ Firebase
     useEffect(() => {
         const expenseRef = ref(db, 'expenses');
         const unsubscribe = onValue(expenseRef, (snapshot) => {
@@ -67,7 +76,7 @@ export default function ExpenseScreen() {
         return () => unsubscribe();
     }, []);
 
-    // 🟢 2. ຟັງຊັນບັນທຶກ (ເພີ່ມໃໝ່ ຫຼື ແກ້ໄຂ)
+    // 2. ຟັງຊັນບັນທຶກ
     const handleSave = async () => {
         if (!amount || !description) {
             Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຈຳນວນເງິນ ແລະ ລາຍລະອຽດ');
@@ -84,11 +93,11 @@ export default function ExpenseScreen() {
 
         try {
             if (id) {
-                // ແກ້ໄຂ (Update)
+                // ແກ້ໄຂ
                 await update(ref(db, `expenses/${id}`), expenseData);
                 Alert.alert('ສຳເລັດ', 'ແກ້ໄຂລາຍຈ່າຍແລ້ວ');
             } else {
-                // ເພີ່ມໃໝ່ (Create)
+                // ເພີ່ມໃໝ່
                 await push(ref(db, 'expenses'), expenseData);
                 Alert.alert('ສຳເລັດ', 'ບັນທຶກລາຍຈ່າຍແລ້ວ');
             }
@@ -99,7 +108,7 @@ export default function ExpenseScreen() {
         }
     };
 
-    // 🟢 3. ຟັງຊັນລຶບ
+    // 3. ຟັງຊັນລຶບ
     const handleDelete = (deleteId: string) => {
         Alert.alert('ຢືນຢັນການລຶບ', 'ທ່ານຕ້ອງການລຶບລາຍການນີ້ແທ້ບໍ່?', [
             { text: 'ຍົກເລີກ', style: 'cancel' },
@@ -109,7 +118,7 @@ export default function ExpenseScreen() {
                 onPress: async () => {
                     try {
                         await remove(ref(db, `expenses/${deleteId}`));
-                        if (id === deleteId) resetForm(); // ຖ້າກຳລັງແກ້ໄຂອັນທີ່ລຶບ ໃຫ້ reset ຟອມ
+                        if (id === deleteId) resetForm();
                     } catch (error) {
                         Alert.alert('Error', 'ລຶບບໍ່ໄດ້');
                     }
@@ -118,7 +127,7 @@ export default function ExpenseScreen() {
         ]);
     };
 
-    // 🟢 4. ຟັງຊັນກຽມແກ້ໄຂ (ເອົາຂໍ້ມູນໃສ່ຟອມ)
+    // 4. ຟັງຊັນກຽມແກ້ໄຂ
     const handleEdit = (item: ExpenseRecord) => {
         setId(item.id!);
         setAmount(item.amount.toString());
@@ -131,7 +140,7 @@ export default function ExpenseScreen() {
         setId(null);
         setAmount('');
         setDescription('');
-        setCategory(EXPENSE_CATEGORIES[0]);
+        setCategory('ສັ່ງສິນຄ້າ'); // 🟢 Reset ກັບມາເປັນ "ສັ່ງສິນຄ້າ"
         setSelectedDate(new Date());
     };
 
@@ -142,11 +151,10 @@ export default function ExpenseScreen() {
 
     return (
         <View style={styles.container}>
-            {/* --- ສ່ວນຟອມບັນທຶກ (Form Section) --- */}
+            {/* Form Section */}
             <View style={styles.formCard}>
                 <Text style={styles.headerTitle}>{id ? '✏️ ແກ້ໄຂລາຍຈ່າຍ' : '➕ ເພີ່ມລາຍຈ່າຍ'}</Text>
                 
-                {/* ວັນທີ & ໝວດໝູ່ */}
                 <View style={styles.row}>
                     <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
@@ -159,15 +167,13 @@ export default function ExpenseScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* ລາຍລະອຽດ */}
                 <TextInput
                     style={styles.input}
-                    placeholder="ລາຍລະອຽດ (ຕົວຢ່າງ: ຄ່າໄຟເດືອນ 1)"
+                    placeholder="ລາຍລະອຽດ (ຕົວຢ່າງ: ສັ່ງເຄື່ອງຈາກຈີນ)"
                     value={description}
                     onChangeText={setDescription}
                 />
 
-                {/* ຈຳນວນເງິນ */}
                 <View style={styles.amountContainer}>
                     <Text style={styles.currencyLabel}>₭</Text>
                     <TextInput
@@ -179,7 +185,6 @@ export default function ExpenseScreen() {
                     />
                 </View>
 
-                {/* ປຸ່ມບັນທຶກ & ຍົກເລີກ */}
                 <View style={styles.actionRow}>
                     {id && (
                         <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
@@ -195,7 +200,7 @@ export default function ExpenseScreen() {
                 </View>
             </View>
 
-            {/* --- ລາຍການປະຫວັດ (List Section) --- */}
+            {/* List Section */}
             <View style={styles.listContainer}>
                 <Text style={styles.listHeader}>📜 ປະຫວັດລາຍຈ່າຍ</Text>
                 <FlatList
@@ -230,7 +235,7 @@ export default function ExpenseScreen() {
                 />
             </View>
 
-            {/* --- Date Picker Modal --- */}
+            {/* Date Picker Modal */}
             {showDatePicker && (
                 <DateTimePicker
                     value={selectedDate}
@@ -240,7 +245,7 @@ export default function ExpenseScreen() {
                 />
             )}
 
-            {/* --- Category Picker Modal --- */}
+            {/* Category Picker Modal */}
             <Modal visible={showCategoryPicker} transparent={true} animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
@@ -248,6 +253,7 @@ export default function ExpenseScreen() {
                         <FlatList
                             data={EXPENSE_CATEGORIES}
                             keyExtractor={(item) => item}
+                            showsVerticalScrollIndicator={false}
                             renderItem={({ item }) => (
                                 <TouchableOpacity 
                                     style={styles.categoryItem} 
@@ -282,7 +288,7 @@ const styles = StyleSheet.create({
     categoryText: { fontFamily: 'Lao-Regular', color: '#333' },
     
     input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Regular', marginBottom: 10 },
-    amountContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', borderRadius: 8, paddingHorizontal: 15, borderWidth: 1, borderColor: COLORS.secondary },
+    amountContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF8E1', borderRadius: 8, paddingHorizontal: 15, borderWidth: 1, borderColor: COLORS.secondary },
     currencyLabel: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.secondaryDark, marginRight: 10 },
     amountInput: { flex: 1, fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.secondaryDark, paddingVertical: 10 },
     

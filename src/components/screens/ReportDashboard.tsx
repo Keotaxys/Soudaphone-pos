@@ -115,6 +115,7 @@ export default function ReportDashboard() {
     setFilteredSales(fSales);
     setTotalRevenue(fSales.reduce((sum, s) => sum + parseCurrency(s.total || s.amountReceived), 0));
 
+    // Stats
     const productStats: any = {};
     const catStats: any = {};
 
@@ -173,10 +174,8 @@ export default function ReportDashboard() {
     setCurrentDate(newDate);
   };
 
-  // 🟢 Generate Excel (CSV) - ແກ້ໄຂ Type
   const generateExcel = async () => {
       let csvContent = "Date,Type,Category,Description,Amount\n";
-      
       filteredSales.forEach(s => {
           csvContent += `${new Date(s.date).toLocaleDateString()},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
       });
@@ -186,15 +185,10 @@ export default function ReportDashboard() {
 
       try {
           const docDir = FileSystem.documentDirectory;
-          const fileName = `${docDir}report_${new Date().getTime()}.csv`; // ໃຊ້ນາມສະກຸນ .csv
+          const fileName = `${docDir}report_${new Date().getTime()}.csv`;
           
           await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
-          
-          // 🟢 ໃຊ້ Type ທີ່ຊັດເຈນເພື່ອໃຫ້ iOS ຮູ້ວ່າແມ່ນ CSV/Excel
-          await shareAsync(fileName, {
-              mimeType: 'text/csv', 
-              UTI: 'public.comma-separated-values-text' 
-          });
+          await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
       } catch (error) {
           Alert.alert("Error", "ບໍ່ສາມາດ Export Excel ໄດ້: " + error);
       }
@@ -272,24 +266,33 @@ export default function ReportDashboard() {
       );
   };
 
-  const SimpleChart = () => {
+  // 🟢 Horizontal Chart (ແກ້ໄຂຕາມຄຳຂໍ: ລວງນອນ + ສີສົ້ມ)
+  const HorizontalChart = () => {
     const maxVal = Math.max(totalRevenue, totalExpense) || 1;
-    const revHeight = (totalRevenue / maxVal) * 150;
-    const expHeight = (totalExpense / maxVal) * 150;
-
+    
     return (
         <View style={styles.chartBox}>
             <Text style={styles.chartTitle}>ປຽບທຽບ ລາຍຮັບ vs ລາຍຈ່າຍ</Text>
-            <View style={styles.chartArea}>
-                <View style={styles.barGroup}>
-                    <Text style={[styles.barLabel, {color: COLORS.primary}]}>{formatNumber(totalRevenue)}</Text>
-                    <View style={[styles.bar, { height: revHeight || 2, backgroundColor: COLORS.primary }]} />
-                    <Text style={styles.barTitle}>ລາຍຮັບ</Text>
+            
+            {/* ລາຍຮັບ (Income) */}
+            <View style={styles.hChartRow}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
+                    <Text style={styles.chartLabel}>ລາຍຮັບ</Text>
+                    <Text style={[styles.chartValue, {color: COLORS.primary}]}>{formatNumber(totalRevenue)} ₭</Text>
                 </View>
-                <View style={styles.barGroup}>
-                    <Text style={[styles.barLabel, {color: COLORS.danger}]}>{formatNumber(totalExpense)}</Text>
-                    <View style={[styles.bar, { height: expHeight || 2, backgroundColor: COLORS.danger }]} />
-                    <Text style={styles.barTitle}>ລາຍຈ່າຍ</Text>
+                <View style={styles.chartTrack}>
+                    <View style={[styles.chartBar, { width: `${(totalRevenue / maxVal) * 100}%`, backgroundColor: COLORS.primary }]} />
+                </View>
+            </View>
+
+            {/* ລາຍຈ່າຍ (Expense) - ໃຊ້ສີສົ້ມ */}
+            <View style={styles.hChartRow}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
+                    <Text style={styles.chartLabel}>ລາຍຈ່າຍ</Text>
+                    <Text style={[styles.chartValue, {color: '#F57C00'}]}>{formatNumber(totalExpense)} ₭</Text>
+                </View>
+                <View style={styles.chartTrack}>
+                    <View style={[styles.chartBar, { width: `${(totalExpense / maxVal) * 100}%`, backgroundColor: '#F57C00' }]} />
                 </View>
             </View>
         </View>
@@ -312,8 +315,10 @@ export default function ReportDashboard() {
                         <View style={{flex: 1}}><SummaryCard label="ລາຍຈ່າຍ" amount={totalExpense} color={COLORS.danger} icon="wallet" /></View>
                       </View>
                       
-                      <SimpleChart />
+                      {/* 🟢 Chart ລວງນອນ (Horizontal) */}
+                      <HorizontalChart />
 
+                      {/* 🟢 5 ອັນດັບສິນຄ້າຂາຍດີ */}
                       {topProducts.length > 0 && (
                           <View style={styles.topProductsCard}>
                               <View style={styles.sectionHeaderRow}>
@@ -412,7 +417,8 @@ export default function ReportDashboard() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ລາຍງານ (Reports)</Text>
         <View style={{flexDirection: 'row', gap: 5}}>
-            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: '#1D6F42'}]} onPress={generateExcel}>
+            {/* 🟢 ປຸ່ມ Excel ປ່ຽນເປັນສີ Theme */}
+            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: COLORS.primary}]} onPress={generateExcel}>
                 <Ionicons name="document-text-outline" size={16} color="white" />
                 <Text style={styles.exportText}>Excel</Text>
             </TouchableOpacity>
@@ -464,8 +470,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: { padding: 20, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee' },
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text },
+  
+  // 🟢 ປຸ່ມ Export (ສີຈະຖືກ Override ໃນ Component)
   exportBtn: { flexDirection: 'row', backgroundColor: '#F57C00', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, alignItems: 'center', gap: 3 },
   exportText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 11 },
+  
   filterBar: { flexDirection: 'row', backgroundColor: 'white', padding: 10, alignItems: 'center', justifyContent: 'space-between', elevation: 1 },
   filterChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 15, backgroundColor: '#f0f0f0', marginRight: 5 },
   activeFilter: { backgroundColor: COLORS.primary },
@@ -483,21 +492,17 @@ const styles = StyleSheet.create({
   cardAmount: { fontSize: 18, fontFamily: 'Lao-Bold', marginTop: 2 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   
-  // 🟢 Chart Area Styles
+  // 🟢 Chart Styles Updated
   chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
-  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 10 },
-  chartArea: { flexDirection: 'row', alignItems: 'flex-end', height: 180, gap: 40 },
-  barGroup: { alignItems: 'center' },
-  bar: { width: 40, borderRadius: 5 },
-  barLabel: { fontSize: 12, fontFamily: 'Lao-Bold', marginBottom: 5 },
-  barTitle: { marginTop: 10, fontFamily: 'Lao-Regular', color: '#666' },
-  
-  // 🟢 Category Chart Row Styles
-  chartRow: { marginBottom: 10 },
+  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 15 },
+  hChartRow: { marginBottom: 15 }, // ໄລຍະຫ່າງລະຫວ່າງແຖວ Income/Expense
   chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
   chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
   chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
   chartBar: { height: '100%', borderRadius: 4 },
+  
+  // Category Chart Rows (ໃຊ້ຄືກັນກັບ hChartRow ໄດ້)
+  chartRow: { marginBottom: 10 },
 
   debtCard: { backgroundColor: '#FFF3E0', padding: 15, borderRadius: 12, alignItems: 'center', borderLeftWidth: 5, borderLeftColor: COLORS.secondary },
   debtTitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#E65100' },

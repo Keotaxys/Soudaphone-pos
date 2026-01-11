@@ -1,23 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  FlatList,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
-  TouchableWithoutFeedback
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { COLORS, Product, CartItem } from '../../types';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
+import { CartItem, COLORS, Product } from '../../types';
 
 interface POSScreenProps {
   products: Product[];
@@ -44,7 +42,10 @@ export default function POSScreen({
   const exchangeRate = useExchangeRate();
   const currentRate = exchangeRate > 0 ? exchangeRate : 680; 
 
+  // 🟢 State ສຳລັບຄົ້ນຫາ ແລະ ໝວດໝູ່
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ທັງໝົດ');
+  
   const [cartModalVisible, setCartModalVisible] = useState(false);
   
   // Checkout States
@@ -60,11 +61,17 @@ export default function POSScreen({
   const [customTotal, setCustomTotal] = useState<string>('');
   const [isEditingTotal, setIsEditingTotal] = useState(false);
 
-  // Filter Products
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (p.barcode && p.barcode.includes(searchQuery))
-  );
+  // 🟢 ດຶງລາຍຊື່ໝວດໝູ່ທັງໝົດຈາກສິນຄ້າທີ່ມີ
+  const categories = ['ທັງໝົດ', ...Array.from(new Set(products.map(p => p.category || 'ອື່ນໆ')))];
+
+  // 🟢 Filter Products (ເພີ່ມເງື່ອນໄຂ Category)
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (p.barcode && p.barcode.includes(searchQuery));
+    const matchesCategory = selectedCategory === 'ທັງໝົດ' || (p.category || 'ອື່ນໆ') === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
+  });
 
   // Totals Calculation
   const calculateTotalBase = () => {
@@ -78,7 +85,7 @@ export default function POSScreen({
   };
 
   const totalBaseLAK = calculateTotalBase();
-  const totalBaseTHB = Math.ceil(totalBaseLAK / currentRate); // 🟢 ປັດເສດຂຶ້ນ
+  const totalBaseTHB = Math.ceil(totalBaseLAK / currentRate);
 
   const getFinalTotal = () => {
       if (customTotal !== '') {
@@ -114,16 +121,12 @@ export default function POSScreen({
       setCustomTotal('');
   };
 
-  // 🟢 ຟັງຊັນຈັດການເມື່ອເລືອກວັນທີ
   const onDateChange = (event: any, selectedDate?: Date) => {
       const currentDate = selectedDate || checkoutDate;
-      // Android: ຕ້ອງປິດ Picker ທັນທີຫຼັງເລືອກ
-      // iOS: ສາມາດເລືອກໄດ້ເລື້ອຍໆ ຖ້າໃຊ້ແບບ inline
       setShowDatePicker(Platform.OS === 'ios'); 
       setCheckoutDate(currentDate);
   };
 
-  // 🟢 ສຳລັບ iOS ໃຫ້ມີປຸ່ມ "ຕົກລົງ" ເພື່ອປິດ
   const closeDatePickerIOS = () => {
       setShowDatePicker(false);
   };
@@ -131,6 +134,22 @@ export default function POSScreen({
   return (
     <View style={styles.container}>
       
+      {/* 🟢 1. Search Bar */}
+      <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#999" />
+          <TextInput
+              style={styles.searchInput}
+              placeholder="ຄົ້ນຫາສິນຄ້າ (ຊື່ ຫຼື ບາໂຄດ)..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={20} color="#ccc" />
+              </TouchableOpacity>
+          )}
+      </View>
+
       {/* Action Buttons */}
       <View style={styles.actionRow}>
         <TouchableOpacity style={styles.scanBtn} onPress={openScanner}>
@@ -143,12 +162,40 @@ export default function POSScreen({
         </TouchableOpacity>
       </View>
 
+      {/* 🟢 2. Category Filter Chips */}
+      <View style={styles.categoryContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal: 10}}>
+              {categories.map((cat, index) => (
+                  <TouchableOpacity 
+                      key={index} 
+                      style={[
+                          styles.categoryChip, 
+                          selectedCategory === cat && styles.activeCategoryChip
+                      ]}
+                      onPress={() => setSelectedCategory(cat)}
+                  >
+                      <Text style={[
+                          styles.categoryText, 
+                          selectedCategory === cat && styles.activeCategoryText
+                      ]}>
+                          {cat}
+                      </Text>
+                  </TouchableOpacity>
+              ))}
+          </ScrollView>
+      </View>
+
       {/* Product Grid */}
       <FlatList
         data={filteredProducts}
         keyExtractor={item => item.id!}
         numColumns={2}
         contentContainerStyle={{ padding: 10, paddingBottom: 100 }}
+        ListEmptyComponent={
+            <View style={{alignItems: 'center', marginTop: 50}}>
+                <Text style={{fontFamily: 'Lao-Regular', color: '#999'}}>ບໍ່ພົບສິນຄ້າ</Text>
+            </View>
+        }
         renderItem={({ item }) => (
           <TouchableOpacity 
             style={styles.productCard} 
@@ -224,7 +271,7 @@ export default function POSScreen({
                           <TouchableOpacity 
                             style={[
                                 styles.sourceBtn, 
-                                source === 'Online' && { backgroundColor: COLORS.secondary } // 🟢 ສີສົ້ມ
+                                source === 'Online' && { backgroundColor: COLORS.secondary }
                             ]} 
                             onPress={() => setSource('Online')}
                           >
@@ -232,7 +279,6 @@ export default function POSScreen({
                           </TouchableOpacity>
                       </View>
 
-                      {/* 🟢 ປຸ່ມກົດວັນທີ */}
                       <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
                           <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                           <Text style={styles.dateText}>{checkoutDate.toLocaleDateString('lo-LA')}</Text>
@@ -323,7 +369,7 @@ export default function POSScreen({
                           <TouchableOpacity 
                               style={[
                                 styles.methodBtn, 
-                                paymentMethod === 'QR' && { backgroundColor: COLORS.secondary, borderColor: COLORS.secondary } // 🟢 ສີສົ້ມ
+                                paymentMethod === 'QR' && { backgroundColor: COLORS.secondary, borderColor: COLORS.secondary }
                               ]} 
                               onPress={() => setPaymentMethod('QR')}
                           >
@@ -339,7 +385,6 @@ export default function POSScreen({
               </View>
           </KeyboardAvoidingView>
 
-          {/* 🟢 Date Picker Implementation */}
           {showDatePicker && (
               Platform.OS === 'ios' ? (
                   <View style={styles.iosDatePickerOverlay}>
@@ -377,7 +422,17 @@ export default function POSScreen({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   
-  actionRow: { flexDirection: 'row', padding: 15, gap: 10 },
+  // 🟢 Styles ສຳລັບ Search & Category
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', margin: 10, paddingHorizontal: 15, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#eee' },
+  searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 16 },
+  
+  categoryContainer: { marginBottom: 5 },
+  categoryChip: { paddingHorizontal: 15, paddingVertical: 8, backgroundColor: 'white', borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: '#eee' },
+  activeCategoryChip: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  categoryText: { fontFamily: 'Lao-Regular', color: '#666' },
+  activeCategoryText: { color: 'white', fontFamily: 'Lao-Bold' },
+
+  actionRow: { flexDirection: 'row', paddingHorizontal: 10, paddingBottom: 10, gap: 10 },
   scanBtn: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.primary, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 5 },
   addBtn: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.secondary, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 5 },
   btnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
@@ -440,7 +495,6 @@ const styles = StyleSheet.create({
   checkoutBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center' },
   checkoutBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },
 
-  // 🟢 iOS Date Picker Styles
   iosDatePickerOverlay: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, shadowColor: '#000', shadowOffset: {width: 0, height: -2}, shadowOpacity: 0.2, shadowRadius: 5 },
   iosDatePickerContent: { alignItems: 'center' },
   iosDateDoneBtn: { padding: 15, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },

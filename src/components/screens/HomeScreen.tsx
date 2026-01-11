@@ -132,7 +132,7 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
         setFilteredExpenses(filteredExp.reduce((sum, exp) => sum + exp.amount, 0));
         setLowStockProducts(products.filter(p => p.stock <= 5));
 
-        // Prepare Sales Chart
+        // Sales Chart
         const salesMap: Record<string, number> = {};
         filteredSales.forEach(sale => {
             sale.items.forEach(item => {
@@ -146,7 +146,7 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
         const maxSale = sortedSales.length > 0 ? sortedSales[0].amount : 0;
         setSalesChartData(sortedSales.map(item => ({ ...item, percentage: maxSale > 0 ? (item.amount / maxSale) * 100 : 0 })));
 
-        // Prepare Expense Chart
+        // Expense Chart
         const expMap: Record<string, number> = {};
         filteredExp.forEach(exp => {
             const cat = exp.category || 'ອື່ນໆ';
@@ -169,10 +169,11 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
         setCurrentDate(newDate);
     };
 
-    // 🟢 ຟັງຊັນປ່ຽນວັນທີ (Native & Custom)
+    // 🟢 ຟັງຊັນປ່ຽນວັນທີ (ປັບປຸງໃໝ່)
     const onDateChange = (event: any, selectedDate?: Date) => {
-        // Android: ປິດທັນທີ
-        if (Platform.OS === 'android') setShowDatePicker(false);
+        if (Platform.OS === 'android') {
+            setShowDatePicker(false); // Android ຕ້ອງສັ່ງປິດທັນທີ
+        }
         
         if (selectedDate) {
             if (pickerMode === 'start') setCustomStart(selectedDate);
@@ -227,29 +228,25 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
 
             {/* Dashboard Stats */}
             <View style={styles.statsGrid}>
-                {/* Sale Card */}
                 <View style={[styles.statCard, { backgroundColor: COLORS.primary }]}>
                     <View style={styles.iconCircleWhite}><Ionicons name="cash" size={24} color={COLORS.primary} /></View>
                     <View><Text style={styles.statLabelWhite}>ຍອດຂາຍ</Text><Text style={styles.statValueWhite}>{formatNumber(filteredTotal)} ₭</Text></View>
                 </View>
-                {/* Profit Card */}
                 <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
                     <View style={[styles.iconCircle, { backgroundColor: '#E0F2F1' }]}><Ionicons name="trending-up" size={24} color={COLORS.primaryDark} /></View>
                     <View><Text style={styles.statLabel}>ກຳໄລ</Text><Text style={[styles.statValue, { color: profit >= 0 ? COLORS.success : COLORS.danger }]}>{profit >= 0 ? '+' : ''}{formatNumber(profit)}</Text></View>
                 </View>
-                {/* Orders Card */}
                 <View style={[styles.statCard, { backgroundColor: COLORS.secondary }]}>
                     <View style={styles.iconCircleWhite}><Ionicons name="receipt" size={24} color={COLORS.secondaryDark} /></View>
                     <View><Text style={styles.statLabelWhite}>ອໍເດີ</Text><Text style={styles.statValueWhite}>{filteredOrders}</Text></View>
                 </View>
-                {/* Expenses Card */}
                 <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
                     <View style={[styles.iconCircle, { backgroundColor: '#FFEBEE' }]}><Ionicons name="wallet-outline" size={24} color={COLORS.danger} /></View>
                     <View><Text style={styles.statLabel}>ລາຍຈ່າຍ</Text><Text style={[styles.statValue, { color: COLORS.danger }]}>{formatNumber(filteredExpenses)}</Text></View>
                 </View>
             </View>
 
-            {/* Low Stock Warning */}
+            {/* Low Stock */}
             {lowStockProducts.length > 0 && (
                 <View style={styles.sectionContainer}>
                     <View style={styles.sectionHeader}><Ionicons name="alert-circle" size={20} color={COLORS.secondaryDark} /><Text style={styles.sectionTitle}>ສິນຄ້າໃກ້ໝົດ ({lowStockProducts.length})</Text></View>
@@ -261,7 +258,7 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
                 </View>
             )}
 
-            {/* Charts Section */}
+            {/* Charts */}
             <View style={styles.chartContainer}>
                 <Text style={styles.chartTitle}>ຍອດຂາຍຕາມໝວດໝູ່</Text>
                 {salesChartData.length > 0 ? salesChartData.map((item, index) => (
@@ -274,34 +271,68 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
                 )) : <Text style={styles.noDataText}>ບໍ່ມີຂໍ້ມູນ</Text>}
             </View>
 
-            {/* Custom Date Modal */}
+            <View style={[styles.chartContainer, { marginBottom: 30 }]}>
+                <Text style={styles.chartTitle}>ລາຍຈ່າຍແຍກຕາມໝວດໝູ່</Text>
+                {expenseChartData.length > 0 ? expenseChartData.map((item, index) => (
+                    <View key={index} style={styles.chartRow}>
+                        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
+                            <Text style={styles.chartLabel}>{item.category}</Text><Text style={[styles.chartValue, {color: COLORS.danger}]}>{formatNumber(item.amount)} ₭</Text>
+                        </View>
+                        <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${item.percentage}%`, backgroundColor: COLORS.danger }]} /></View>
+                    </View>
+                )) : <Text style={styles.noDataText}>ບໍ່ມີຂໍ້ມູນ</Text>}
+            </View>
+
+            {/* 🟢 Custom Date Modal (Revised) */}
             <Modal visible={showCustomPicker} transparent={true} animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.pickerContainer}>
                         <Text style={styles.pickerTitle}>ເລືອກຊ່ວງວັນທີ</Text>
+                        
                         <View style={styles.pickerRow}>
                             {/* 🟢 ປຸ່ມເລີ່ມຕົ້ນ: ກົດແລ້ວເປີດ Calendar ທັນທີ */}
-                            <TouchableOpacity style={styles.dateInput} onPress={() => { setPickerMode('start'); setShowDatePicker(true); }}>
+                            <TouchableOpacity 
+                                style={[styles.dateInput, pickerMode === 'start' && showDatePicker && styles.activeDateInput]} 
+                                onPress={() => { setPickerMode('start'); setShowDatePicker(true); }}
+                            >
                                 <Text style={styles.pickerLabel}>ເລີ່ມຕົ້ນ</Text>
                                 <Text style={styles.pickerValue}>{formatDate(customStart)}</Text>
                             </TouchableOpacity>
+                            
                             <Ionicons name="arrow-forward" size={20} color="#ccc" />
+                            
                             {/* 🟢 ປຸ່ມສິ້ນສຸດ: ກົດແລ້ວເປີດ Calendar ທັນທີ */}
-                            <TouchableOpacity style={styles.dateInput} onPress={() => { setPickerMode('end'); setShowDatePicker(true); }}>
+                            <TouchableOpacity 
+                                style={[styles.dateInput, pickerMode === 'end' && showDatePicker && styles.activeDateInput]} 
+                                onPress={() => { setPickerMode('end'); setShowDatePicker(true); }}
+                            >
                                 <Text style={styles.pickerLabel}>ສິ້ນສຸດ</Text>
                                 <Text style={styles.pickerValue}>{formatDate(customEnd)}</Text>
                             </TouchableOpacity>
                         </View>
-                        <TouchableOpacity style={styles.confirmBtn} onPress={() => setShowCustomPicker(false)}><Text style={styles.confirmText}>ຕົກລົງ</Text></TouchableOpacity>
-                        
-                        {/* 🟢 DateTimePicker ວາງໄວ້ໃນ Modal ເພື່ອບໍ່ໃຫ້ຖືກບັງ */}
+
+                        {/* 🟢 DateTimePicker ວາງໄວ້ໃນ Modal ເພື່ອໃຫ້ສະແດງທັບໄດ້ທັນທີ */}
                         {showDatePicker && (
-                            <DateTimePicker 
-                                value={pickerMode === 'start' ? customStart : customEnd} 
-                                mode="date" 
-                                display="default" 
-                                onChange={onDateChange} 
-                            />
+                            <View style={{width: '100%', alignItems: 'center', marginVertical: 10}}>
+                                <DateTimePicker 
+                                    value={pickerMode === 'start' ? customStart : customEnd} 
+                                    mode="date" 
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'} // iOS ໃຊ້ spinner ໃຫ້ງາມຂຶ້ນໃນ Modal
+                                    onChange={onDateChange}
+                                    style={{height: 120, width: '100%'}} 
+                                />
+                                {Platform.OS === 'ios' && (
+                                    <TouchableOpacity style={styles.iosDoneBtn} onPress={() => setShowDatePicker(false)}>
+                                        <Text style={styles.iosDoneText}>ຕົກລົງ</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        )}
+                        
+                        {!showDatePicker && (
+                            <TouchableOpacity style={styles.confirmBtn} onPress={() => setShowCustomPicker(false)}>
+                                <Text style={styles.confirmText}>ຢືນຢັນການເລືອກ</Text>
+                            </TouchableOpacity>
                         )}
                     </View>
                 </View>
@@ -313,6 +344,8 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
+    
+    // ... (Styles ອື່ນໆຄືເກົ່າ)
     filterSection: { backgroundColor: 'white', paddingBottom: 10, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 5 },
     filterTabs: { paddingHorizontal: 15, marginTop: 10, marginBottom: 10 },
     filterTab: { paddingHorizontal: 15, paddingVertical: 6, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
@@ -349,13 +382,17 @@ const styles = StyleSheet.create({
     progressBarFill: { height: '100%', borderRadius: 4 },
     noDataText: { textAlign: 'center', color: '#ccc', fontFamily: 'Lao-Regular', padding: 20 },
 
+    // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
     pickerContainer: { width: '85%', backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 5 },
     pickerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, textAlign: 'center', marginBottom: 20 },
-    pickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    dateInput: { flex: 1, alignItems: 'center', padding: 10, backgroundColor: '#f0f0f0', borderRadius: 10 },
+    pickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    dateInput: { flex: 1, alignItems: 'center', padding: 12, backgroundColor: '#f0f0f0', borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
+    activeDateInput: { borderColor: COLORS.primary, backgroundColor: '#E0F2F1' },
     pickerLabel: { fontSize: 12, color: '#888' },
-    pickerValue: { fontFamily: 'Lao-Bold', color: COLORS.primary, marginTop: 5 },
-    confirmBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 10, alignItems: 'center' },
-    confirmText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 }
+    pickerValue: { fontFamily: 'Lao-Bold', color: COLORS.primary, marginTop: 5, fontSize: 16 },
+    confirmBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
+    confirmText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
+    iosDoneBtn: { marginTop: 5, padding: 5 },
+    iosDoneText: { color: COLORS.primary, fontFamily: 'Lao-Bold' }
 });

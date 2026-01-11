@@ -8,8 +8,6 @@ import {
   Alert,
   Dimensions,
   FlatList,
-  Modal,
-  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -22,34 +20,34 @@ import { COLORS, formatDate, formatNumber } from '../../types';
 
 const { width } = Dimensions.get('window');
 
-// ປະເພດການກັ່ນຕອງ
 type FilterType = 'day' | 'week' | 'month' | 'year';
 type ReportTab = 'overview' | 'sales' | 'expenses' | 'debts';
 
 export default function ReportDashboard() {
-  // Data States
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [debts, setDebts] = useState<any[]>([]);
   
-  // Filter States
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  
-  // View State
   const [activeTab, setActiveTab] = useState<ReportTab>('overview');
 
-  // Filtered Data
   const [filteredSales, setFilteredSales] = useState<any[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<any[]>([]);
   
-  // Totals
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
   const [totalDebt, setTotalDebt] = useState(0);
 
-  // 1. ດຶງຂໍ້ມູນທັງໝົດ
+  // 🟢 Helper Function: ແປງຂໍ້ມູນເປັນຕົວເລກ (ຄືກັບ DebtScreen)
+  const parseCurrency = (value: any) => {
+      if (value === undefined || value === null || value === '') return 0;
+      const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
+      const num = parseFloat(strVal);
+      return isNaN(num) ? 0 : num;
+  };
+
   useEffect(() => {
     const fetchData = () => {
       // Sales
@@ -58,28 +56,54 @@ export default function ReportDashboard() {
         if (data) setSales(Object.keys(data).map(key => ({ id: key, ...data[key] })));
         else setSales([]);
       });
+      
       // Expenses
       onValue(ref(db, 'expenses'), (snapshot) => {
         const data = snapshot.val();
         if (data) setExpenses(Object.keys(data).map(key => ({ id: key, ...data[key] })));
         else setExpenses([]);
       });
-      // Debts
+      
+      // 🟢 Debts (ແກ້ໄຂການດຶງຂໍ້ມູນ)
       onValue(ref(db, 'debts'), (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+            const list = Object.keys(data).map(key => {
+                const item = data[key];
+                // 🟢 ດຶງຂໍ້ມູນໃຫ້ຄົບທຸກ Field ທີ່ເປັນໄປໄດ້
+                const total = parseCurrency(item.originalAmount || item.totalAmount || item.amount);
+                const paid = parseCurrency(item.paidAmount || item.paid);
+                let remaining = parseCurrency(item.remainingBalance);
+                
+                // ຄິດໄລ່ remaining ຖ້າບໍ່ມີ
+                if (remaining === 0 && total > 0) {
+                    remaining = total - paid;
+                }
+
+                return { 
+                    id: key, 
+                    ...item,
+                    title: item.name || item.title || 'Unknown',
+                    totalAmount: total,
+                    paidAmount: paid,
+                    remainingBalance: remaining,
+                    dueDate: item.dueDate || new Date().toISOString()
+                };
+            });
             setDebts(list);
-            // ໜີ້ສິນນັບຍອດລວມທັງໝົດ (ບໍ່ກ່ຽວກັບວັນທີ)
-            const debtSum = list.reduce((sum, item: any) => sum + (Number(item.totalAmount) - Number(item.paidAmount)), 0);
+            
+            // 🟢 ຄິດໄລ່ຍອດໜີ້ລວມ (ຈາກ remainingBalance)
+            const debtSum = list.reduce((sum, item: any) => sum + item.remainingBalance, 0);
             setTotalDebt(debtSum);
-        } else setDebts([]);
+        } else {
+            setDebts([]);
+            setTotalDebt(0);
+        }
       });
     };
     fetchData();
   }, []);
 
-  // 2. Logic ກັ່ນຕອງວັນທີ
   useEffect(() => {
     const start = new Date(currentDate);
     const end = new Date(currentDate);
@@ -99,21 +123,20 @@ export default function ReportDashboard() {
       end.setMonth(11, 31);
     }
 
-    // Filter Sales
     const fSales = sales.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
     });
     setFilteredSales(fSales);
-    setTotalRevenue(fSales.reduce((sum, s) => sum + Number(s.total), 0));
+    // 🟢 ໃຊ້ parseCurrency ກັບຍອດຂາຍນຳ
+    setTotalRevenue(fSales.reduce((sum, s) => sum + parseCurrency(s.total || s.amountReceived), 0));
 
-    // Filter Expenses
     const fExpenses = expenses.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
     });
     setFilteredExpenses(fExpenses);
-    setTotalExpense(fExpenses.reduce((sum, e) => sum + Number(e.amount), 0));
+    setTotalExpense(fExpenses.reduce((sum, e) => sum + parseCurrency(e.amount), 0));
 
   }, [sales, expenses, filterType, currentDate]);
 
@@ -127,7 +150,6 @@ export default function ReportDashboard() {
     setCurrentDate(newDate);
   };
 
-  // 3. Export PDF Function
   const generatePDF = async () => {
     const html = `
       <html>
@@ -147,9 +169,9 @@ export default function ReportDashboard() {
           <p>ວັນທີ: ${formatDate(currentDate)} (${filterType})</p>
           
           <div class="summary">
-            <div><b>ຍອດຂາຍ:</b> ${formatNumber(totalRevenue)} ກີບ</div>
-            <div><b>ລາຍຈ່າຍ:</b> ${formatNumber(totalExpense)} ກີບ</div>
-            <div><b>ກຳໄລ:</b> ${formatNumber(totalRevenue - totalExpense)} ກີບ</div>
+            <div><b>ຍອດຂາຍ:</b> ${formatNumber(totalRevenue)} ₭</div>
+            <div><b>ລາຍຈ່າຍ:</b> ${formatNumber(totalExpense)} ₭</div>
+            <div><b>ກຳໄລ:</b> ${formatNumber(totalRevenue - totalExpense)} ₭</div>
           </div>
 
           <h3>ລາຍການຂາຍ (${filteredSales.length})</h3>
@@ -158,9 +180,9 @@ export default function ReportDashboard() {
             ${filteredSales.map(s => `
               <tr>
                 <td>${new Date(s.date).toLocaleTimeString()}</td>
-                <td>#${s.id.slice(-4)}</td>
-                <td class="money">${formatNumber(s.total)}</td>
-                <td>${s.paymentMethod}</td>
+                <td>#${s.id ? s.id.slice(-4) : '-'}</td>
+                <td class="money">${formatNumber(parseCurrency(s.total))}</td>
+                <td>${s.paymentMethod || '-'}</td>
               </tr>
             `).join('')}
           </table>
@@ -172,7 +194,7 @@ export default function ReportDashboard() {
               <tr>
                 <td>${new Date(e.date).toLocaleTimeString()}</td>
                 <td>${e.category} (${e.note || '-'})</td>
-                <td class="money">${formatNumber(e.amount)}</td>
+                <td class="money">${formatNumber(parseCurrency(e.amount))}</td>
               </tr>
             `).join('')}
           </table>
@@ -188,8 +210,6 @@ export default function ReportDashboard() {
     }
   };
 
-  // --- Components ---
-
   const SummaryCard = ({ label, amount, color, icon }: any) => (
     <View style={[styles.card, { borderLeftColor: color, borderLeftWidth: 5 }]}>
       <View>
@@ -202,7 +222,6 @@ export default function ReportDashboard() {
     </View>
   );
 
-  // Custom Bar Chart (Simple View-based)
   const SimpleChart = () => {
     const maxVal = Math.max(totalRevenue, totalExpense) || 1;
     const revHeight = (totalRevenue / maxVal) * 150;
@@ -214,12 +233,12 @@ export default function ReportDashboard() {
             <View style={styles.chartArea}>
                 <View style={styles.barGroup}>
                     <Text style={[styles.barLabel, {color: COLORS.primary}]}>{formatNumber(totalRevenue)}</Text>
-                    <View style={[styles.bar, { height: revHeight, backgroundColor: COLORS.primary }]} />
+                    <View style={[styles.bar, { height: revHeight || 2, backgroundColor: COLORS.primary }]} />
                     <Text style={styles.barTitle}>ລາຍຮັບ</Text>
                 </View>
                 <View style={styles.barGroup}>
                     <Text style={[styles.barLabel, {color: COLORS.danger}]}>{formatNumber(totalExpense)}</Text>
-                    <View style={[styles.bar, { height: expHeight, backgroundColor: COLORS.danger }]} />
+                    <View style={[styles.bar, { height: expHeight || 2, backgroundColor: COLORS.danger }]} />
                     <Text style={styles.barTitle}>ລາຍຈ່າຍ</Text>
                 </View>
             </View>
@@ -241,6 +260,7 @@ export default function ReportDashboard() {
                       
                       <View style={styles.debtCard}>
                           <Text style={styles.debtTitle}>ສະຖານະໜີ້ສິນລວມ</Text>
+                          {/* 🟢 ສະແດງ Total Debt ທີ່ຄິດໄລ່ມາໃໝ່ */}
                           <Text style={styles.debtAmount}>{formatNumber(totalDebt)} ₭</Text>
                           <Text style={styles.debtSub}>ທີ່ຍັງຄ້າງຊຳລະ</Text>
                       </View>
@@ -255,10 +275,10 @@ export default function ReportDashboard() {
                     renderItem={({item}) => (
                         <View style={styles.listItem}>
                             <View>
-                                <Text style={styles.listTitle}>ບິນ #{item.id.slice(-4)}</Text>
+                                <Text style={styles.listTitle}>ບິນ #{item.id ? item.id.slice(-4) : '-'}</Text>
                                 <Text style={styles.listSub}>{new Date(item.date).toLocaleString('lo-LA')}</Text>
                             </View>
-                            <Text style={styles.listAmount}>+{formatNumber(item.total)}</Text>
+                            <Text style={styles.listAmount}>+{formatNumber(parseCurrency(item.total))}</Text>
                         </View>
                     )}
                     ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນການຂາຍ</Text>}
@@ -276,7 +296,7 @@ export default function ReportDashboard() {
                                 <Text style={styles.listTitle}>{item.category}</Text>
                                 <Text style={styles.listSub}>{item.note || 'ບໍ່ມີໝາຍເຫດ'}</Text>
                             </View>
-                            <Text style={[styles.listAmount, {color: COLORS.danger}]}>-{formatNumber(item.amount)}</Text>
+                            <Text style={[styles.listAmount, {color: COLORS.danger}]}>-{formatNumber(parseCurrency(item.amount))}</Text>
                         </View>
                     )}
                     ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນລາຍຈ່າຍ</Text>}
@@ -285,7 +305,7 @@ export default function ReportDashboard() {
           case 'debts':
               return (
                 <FlatList 
-                    data={debts} // ສະແດງໜີ້ທັງໝົດບໍ່ກ່ຽວກັບວັນທີ
+                    data={debts}
                     keyExtractor={item => item.id}
                     contentContainerStyle={{paddingBottom: 50}}
                     renderItem={({item}) => (
@@ -295,7 +315,8 @@ export default function ReportDashboard() {
                                 <Text style={styles.listSub}>ກຳນົດ: {formatDate(new Date(item.dueDate))}</Text>
                             </View>
                             <View style={{alignItems: 'flex-end'}}>
-                                <Text style={[styles.listAmount, {color: '#F57C00'}]}>{formatNumber(item.totalAmount - item.paidAmount)}</Text>
+                                {/* 🟢 ສະແດງຍອດຄົງເຫຼືອ */}
+                                <Text style={[styles.listAmount, {color: '#F57C00'}]}>{formatNumber(item.remainingBalance)}</Text>
                                 <Text style={{fontSize: 10, color: '#999'}}>ຍັງເຫຼືອ</Text>
                             </View>
                         </View>
@@ -308,7 +329,6 @@ export default function ReportDashboard() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ລາຍງານ (Reports)</Text>
         <TouchableOpacity style={styles.exportBtn} onPress={generatePDF}>
@@ -317,7 +337,6 @@ export default function ReportDashboard() {
         </TouchableOpacity>
       </View>
 
-      {/* Date Filter Bar */}
       <View style={styles.filterBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginRight: 10}}>
             {['day', 'week', 'month', 'year'].map((t) => (
@@ -339,7 +358,6 @@ export default function ReportDashboard() {
         </View>
       </View>
 
-      {/* Tabs Menu */}
       <View style={styles.tabs}>
           <TouchableOpacity style={[styles.tab, activeTab === 'overview' && styles.activeTab]} onPress={() => setActiveTab('overview')}><Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>ພາບລວມ</Text></TouchableOpacity>
           <TouchableOpacity style={[styles.tab, activeTab === 'sales' && styles.activeTab]} onPress={() => setActiveTab('sales')}><Text style={[styles.tabText, activeTab === 'sales' && styles.activeTabText]}>ການຂາຍ</Text></TouchableOpacity>
@@ -347,7 +365,6 @@ export default function ReportDashboard() {
           <TouchableOpacity style={[styles.tab, activeTab === 'debts' && styles.activeTab]} onPress={() => setActiveTab('debts')}><Text style={[styles.tabText, activeTab === 'debts' && styles.activeTabText]}>ໜີ້ສິນ</Text></TouchableOpacity>
       </View>
 
-      {/* Content Area */}
       <View style={styles.content}>
           {renderContent()}
       </View>
@@ -359,34 +376,26 @@ export default function ReportDashboard() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  
   header: { padding: 20, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee' },
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text },
-  exportBtn: { flexDirection: 'row', backgroundColor: COLORS.secondary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignItems: 'center', gap: 5 },
+  exportBtn: { flexDirection: 'row', backgroundColor: '#F57C00', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignItems: 'center', gap: 5 },
   exportText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 12 },
-
   filterBar: { flexDirection: 'row', backgroundColor: 'white', padding: 10, alignItems: 'center', justifyContent: 'space-between', elevation: 1 },
   filterChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 15, backgroundColor: '#f0f0f0', marginRight: 5 },
   activeFilter: { backgroundColor: COLORS.primary },
   filterText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
   dateNav: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f9f9f9', padding: 5, borderRadius: 10 },
   dateLabel: { fontFamily: 'Lao-Bold', fontSize: 13, color: COLORS.text },
-
   tabs: { flexDirection: 'row', padding: 10, gap: 10 },
   tab: { flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: 'white', borderRadius: 10, elevation: 1 },
   activeTab: { backgroundColor: COLORS.primary },
   tabText: { fontFamily: 'Lao-Regular', color: '#666' },
   activeTabText: { color: 'white', fontFamily: 'Lao-Bold' },
-
   content: { flex: 1, padding: 15 },
-
-  // Card Styles
   card: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, elevation: 2 },
   cardLabel: { fontSize: 12, color: '#888', fontFamily: 'Lao-Regular' },
   cardAmount: { fontSize: 18, fontFamily: 'Lao-Bold', marginTop: 2 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-
-  // Chart Styles
   chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2, alignItems: 'center' },
   chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 20 },
   chartArea: { flexDirection: 'row', alignItems: 'flex-end', height: 180, gap: 40 },
@@ -394,13 +403,10 @@ const styles = StyleSheet.create({
   bar: { width: 40, borderRadius: 5 },
   barLabel: { fontSize: 12, fontFamily: 'Lao-Bold', marginBottom: 5 },
   barTitle: { marginTop: 10, fontFamily: 'Lao-Regular', color: '#666' },
-
-  debtCard: { backgroundColor: '#FFF3E0', padding: 15, borderRadius: 12, alignItems: 'center', borderLeftWidth: 5, borderLeftColor: COLORS.secondary },
+  debtCard: { backgroundColor: '#FFF3E0', padding: 15, borderRadius: 12, alignItems: 'center', borderLeftWidth: 5, borderLeftColor: '#F57C00' },
   debtTitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#E65100' },
   debtAmount: { fontSize: 24, fontFamily: 'Lao-Bold', color: '#E65100', marginVertical: 5 },
   debtSub: { fontSize: 12, color: '#EF6C00' },
-
-  // List Styles
   listItem: { backgroundColor: 'white', padding: 15, borderRadius: 10, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   listTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
   listSub: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#999' },

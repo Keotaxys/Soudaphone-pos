@@ -108,7 +108,6 @@ export default function ReportDashboard() {
       end.setMonth(11, 31);
     }
 
-    // Filter Sales
     const fSales = sales.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
@@ -116,7 +115,6 @@ export default function ReportDashboard() {
     setFilteredSales(fSales);
     setTotalRevenue(fSales.reduce((sum, s) => sum + parseCurrency(s.total || s.amountReceived), 0));
 
-    // Stats
     const productStats: any = {};
     const catStats: any = {};
 
@@ -144,7 +142,6 @@ export default function ReportDashboard() {
         .sort((a, b) => b.value - a.value);
     setSalesByCategory(sortedSalesCat);
 
-    // Filter Expenses
     const fExpenses = expenses.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
@@ -176,8 +173,10 @@ export default function ReportDashboard() {
     setCurrentDate(newDate);
   };
 
+  // 🟢 Generate Excel (CSV) - ແກ້ໄຂ Type
   const generateExcel = async () => {
       let csvContent = "Date,Type,Category,Description,Amount\n";
+      
       filteredSales.forEach(s => {
           csvContent += `${new Date(s.date).toLocaleDateString()},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
       });
@@ -187,10 +186,15 @@ export default function ReportDashboard() {
 
       try {
           const docDir = FileSystem.documentDirectory;
-          const fileName = `${docDir}report_${new Date().getTime()}.csv`;
+          const fileName = `${docDir}report_${new Date().getTime()}.csv`; // ໃຊ້ນາມສະກຸນ .csv
           
           await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
-          await shareAsync(fileName);
+          
+          // 🟢 ໃຊ້ Type ທີ່ຊັດເຈນເພື່ອໃຫ້ iOS ຮູ້ວ່າແມ່ນ CSV/Excel
+          await shareAsync(fileName, {
+              mimeType: 'text/csv', 
+              UTI: 'public.comma-separated-values-text' 
+          });
       } catch (error) {
           Alert.alert("Error", "ບໍ່ສາມາດ Export Excel ໄດ້: " + error);
       }
@@ -292,7 +296,6 @@ export default function ReportDashboard() {
     );
   };
 
-  // Helper Key Extractor
   const keyExtractor = (item: any, index: number) => item.id ? item.id.toString() : index.toString();
 
   const renderContent = () => {
@@ -480,7 +483,7 @@ const styles = StyleSheet.create({
   cardAmount: { fontSize: 18, fontFamily: 'Lao-Bold', marginTop: 2 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   
-  // 🟢 Chart Area Styles (ທີ່ເຄີຍຂາດ)
+  // 🟢 Chart Area Styles
   chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
   chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 10 },
   chartArea: { flexDirection: 'row', alignItems: 'flex-end', height: 180, gap: 40 },
@@ -489,7 +492,7 @@ const styles = StyleSheet.create({
   barLabel: { fontSize: 12, fontFamily: 'Lao-Bold', marginBottom: 5 },
   barTitle: { marginTop: 10, fontFamily: 'Lao-Regular', color: '#666' },
   
-  // 🟢 Category Chart Row Styles (ທີ່ເຄີຍຂາດ)
+  // 🟢 Category Chart Row Styles
   chartRow: { marginBottom: 10 },
   chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
   chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
@@ -506,7 +509,7 @@ const styles = StyleSheet.create({
   listAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
   
-  // 🟢 Top Products Styles (ທີ່ເຄີຍຂາດ)
+  // 🟢 Top Products Styles
   topProductsCard: { backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
   sectionHeaderRow: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 10, marginBottom: 10 },
   sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },

@@ -1,6 +1,8 @@
 import { useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import * as ImagePicker from 'expo-image-picker';
+// 🟢 Import auth ແລະ onAuthStateChanged
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -14,7 +16,7 @@ import {
   View
 } from 'react-native';
 
-import { db } from '../../src/firebase';
+import { auth, db } from '../../src/firebase'; // 🟢 Import auth
 
 // Import Types & Helpers
 import { CartItem, COLORS, formatNumber, Product, SaleRecord, SIDEBAR_WIDTH } from '../../src/types';
@@ -23,13 +25,13 @@ import { CartItem, COLORS, formatNumber, Product, SaleRecord, SIDEBAR_WIDTH } fr
 import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
-// 🟢 ປ່ຽນຈາກ ReportScreen ເປັນ ReportDashboard
+import ReportDashboard from '../../src/components/screens/ReportDashboard';
+import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
+import ShiftScreen from '../../src/components/screens/ShiftScreen';
+import ProductsScreen from '../../src/components/screens/ProductsScreen';
 import CustomerScreen from '../../src/components/screens/CustomerScreen';
 import DebtScreen from '../../src/components/screens/DebtScreen';
-import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
-import ProductsScreen from '../../src/components/screens/ProductsScreen';
-import ReportDashboard from '../../src/components/screens/ReportDashboard';
-import ShiftScreen from '../../src/components/screens/ShiftScreen';
+import LoginScreen from '../../src/components/screens/LoginScreen'; // 🟢 Import Login Screen
 
 // Import UI Components
 import Footer from '../../src/components/ui/Footer';
@@ -37,9 +39,9 @@ import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
 // Import Modals
-import EditShopModal from '../../src/components/modals/EditShopModal';
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
+import EditShopModal from '../../src/components/modals/EditShopModal';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -49,12 +51,15 @@ export default function App() {
 
   const [permission, requestPermission] = useCameraPermissions();
 
+  // 🟢 User Authentication State
+  const [user, setUser] = useState<User | null>(null);
+  const [initializing, setInitializing] = useState(true);
+
   // --- Data States ---
   const [products, setProducts] = useState<Product[]>([]);
   const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   
-  // Shop Info State
   const [shopInfo, setShopInfo] = useState({
       name: 'ຮ້ານ ສຸດາພອນ',
       id: 'ID: 8888 9999',
@@ -76,19 +81,26 @@ export default function App() {
       name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: ''
   });
 
+  // 🟢 Monitor Auth State Change
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      if (initializing) setInitializing(false);
+    });
+    return unsubscribeAuth;
+  }, []);
+
   // ============================================================
-  // Firebase Listeners
+  // Firebase Listeners (ເຮັດວຽກເມື່ອມີ User ແລ້ວເທົ່ານັ້ນ)
   // ============================================================
   useEffect(() => {
-    // 1. ດຶງຂໍ້ມູນຮ້ານ
+    if (!user) return; // 🟢 ຖ້າບໍ່ມີ User ບໍ່ຕ້ອງດຶງຂໍ້ມູນ
+
     const shopRef = ref(db, 'shopInfo');
     const unsubscribeShop = onValue(shopRef, (snapshot) => {
-        if (snapshot.exists()) {
-            setShopInfo(snapshot.val());
-        }
+        if (snapshot.exists()) setShopInfo(snapshot.val());
     });
 
-    // 2. ດຶງສິນຄ້າ
     const productsRef = ref(db, 'products');
     const unsubscribeProducts = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -99,7 +111,6 @@ export default function App() {
       setLoading(false);
     });
 
-    // 3. ດຶງຍອດຂາຍ
     const salesRef = ref(db, 'sales');
     const unsubscribeSales = onValue(salesRef, (snapshot) => {
         if(snapshot.exists()){
@@ -110,10 +121,10 @@ export default function App() {
     });
 
     return () => { unsubscribeProducts(); unsubscribeSales(); unsubscribeShop(); };
-  }, []);
+  }, [user]); // 🟢 Dependency ເປັນ [user]
 
   // ============================================================
-  // Logic Functions
+  // Logic Functions (ຄືເດີມ)
   // ============================================================
 
   const toggleMenu = (show: boolean) => {
@@ -130,22 +141,14 @@ export default function App() {
           await set(ref(db, 'shopInfo'), shopInfo);
           setShopModalVisible(false);
           Alert.alert('ສຳເລັດ', 'ບັນທຶກຂໍ້ມູນຮ້ານຮຽບຮ້ອຍ');
-      } catch (error) {
-          Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້');
-      }
+      } catch (error) { Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້'); }
   };
 
   const pickShopLogo = async () => {
       let result = await ImagePicker.launchImageLibraryAsync({ 
-          mediaTypes: ImagePicker.MediaTypeOptions.Images, 
-          allowsEditing: true, 
-          aspect: [1, 1], 
-          quality: 0.5, 
-          base64: true 
+          mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true 
       }); 
-      if (!result.canceled) { 
-          setShopInfo({ ...shopInfo, logo: `data:image/jpeg;base64,${result.assets[0].base64}` }); 
-      }
+      if (!result.canceled) { setShopInfo({ ...shopInfo, logo: `data:image/jpeg;base64,${result.assets[0].base64}` }); }
   };
 
   const addToCart = (product: Product) => {
@@ -177,24 +180,18 @@ export default function App() {
           if (product) updates[`products/${item.id}/stock`] = product.stock - item.quantity; 
       });
       await update(ref(db), updates);
-      Alert.alert('✅ ສຳເລັດ', 'ຂາຍສິນຄ້າຮຽບຮ້ອຍແລ້ວ'); 
-      setCart([]); 
+      Alert.alert('✅ ສຳເລັດ', 'ຂາຍສິນຄ້າຮຽບຮ້ອຍແລ້ວ'); setCart([]); 
     } catch (error) { Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ'); }
   };
 
   const openScanner = async (mode: 'sell' | 'edit' = 'sell') => {
     if (!permission?.granted) { const { granted } = await requestPermission(); if (!granted) return; }
-    setScanMode(mode);
-    setIsScanning(true);
+    setScanMode(mode); setIsScanning(true);
   };
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (isScanning === false) return; 
-    if (scanMode === 'edit') { 
-        setEditingProduct({ ...editingProduct, barcode: data }); 
-        setIsScanning(false); setProductModalVisible(true); 
-        return; 
-    }
+    if (scanMode === 'edit') { setEditingProduct({ ...editingProduct, barcode: data }); setIsScanning(false); setProductModalVisible(true); return; }
     const product = products.find(p => p.barcode === data);
     if (product) { addToCart(product); setIsScanning(false); } 
     else { setIsScanning(false); Alert.alert('❌ ບໍ່ພົບສິນຄ້າ', `Barcode: ${data}`); }
@@ -212,17 +209,7 @@ export default function App() {
   const deleteProduct = (id: string) => {
       Alert.alert('ຢືນຢັນການລຶບ', 'ທ່ານຕ້ອງການລຶບສິນຄ້ານີ້ແທ້ບໍ່?', [
           { text: 'ຍົກເລີກ', style: 'cancel' },
-          { 
-              text: 'ລຶບ', 
-              style: 'destructive', 
-              onPress: async () => {
-                  try {
-                      await remove(ref(db, `products/${id}`));
-                  } catch (error) {
-                      Alert.alert('Error', 'ລຶບບໍ່ໄດ້');
-                  }
-              } 
-          }
+          { text: 'ລຶບ', style: 'destructive', onPress: async () => { try { await remove(ref(db, `products/${id}`)); } catch (error) { Alert.alert('Error', 'ລຶບບໍ່ໄດ້'); } } }
       ]);
   };
 
@@ -233,8 +220,7 @@ export default function App() {
               const maxStock = product ? product.stock : item.quantity; 
               const newQty = Math.max(1, Math.min(maxStock, item.quantity + delta)); 
               return { ...item, quantity: newQty }; 
-          } 
-          return item; 
+          } return item; 
       })); 
   };
 
@@ -243,8 +229,15 @@ export default function App() {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
-  if (!fontsLoaded || loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+  // 🟢 Loading Check
+  if (!fontsLoaded || initializing) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
+  // 🟢 Login Check: ຖ້າຍັງບໍ່ມີ User ໃຫ້ສະແດງ LoginScreen
+  if (!user) {
+      return <LoginScreen />;
+  }
+
+  // 🟢 Main App Content (ຈະເຮັດວຽກເມື່ອມີ User ແລ້ວ)
   const renderContent = () => {
     switch (currentTab) {
         case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
@@ -261,20 +254,13 @@ export default function App() {
         case 'products': return (
             <ProductsScreen 
                 products={products}
-                onAddProduct={() => { 
-                    setEditingProduct({ name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); 
-                    setProductModalVisible(true); 
-                }}
+                onAddProduct={() => { setEditingProduct({ name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); setProductModalVisible(true); }}
                 onEditProduct={(p) => { setEditingProduct(p); setProductModalVisible(true); }}
                 onDeleteProduct={deleteProduct}
             />
         );
         case 'expense': return <ExpenseScreen />;
-        
-        // 🟢 ປ່ຽນເປັນ ReportDashboard (ບໍ່ຕ້ອງສົ່ງ props ແລ້ວ)
-        case 'report': 
-        case 'history': return <ReportDashboard />;
-        
+        case 'report': case 'history': return <ReportDashboard />;
         case 'orders': return <OrderTrackingScreen />; 
         case 'shifts': case 'shift': return <ShiftScreen />; 
         case 'customers': return <CustomerScreen />;
@@ -302,30 +288,9 @@ export default function App() {
         currentTab={currentTab} onNavigate={(tab) => { setCurrentTab(tab); toggleMenu(false); }}
       />
       
-      {/* Product Modal */}
-      <ProductModal 
-        visible={productModalVisible} onClose={() => setProductModalVisible(false)} 
-        product={editingProduct} setProduct={setEditingProduct} onSave={saveProduct} 
-        onPickImage={async () => {
-            let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true }); 
-            if (!result.canceled) { setEditingProduct({ ...editingProduct, imageUrl: `data:image/jpeg;base64,${result.assets[0].base64}` }); }
-        }} 
-        onScan={() => openScanner('edit')}
-      />
-
-      {/* Shop Info Modal */}
-      <EditShopModal 
-        visible={shopModalVisible} 
-        onClose={() => setShopModalVisible(false)}
-        shopName={shopInfo.name}
-        setShopName={(t) => setShopInfo({...shopInfo, name: t})}
-        shopId={shopInfo.id}
-        setShopId={(t) => setShopInfo({...shopInfo, id: t})}
-        shopLogo={shopInfo.logo}
-        onPickImage={pickShopLogo}
-        onSave={saveShopInfo}
-      />
-
+      {/* Modals */}
+      <ProductModal visible={productModalVisible} onClose={() => setProductModalVisible(false)} product={editingProduct} setProduct={setEditingProduct} onSave={saveProduct} onPickImage={async () => { let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true }); if (!result.canceled) { setEditingProduct({ ...editingProduct, imageUrl: `data:image/jpeg;base64,${result.assets[0].base64}` }); } }} onScan={() => openScanner('edit')} />
+      <EditShopModal visible={shopModalVisible} onClose={() => setShopModalVisible(false)} shopName={shopInfo.name} setShopName={(t) => setShopInfo({...shopInfo, name: t})} shopId={shopInfo.id} setShopId={(t) => setShopInfo({...shopInfo, id: t})} shopLogo={shopInfo.logo} onPickImage={pickShopLogo} onSave={saveShopInfo} />
       <ScannerModal visible={isScanning} onClose={() => setIsScanning(false)} onScanned={handleBarCodeScanned} />
     </SafeAreaView>
   );

@@ -3,18 +3,18 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  KeyboardAvoidingView
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
@@ -26,11 +26,11 @@ interface DebtItem {
   id: string;
   title: string;
   category: string;
-  totalAmount: number;    // ເງິນຕົ້ນ
-  paidAmount: number;     // ຈ່າຍແລ້ວ
-  interestRate: number;   // ດອກເບ້ຍ (%)
-  monthlyPayment: number; // ຜ່ອນ/ເດືອນ
-  dueDate: string;        // ກຳນົດຊຳລະ
+  totalAmount: number;
+  paidAmount: number;
+  interestRate: number;
+  monthlyPayment: number;
+  dueDate: string;
   history?: Record<string, any>;
 }
 
@@ -39,7 +39,7 @@ export default function DebtScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   
-  // Form States (Add New)
+  // Form States
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState(DEBT_CATEGORIES[0]);
   const [totalAmount, setTotalAmount] = useState('');
@@ -49,14 +49,14 @@ export default function DebtScreen() {
   
   // Date Picker States
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dateMode, setDateMode] = useState<'due' | 'payment'>('due'); // ແຍກ Mode ລະຫວ່າງວັນກຳນົດ ແລະ ວັນຊຳລະ
+  const [dateMode, setDateMode] = useState<'due' | 'payment'>('due');
 
   // Payment States
   const [selectedDebt, setSelectedDebt] = useState<DebtItem | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date());
 
-  // 1. ດຶງຂໍ້ມູນ
+  // 1. ດຶງຂໍ້ມູນຈາກ Firebase (🟢 ແກ້ໄຂ NaN ດ້ວຍການ Force Number)
   useEffect(() => {
     const debtRef = ref(db, 'debts');
     const unsubscribe = onValue(debtRef, (snapshot) => {
@@ -65,7 +65,11 @@ export default function DebtScreen() {
         const list = Object.keys(data).map(key => ({ 
             id: key, 
             ...data[key],
-            paidAmount: data[key].paidAmount || 0 
+            // 🟢 ແປງເປັນຕົວເລກທັນທີເພື່ອປ້ອງກັນ Error NaN
+            totalAmount: Number(data[key].totalAmount) || 0,
+            paidAmount: Number(data[key].paidAmount) || 0,
+            interestRate: Number(data[key].interestRate) || 0,
+            monthlyPayment: Number(data[key].monthlyPayment) || 0,
         }));
         setDebts(list.reverse() as DebtItem[]);
       } else {
@@ -78,7 +82,7 @@ export default function DebtScreen() {
   // 2. ບັນທຶກໜີ້ໃໝ່
   const handleSaveDebt = async () => {
     if (!title || !totalAmount) {
-      Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນຕົ້ນ');
+      Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນ');
       return;
     }
 
@@ -97,18 +101,18 @@ export default function DebtScreen() {
       await push(ref(db, 'debts'), newDebt);
       setModalVisible(false);
       resetForm();
-      Alert.alert('ສຳເລັດ', 'ບັນທຶກໜີ້ສິນໃໝ່ຮຽບຮ້ອຍ');
+      Alert.alert('ສຳເລັດ', 'ບັນທຶກໜີ້ສິນຮຽບຮ້ອຍ');
     } catch (error) {
       Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້');
     }
   };
 
-  // 3. ບັນທຶກການຊຳລະ (ພ້ອມວັນທີ)
+  // 3. ບັນທຶກການຊຳລະ
   const handlePayment = async () => {
     if (!selectedDebt || !payAmount) return;
     const amount = parseFloat(payAmount.replace(/,/g, ''));
     
-    // ອັບເດດຂໍ້ມູນລ່າສຸດຈາກ State debts (ເພື່ອຄວາມຊົວ)
+    // ອັບເດດຂໍ້ມູນລ່າສຸດ
     const currentDebt = debts.find(d => d.id === selectedDebt.id) || selectedDebt;
     const newPaidAmount = (currentDebt.paidAmount || 0) + amount;
     
@@ -119,7 +123,7 @@ export default function DebtScreen() {
 
     const paymentRecord = {
         amount,
-        date: paymentDate.toISOString(), // 🟢 ໃຊ້ອັນທີທີ່ເລືອກ
+        date: paymentDate.toISOString(),
         type: 'PAYMENT'
     };
 
@@ -128,7 +132,7 @@ export default function DebtScreen() {
         await push(ref(db, `debts/${currentDebt.id}/history`), paymentRecord);
         setPaymentModalVisible(false);
         setPayAmount('');
-        setPaymentDate(new Date()); // Reset ວັນທີ
+        setPaymentDate(new Date());
         Alert.alert('ສຳເລັດ', 'ບັນທຶກການຊຳລະຮຽບຮ້ອຍ');
     } catch (error) {
         Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ');
@@ -151,7 +155,6 @@ export default function DebtScreen() {
     setDueDate(new Date());
   };
 
-  // 🟢 ຈັດການ Date Picker (ໃຊ້ຮ່ວມກັນທັງ Add ແລະ Pay)
   const onDateChange = (event: any, date?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
     if (date) {
@@ -163,7 +166,7 @@ export default function DebtScreen() {
   const openPaymentModal = (item: DebtItem) => {
       setSelectedDebt(item);
       setPayAmount('');
-      setPaymentDate(new Date()); // Default ເປັນມື້ນີ້
+      setPaymentDate(new Date());
       setPaymentModalVisible(true);
   };
 
@@ -173,7 +176,6 @@ export default function DebtScreen() {
 
     return (
         <View style={styles.card}>
-            {/* Header */}
             <View style={styles.cardHeader}>
                 <View>
                     <Text style={styles.cardTitle}>{item.title}</Text>
@@ -184,14 +186,13 @@ export default function DebtScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Total Amount */}
             <View style={styles.amountRow}>
                 <Text style={styles.label}>ຍອດກູ້ຢືມ:</Text>
                 <Text style={styles.amountTotal}>{formatNumber(item.totalAmount)} ກີບ</Text>
             </View>
 
-            {/* Progress Bar */}
             <View style={styles.progressContainer}>
+                {/* 🟢 Progress Bar ໃຊ້ສີ Theme */}
                 <View style={[styles.progressBar, { width: `${Math.min(progress * 100, 100)}%` }]} />
             </View>
             <View style={styles.progressInfo}>
@@ -201,7 +202,6 @@ export default function DebtScreen() {
 
             <View style={styles.divider} />
 
-            {/* Details */}
             <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>ດອກເບ້ຍ (%)</Text>
@@ -223,10 +223,8 @@ export default function DebtScreen() {
                     <TouchableOpacity style={styles.historyBtn}>
                         <Ionicons name="time-outline" size={18} color="#666" />
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={styles.payBtn} 
-                        onPress={() => openPaymentModal(item)}
-                    >
+                    {/* 🟢 ປຸ່ມຊຳລະໃຊ້ສີ Theme */}
+                    <TouchableOpacity style={styles.payBtn} onPress={() => openPaymentModal(item)}>
                         <Ionicons name="wallet-outline" size={16} color="white" />
                         <Text style={styles.payBtnText}>ຊຳລະ</Text>
                     </TouchableOpacity>
@@ -256,6 +254,7 @@ export default function DebtScreen() {
         }
       />
 
+      {/* 🟢 FAB ໃຊ້ສີ Theme */}
       <TouchableOpacity style={styles.fab} onPress={() => { resetForm(); setModalVisible(true); }}>
         <Ionicons name="add" size={24} color="white" />
         <Text style={styles.fabText}>ເພີ່ມໜີ້ໃໝ່</Text>
@@ -311,6 +310,7 @@ export default function DebtScreen() {
                         <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                             <Text style={styles.cancelBtnText}>ຍົກເລີກ</Text>
                         </TouchableOpacity>
+                        {/* 🟢 ປຸ່ມ Save ໃຊ້ສີ Theme */}
                         <TouchableOpacity style={styles.saveBtn} onPress={handleSaveDebt}>
                             <Text style={styles.saveBtnText}>ບັນທຶກ</Text>
                         </TouchableOpacity>
@@ -320,37 +320,28 @@ export default function DebtScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 🟢 Payment Modal (Updated Layout) */}
+      {/* Payment Modal */}
       <Modal visible={paymentModalVisible} animationType="fade" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>ບັນທຶກການຊຳລະໜີ້</Text>
-                    <TouchableOpacity onPress={() => setPaymentModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
-                </View>
-
+        <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, {height: 'auto', paddingBottom: 30}]}>
+                <Text style={styles.modalTitle}>ບັນທຶກການຊຳລະ</Text>
+                
                 {selectedDebt && (
                     <View style={{marginBottom: 15}}>
-                        <Text style={{fontFamily: 'Lao-Regular', color: '#666'}}>ບັນທຶກການຊຳລະສຳລັບ: <Text style={{fontFamily: 'Lao-Bold', color: COLORS.primary}}>{selectedDebt.title}</Text></Text>
-                        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: 5}}>
-                            <Text style={{fontFamily: 'Lao-Regular', color: '#666'}}>ຍອດຄົງເຫຼືອປັດຈຸບັນ:</Text>
-                            <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatNumber(selectedDebt.totalAmount - selectedDebt.paidAmount)} ກີບ</Text>
-                        </View>
-                        <View style={{height: 1, backgroundColor: '#eee', marginVertical: 10}} />
+                        <Text style={{fontFamily: 'Lao-Regular', color: '#666', textAlign:'center'}}>ຊຳລະໜີ້: <Text style={{fontFamily: 'Lao-Bold', color: COLORS.primary}}>{selectedDebt.title}</Text></Text>
                     </View>
                 )}
 
                 <ScrollView>
                     <Text style={styles.inputLabel}>ວັນທີຊຳລະ *</Text>
-                    {/* 🟢 Date Picker ພາຍໃນ Payment Modal */}
                     <TouchableOpacity style={styles.dateInput} onPress={() => { setDateMode('payment'); setShowDatePicker(true); }}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(paymentDate)}</Text>
                     </TouchableOpacity>
 
-                    <Text style={styles.inputLabel}>ຈຳນວນເງິນຊຳລະ (ເງິນຕົ້ນ) *</Text>
+                    <Text style={styles.inputLabel}>ຈຳນວນເງິນ (ກີບ) *</Text>
                     <TextInput 
-                        style={styles.input} 
+                        style={[styles.input, {fontSize: 24, textAlign: 'center', color: COLORS.primary, fontWeight: 'bold'}]} 
                         value={payAmount} 
                         onChangeText={(t) => setPayAmount(formatNumber(t.replace(/,/g, '')))} 
                         keyboardType="numeric" 
@@ -358,25 +349,20 @@ export default function DebtScreen() {
                         autoFocus
                     />
 
-                    <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 5}}>
-                        <Text style={{fontFamily: 'Lao-Bold', fontSize: 16}}>ຍອດຊຳລະທັງໝົດ</Text>
-                        <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.success}}>{payAmount || '0'} ກີບ</Text>
-                    </View>
-
                     <View style={styles.modalActions}>
                         <TouchableOpacity style={styles.cancelBtn} onPress={() => setPaymentModalVisible(false)}>
                             <Text style={styles.cancelBtnText}>ຍົກເລີກ</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.saveBtn, {backgroundColor: COLORS.success}]} onPress={handlePayment}>
-                            <Text style={styles.saveBtnText}>ບັນທຶກການຊຳລະ</Text>
+                        {/* 🟢 ປຸ່ມ Save ໃຊ້ສີ Theme */}
+                        <TouchableOpacity style={styles.saveBtn} onPress={handlePayment}>
+                            <Text style={styles.saveBtnText}>ຢືນຢັນ</Text>
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
             </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
-      {/* Date Picker Component */}
       {showDatePicker && (
           <DateTimePicker 
             value={dateMode === 'due' ? dueDate : paymentDate} 
@@ -407,10 +393,12 @@ const styles = StyleSheet.create({
   amountTotal: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
 
   progressContainer: { height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden', marginVertical: 5 },
-  progressBar: { height: '100%', backgroundColor: COLORS.success },
+  // 🟢 Progress bar ເປັນສີ Theme (ຫຼື Success ກໍໄດ້ ແຕ່ເພື່ອຄວາມຄຸມໂທນລອງໃຊ້ Primary)
+  progressBar: { height: '100%', backgroundColor: COLORS.primary }, 
+  
   progressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  progressText: { fontSize: 11, color: COLORS.success, fontFamily: 'Lao-Bold' },
-  remainingText: { fontSize: 12, color: '#F57C00', fontFamily: 'Lao-Bold' },
+  progressText: { fontSize: 11, color: COLORS.primary, fontFamily: 'Lao-Bold' },
+  remainingText: { fontSize: 12, color: '#F57C00', fontFamily: 'Lao-Bold' }, // ສີສົ້ມ
 
   divider: { height: 1, backgroundColor: '#f5f5f5', marginBottom: 10 },
 
@@ -421,18 +409,21 @@ const styles = StyleSheet.create({
 
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12 },
   dueDateText: { fontSize: 12, color: '#666', fontFamily: 'Lao-Regular' },
-  actionButtons: { flexDirection: 'row', gap: 10 },
+  
+  actionButtons: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   historyBtn: { padding: 8, backgroundColor: '#f5f5f5', borderRadius: 8 },
-  payBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.success, paddingVertical: 8, paddingHorizontal: 15, borderRadius: 8 },
-  payBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 12 },
+  
+  // 🟢 ປຸ່ມຊຳລະສີ Theme
+  payBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.primary, paddingVertical: 6, paddingHorizontal: 15, borderRadius: 6 },
+  payBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 13 },
 
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.success, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, elevation: 5 },
+  // 🟢 FAB ສີ Theme
+  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, elevation: 5 },
   fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 8 },
 
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
 
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, elevation: 5 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
@@ -450,6 +441,8 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 30 },
   cancelBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: '#f5f5f5' },
   cancelBtnText: { color: '#666', fontFamily: 'Lao-Bold' },
-  saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.success },
+  
+  // 🟢 ປຸ່ມ Save ສີ Theme
+  saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' }
 });

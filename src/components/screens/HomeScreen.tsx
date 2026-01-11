@@ -3,19 +3,6 @@ import React from 'react';
 import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLORS } from '../../types';
 
-interface HeaderProps {
-  onMenuPress: () => void;
-  title?: string;
-  shopName?: string;
-  shopId?: string;
-  shopLogo?: string;
-  onEditPress?: () => void;
-  onLogout?: () => void;
-
-  // ✅ สำคัญมาก: รองรับ props อื่นที่ถูกส่งมา
-  [key: string]: any;
-}
-
 export default function Header({ 
   onMenuPress, 
   title = "Soudaphone POS",

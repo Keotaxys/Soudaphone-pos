@@ -64,11 +64,8 @@ export default function App() {
       name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: ''
   });
 
-  // ============================================================
   // Firebase Listeners
-  // ============================================================
   useEffect(() => {
-    // ດຶງຂໍ້ມູນສິນຄ້າ
     const productsRef = ref(db, 'products');
     const unsubscribeProducts = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -79,7 +76,6 @@ export default function App() {
       setLoading(false);
     });
 
-    // ດຶງຂໍ້ມູນການຂາຍ
     const salesRef = ref(db, 'sales');
     const unsubscribeSales = onValue(salesRef, (snapshot) => {
         if(snapshot.exists()){
@@ -91,10 +87,6 @@ export default function App() {
 
     return () => { unsubscribeProducts(); unsubscribeSales(); };
   }, []);
-
-  // ============================================================
-  // Logic Functions
-  // ============================================================
 
   const toggleMenu = (show: boolean) => {
     if (show) { 
@@ -190,8 +182,8 @@ export default function App() {
   // ============================================================
   const renderContent = () => {
     switch (currentTab) {
-        // 🟢 ແກ້ໄຂບ່ອນນີ້: ສົ່ງ 'products' ເຂົ້າໄປໃນ HomeScreen ດ້ວຍ
         case 'home': 
+            // 🟢 ແກ້ໄຂ: ສົ່ງ products={products} ໃຫ້ HomeScreen
             return <HomeScreen salesHistory={salesHistory} products={products} />;
         
         case 'pos': 

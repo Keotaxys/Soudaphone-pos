@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-// 🟢 ແກ້ໄຂ Import: ດຶງສະເພາະສິ່ງທີ່ໃຊ້ (ແກ້ບັນຫາ TypeScript Error)
-import { documentDirectory, EncodingType, writeAsStringAsync } from 'expo-file-system';
+// 🟢 1. Import ແບບມາດຕະຖານ (Standard)
+import * as FileSystem from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
@@ -146,6 +146,7 @@ export default function ReportDashboard() {
     setCurrentDate(newDate);
   };
 
+  // 🟢 Generate Excel
   const generateExcel = async () => {
       let csvContent = "Date,Type,Description,Amount\n";
       
@@ -156,9 +157,11 @@ export default function ReportDashboard() {
           csvContent += `${new Date(e.date).toLocaleDateString()},Expense,${e.category},-${parseCurrency(e.amount)}\n`;
       });
 
-      // 🟢 ໃຊ້ຕົວປ່ຽນທີ່ Import ມາໂດຍກົງ
-      const fileName = `${documentDirectory}report_${new Date().getTime()}.csv`;
-      await writeAsStringAsync(fileName, csvContent, { encoding: EncodingType.UTF8 });
+      // 🟢 2. ໃຊ້ FileSystem.documentDirectory ແທນ
+      const fileName = `${FileSystem.documentDirectory}report_${new Date().getTime()}.csv`;
+      
+      // 🟢 3. ໃຊ້ string 'utf8' ແທນ Enum ເພື່ອປ້ອງກັນ Error
+      await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
       await shareAsync(fileName);
   };
 

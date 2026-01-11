@@ -64,8 +64,11 @@ export default function App() {
       name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: ''
   });
 
+  // ============================================================
   // Firebase Listeners
+  // ============================================================
   useEffect(() => {
+    // ດຶງຂໍ້ມູນສິນຄ້າ
     const productsRef = ref(db, 'products');
     const unsubscribeProducts = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -76,6 +79,7 @@ export default function App() {
       setLoading(false);
     });
 
+    // ດຶງຂໍ້ມູນການຂາຍ
     const salesRef = ref(db, 'sales');
     const unsubscribeSales = onValue(salesRef, (snapshot) => {
         if(snapshot.exists()){
@@ -87,6 +91,10 @@ export default function App() {
 
     return () => { unsubscribeProducts(); unsubscribeSales(); };
   }, []);
+
+  // ============================================================
+  // Logic Functions
+  // ============================================================
 
   const toggleMenu = (show: boolean) => {
     if (show) { 
@@ -158,6 +166,20 @@ export default function App() {
       } catch (error) { Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້'); } 
   };
 
+  const updateQuantity = (id: string, delta: number) => { 
+      setCart(prev => prev.map(item => { 
+          if (item.id === id) { 
+              const product = products.find(p => p.id === id); 
+              const maxStock = product ? product.stock : item.quantity; 
+              const newQty = Math.max(1, Math.min(maxStock, item.quantity + delta)); 
+              return { ...item, quantity: newQty }; 
+          } 
+          return item; 
+      })); 
+  };
+
+  const removeFromCart = (id: string) => { setCart(prev => prev.filter(item => item.id !== id)); };
+
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
@@ -168,36 +190,27 @@ export default function App() {
   // ============================================================
   const renderContent = () => {
     switch (currentTab) {
-        case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
-        case 'pos': return (
+        // 🟢 ແກ້ໄຂບ່ອນນີ້: ສົ່ງ 'products' ເຂົ້າໄປໃນ HomeScreen ດ້ວຍ
+        case 'home': 
+            return <HomeScreen salesHistory={salesHistory} products={products} />;
+        
+        case 'pos': 
+            return (
                 <POSScreen 
                     products={products} cart={cart} addToCart={addToCart}
                     openEditProductModal={(p) => { setEditingProduct(p); setProductModalVisible(true); }} 
                     openAddProductModal={() => { setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); setProductModalVisible(true); }}
                     openScanner={openScanner} totalItems={totalItems} totalLAK={totalLAK}
-                    formatNumber={formatNumber} updateQuantity={(id, d) => {
-                        setCart(prev => prev.map(item => { 
-                            if (item.id === id) { 
-                                const product = products.find(p => p.id === id); 
-                                const maxStock = product ? product.stock : item.quantity; 
-                                return { ...item, quantity: Math.max(1, Math.min(maxStock, item.quantity + d)) }; 
-                            } 
-                            return item; 
-                        }));
-                    }}
-                    removeFromCart={(id) => setCart(prev => prev.filter(item => item.id !== id))} 
-                    onCheckout={handleCheckout}
+                    formatNumber={formatNumber} updateQuantity={updateQuantity}
+                    removeFromCart={removeFromCart} onCheckout={handleCheckout}
                 />
             );
         case 'expense': return <ExpenseScreen />;
         case 'report':
         case 'history': return <ReportScreen salesHistory={salesHistory} />;
         case 'orders': return <OrderTrackingScreen />; 
-        
-        // 🟢 ແກ້ໄຂ: ເພີ່ມ Case 'shift' ໃຫ້ຕົງກັບຄ່າທີ່ Sidebar ສົ່ງມາ
         case 'shifts':
-        case 'shift': 
-            return <ShiftScreen />; 
+        case 'shift': return <ShiftScreen />; 
 
         default: return (
             <View style={styles.center}>

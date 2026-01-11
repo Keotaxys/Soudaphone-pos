@@ -6,7 +6,6 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -53,26 +52,18 @@ export default function ReportDashboard() {
       return isNaN(num) ? 0 : num;
   };
 
-  // 🟢 Helper: Safe Key Extractor (ແກ້ໄຂ Error Unique Key)
-  const keyExtractor = (item: any, index: number) => {
-      return item.id ? item.id.toString() : index.toString();
-  };
-
   useEffect(() => {
     const fetchData = () => {
-      // Sales
       onValue(ref(db, 'sales'), (snapshot) => {
         const data = snapshot.val();
         if (data) setSales(Object.keys(data).map(key => ({ id: key, ...data[key] })));
         else setSales([]);
       });
-      // Expenses
       onValue(ref(db, 'expenses'), (snapshot) => {
         const data = snapshot.val();
         if (data) setExpenses(Object.keys(data).map(key => ({ id: key, ...data[key] })));
         else setExpenses([]);
       });
-      // Debts
       onValue(ref(db, 'debts'), (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -82,7 +73,7 @@ export default function ReportDashboard() {
                 const paid = parseCurrency(item.paidAmount || item.paid);
                 let remaining = parseCurrency(item.remainingBalance);
                 if (remaining === 0 && total > 0) remaining = total - paid;
-                return { ...item, id: key, remainingBalance: remaining };
+                return { ...item, remainingBalance: remaining };
             });
             setDebts(list);
             const debtSum = list.reduce((sum, item: any) => sum + item.remainingBalance, 0);
@@ -115,7 +106,6 @@ export default function ReportDashboard() {
       end.setMonth(11, 31);
     }
 
-    // Filter Sales
     const fSales = sales.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
@@ -130,14 +120,12 @@ export default function ReportDashboard() {
     fSales.forEach(sale => {
         if (sale.items && Array.isArray(sale.items)) {
             sale.items.forEach((item: any) => {
-                // Top Products
                 if (!productStats[item.name]) {
                     productStats[item.name] = { ...item, totalSold: 0, totalAmount: 0 };
                 }
                 productStats[item.name].totalSold += item.quantity;
                 productStats[item.name].totalAmount += (item.price * item.quantity);
 
-                // Category Stats
                 const catName = item.category || 'ທົ່ວໄປ';
                 if (!catStats[catName]) catStats[catName] = 0;
                 catStats[catName] += (item.price * item.quantity);
@@ -153,7 +141,6 @@ export default function ReportDashboard() {
         .sort((a, b) => b.value - a.value);
     setSalesByCategory(sortedSalesCat);
 
-    // Filter Expenses
     const fExpenses = expenses.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
@@ -186,9 +173,9 @@ export default function ReportDashboard() {
   };
 
   const generateExcel = async () => {
-      let csvContent = "Date,Type,Category,Description,Amount\n";
+      let csvContent = "Date,Type,Description,Amount\n";
       filteredSales.forEach(s => {
-          csvContent += `${new Date(s.date).toLocaleDateString()},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
+          csvContent += `${new Date(s.date).toLocaleDateString()},Sale,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
       });
       filteredExpenses.forEach(e => {
           csvContent += `${new Date(e.date).toLocaleDateString()},Expense,${e.category},${e.note || '-'},-${parseCurrency(e.amount)}\n`;
@@ -296,13 +283,14 @@ export default function ReportDashboard() {
     );
   };
 
+  const keyExtractor = (item: any, index: number) => item.id ? item.id.toString() : index.toString();
+
   const renderContent = () => {
       switch (activeTab) {
           case 'overview':
               const profit = totalRevenue - totalExpense;
               return (
                   <ScrollView showsVerticalScrollIndicator={false}>
-                      <SimpleChart />
                       <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10}}>
                         <View style={{width: '100%'}}>
                             <SummaryCard label="ກຳໄລສຸດທິ" amount={profit} color={COLORS.success} icon="trending-up" isProfit={true} />
@@ -311,6 +299,8 @@ export default function ReportDashboard() {
                         <View style={{flex: 1}}><SummaryCard label="ລາຍຈ່າຍ" amount={totalExpense} color={COLORS.danger} icon="wallet" /></View>
                       </View>
                       
+                      <SimpleChart />
+
                       {topProducts.length > 0 && (
                           <View style={styles.topProductsCard}>
                               <View style={styles.sectionHeaderRow}>
@@ -348,7 +338,7 @@ export default function ReportDashboard() {
               return (
                   <FlatList 
                     data={filteredSales}
-                    keyExtractor={keyExtractor} // 🟢 ໃຊ້ Safe Key Extractor
+                    keyExtractor={keyExtractor}
                     contentContainerStyle={{paddingBottom: 50}}
                     renderItem={({item}) => (
                         <View style={styles.listItem}>
@@ -366,7 +356,7 @@ export default function ReportDashboard() {
               return (
                 <FlatList 
                     data={filteredExpenses}
-                    keyExtractor={keyExtractor} // 🟢 ໃຊ້ Safe Key Extractor
+                    keyExtractor={keyExtractor}
                     contentContainerStyle={{paddingBottom: 50}}
                     renderItem={({item}) => (
                         <View style={styles.listItem}>
@@ -384,7 +374,7 @@ export default function ReportDashboard() {
               return (
                 <FlatList 
                     data={debts}
-                    keyExtractor={keyExtractor} // 🟢 ໃຊ້ Safe Key Extractor
+                    keyExtractor={keyExtractor}
                     contentContainerStyle={{paddingBottom: 50}}
                     renderItem={({item}) => (
                         <View style={styles.listItem}>
@@ -479,8 +469,13 @@ const styles = StyleSheet.create({
   cardLabel: { fontSize: 12, color: '#888', fontFamily: 'Lao-Regular' },
   cardAmount: { fontSize: 18, fontFamily: 'Lao-Bold', marginTop: 2 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2, alignItems: 'center' },
-  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 20 },
+  chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
+  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 10 },
+  chartRow: { marginBottom: 10 },
+  chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
+  chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
+  chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
+  chartBar: { height: '100%', borderRadius: 4 },
   chartArea: { flexDirection: 'row', alignItems: 'flex-end', height: 180, gap: 40 },
   barGroup: { alignItems: 'center' },
   bar: { width: 40, borderRadius: 5 },
@@ -495,15 +490,6 @@ const styles = StyleSheet.create({
   listSub: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#999' },
   listAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
-  
-  // Chart Row Styles
-  chartRow: { marginBottom: 10 },
-  chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
-  chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
-  chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-  chartBar: { height: '100%', borderRadius: 4 },
-
-  // Top Products Styles
   topProductsCard: { backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
   sectionHeaderRow: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 10, marginBottom: 10 },
   sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },

@@ -1,19 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker'; // 🟢 Import ປະຕິທິນ
-import React, { useState, useEffect } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import React, { useEffect, useState } from 'react';
 import {
-  FlatList,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Modal, // 🟢 Import ເພີ່ມ
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { COLORS, Product, CartItem } from '../../types';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
+import { CartItem, COLORS, Product } from '../../types';
 
 interface POSScreenProps {
   products: Product[];
@@ -48,11 +50,11 @@ export default function POSScreen({
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
   const [source, setSource] = useState<'ໜ້າຮ້ານ' | 'Online'>('ໜ້າຮ້ານ');
   
-  // 🟢 State ສຳລັບວັນທີ
+  // Date States
   const [checkoutDate, setCheckoutDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // State ສຳລັບແກ້ໄຂລາຄາ
+  // Edit Total State
   const [customTotal, setCustomTotal] = useState<string>('');
   const [isEditingTotal, setIsEditingTotal] = useState(false);
 
@@ -62,7 +64,7 @@ export default function POSScreen({
     (p.barcode && p.barcode.includes(searchQuery))
   );
 
-  // Calculate Base Totals
+  // Totals Calculation
   const calculateTotalBase = () => {
     return cart.reduce((sum, item) => {
         let priceLAK = item.price;
@@ -89,7 +91,7 @@ export default function POSScreen({
       if (cart.length === 0) {
           setCustomTotal('');
           setCartModalVisible(false);
-          setCheckoutDate(new Date()); // Reset ວັນທີເມື່ອກະຕ່າວ່າງ
+          setCheckoutDate(new Date());
       }
   }, [cart]);
 
@@ -100,7 +102,7 @@ export default function POSScreen({
           paymentMethod,
           amountReceived: finalAmountLAK, 
           change: 0,
-          date: checkoutDate.toISOString(), // 🟢 ສົ່ງວັນທີທີ່ເລືອກໄປບັນທຶກ
+          date: checkoutDate.toISOString(),
           source,
           currency: paymentCurrency,
           totalPaid: finalTotal,
@@ -177,7 +179,11 @@ export default function POSScreen({
 
       {/* Cart Modal */}
       <Modal visible={cartModalVisible} animationType="slide" transparent={true}>
-          <View style={styles.modalOverlay}>
+          {/* 🟢 1. ໃຊ້ KeyboardAvoidingView ເພື່ອດັນເນື້ອຫາຂຶ້ນເມື່ອຄີບອດມາ */}
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
               <View style={styles.modalContent}>
                   
                   <View style={styles.modalHeader}>
@@ -187,25 +193,31 @@ export default function POSScreen({
                       </TouchableOpacity>
                   </View>
 
-                  {/* 🟢 Controls Row: Source & Date */}
+                  {/* Controls: Source & Date */}
                   <View style={styles.controlsRow}>
-                      {/* Source Toggle */}
                       <View style={styles.sourceGroup}>
                           <TouchableOpacity 
-                            style={[styles.sourceBtn, source === 'ໜ້າຮ້ານ' && styles.activeSourceBtn]} 
+                            // 🟢 2. ປ່ຽນສີ Online ເປັນສີສົ້ມ (Secondary)
+                            style={[
+                                styles.sourceBtn, 
+                                source === 'ໜ້າຮ້ານ' && { backgroundColor: COLORS.primary },
+                                source === 'Online' && { backgroundColor: 'transparent' } // Reset background for inactive
+                            ]} 
                             onPress={() => setSource('ໜ້າຮ້ານ')}
                           >
                               <Text style={[styles.sourceText, source === 'ໜ້າຮ້ານ' && {color: 'white'}]}>ໜ້າຮ້ານ</Text>
                           </TouchableOpacity>
                           <TouchableOpacity 
-                            style={[styles.sourceBtn, source === 'Online' && styles.activeSourceBtn]} 
+                            style={[
+                                styles.sourceBtn, 
+                                source === 'Online' && { backgroundColor: COLORS.secondary } // ສີສົ້ມ
+                            ]} 
                             onPress={() => setSource('Online')}
                           >
                               <Text style={[styles.sourceText, source === 'Online' && {color: 'white'}]}>Online</Text>
                           </TouchableOpacity>
                       </View>
 
-                      {/* 🟢 Date Picker Button */}
                       <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
                           <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                           <Text style={styles.dateText}>{checkoutDate.toLocaleDateString('lo-LA')}</Text>
@@ -284,14 +296,21 @@ export default function POSScreen({
                       {/* Payment Method */}
                       <View style={styles.methodRow}>
                           <TouchableOpacity 
-                              style={[styles.methodBtn, paymentMethod === 'CASH' && styles.activeMethodBtn]} 
+                              style={[
+                                styles.methodBtn, 
+                                paymentMethod === 'CASH' && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }
+                              ]} 
                               onPress={() => setPaymentMethod('CASH')}
                           >
                               <Ionicons name="cash-outline" size={20} color={paymentMethod === 'CASH' ? 'white' : '#666'} />
                               <Text style={[styles.methodText, paymentMethod === 'CASH' && {color: 'white'}]}> ເງິນສົດ</Text>
                           </TouchableOpacity>
                           <TouchableOpacity 
-                              style={[styles.methodBtn, paymentMethod === 'QR' && styles.activeMethodBtn]} 
+                              // 🟢 2. ປ່ຽນສີ QR Code ເປັນສີສົ້ມ (Secondary)
+                              style={[
+                                styles.methodBtn, 
+                                paymentMethod === 'QR' && { backgroundColor: COLORS.secondary, borderColor: COLORS.secondary }
+                              ]} 
                               onPress={() => setPaymentMethod('QR')}
                           >
                               <Ionicons name="qr-code-outline" size={20} color={paymentMethod === 'QR' ? 'white' : '#666'} />
@@ -299,15 +318,14 @@ export default function POSScreen({
                           </TouchableOpacity>
                       </View>
 
-                      {/* Checkout Button */}
                       <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout}>
                           <Text style={styles.checkoutBtnText}>ຢືນຢັນການຊຳລະ</Text>
                       </TouchableOpacity>
                   </View>
               </View>
-          </View>
+          </KeyboardAvoidingView>
 
-          {/* 🟢 Date Picker Component */}
+          {/* 🟢 3. Date Picker (ຍ້າຍມາຢູ່ນອກ KeyboardAvoidingView ເພື່ອບໍ່ໃຫ້ບັງ) */}
           {showDatePicker && (
               <DateTimePicker
                   value={checkoutDate}
@@ -353,22 +371,20 @@ const styles = StyleSheet.create({
   cartTotalText: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primary },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: 'white', height: '90%', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  // 🟢 ປັບຄວາມສູງ Modal ໃຫ້ເໝາະສົມກັບ KeyboardAvoidingView
+  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%', width: '100%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
   modalTitle: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.text },
   
-  // 🟢 Controls Row Styles
   controlsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 10, alignItems: 'center' },
   sourceGroup: { flexDirection: 'row', backgroundColor: '#f0f0f0', borderRadius: 8, padding: 2 },
   sourceBtn: { paddingVertical: 6, paddingHorizontal: 15, borderRadius: 6 },
-  activeSourceBtn: { backgroundColor: COLORS.primary },
   sourceText: { fontFamily: 'Lao-Bold', fontSize: 13, color: '#666' },
   
-  // 🟢 Date Button Styles
   dateBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#f9f9f9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
   dateText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 13 },
 
-  cartList: { flex: 1, padding: 15 },
+  cartList: { padding: 15 }, // ເອົາ flex:1 ອອກເພື່ອໃຫ້ ScrollView ຈັດການຄວາມສູງເອງພາຍໃນ KeyboardAvoidingView
   cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#f9f9f9' },
   cartItemImg: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#eee' },
   cartItemName: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
@@ -389,7 +405,6 @@ const styles = StyleSheet.create({
 
   methodRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   methodBtn: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#eee', backgroundColor: 'white' },
-  activeMethodBtn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   methodText: { fontFamily: 'Lao-Bold', color: '#666' },
 
   checkoutBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center' },

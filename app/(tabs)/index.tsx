@@ -237,6 +237,7 @@ export default function App() {
 
   const removeFromCart = (id: string) => { setCart(prev => prev.filter(item => item.id !== id)); };
 
+  // 🟢 Calculate Totals (ແກ້ໄຂ Error totalItems)
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalLAK = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
@@ -281,7 +282,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 🟢 ແກ້ໄຂແລ້ວ: ບໍ່ມີ salesHistory ແລະ products ໃນ Header */}
+      {/* 🟢 3. Header: ໃສ່ສະເພາະ Props ທີ່ HeaderProps ຕ້ອງການ */}
       <Header 
         onMenuPress={() => toggleMenu(true)} 
         shopName={shopInfo.name}
@@ -300,6 +301,7 @@ export default function App() {
         currentTab={currentTab} onNavigate={(tab) => { setCurrentTab(tab); toggleMenu(false); }}
       />
       
+      {/* Modals */}
       <ProductModal visible={productModalVisible} onClose={() => setProductModalVisible(false)} product={editingProduct} setProduct={setEditingProduct} onSave={saveProduct} onPickImage={async () => { let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true }); if (!result.canceled) { setEditingProduct({ ...editingProduct, imageUrl: `data:image/jpeg;base64,${result.assets[0].base64}` }); } }} onScan={() => openScanner('edit')} />
       <EditShopModal visible={shopModalVisible} onClose={() => setShopModalVisible(false)} shopName={shopInfo.name} setShopName={(t) => setShopInfo({...shopInfo, name: t})} shopId={shopInfo.id} setShopId={(t) => setShopInfo({...shopInfo, id: t})} shopLogo={shopInfo.logo} onPickImage={pickShopLogo} onSave={saveShopInfo} />
       <ScannerModal visible={isScanning} onClose={() => setIsScanning(false)} onScanned={handleBarCodeScanned} />

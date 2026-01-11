@@ -40,9 +40,13 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
     // --- Filter States ---
     const [filterType, setFilterType] = useState<FilterType>('day');
     const [currentDate, setCurrentDate] = useState(new Date());
+    
+    // Custom Range States
     const [customStart, setCustomStart] = useState(new Date());
     const [customEnd, setCustomEnd] = useState(new Date());
     const [showCustomPicker, setShowCustomPicker] = useState(false);
+    
+    // Date Picker States
     const [pickerMode, setPickerMode] = useState<'start' | 'end'>('start');
     const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -106,73 +110,55 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
         return { start, end };
     };
 
-    // 3. ປະມວນຜົນຂໍ້ມູນ (Filter & Calculate Charts)
+    // 3. ປະມວນຜົນຂໍ້ມູນ
     useEffect(() => {
         const { start, end } = getDateRange();
 
-        // --- Filter ---
+        // Filter Sales
         const filteredSales = salesHistory.filter(sale => {
             const d = new Date(sale.date);
             return d >= start && d <= end && sale.status !== 'ຍົກເລີກ';
         });
 
+        // Filter Expenses
         const filteredExp = expensesData.filter(exp => {
             const d = new Date(exp.date);
             return d >= start && d <= end;
         });
 
-        // --- Totals ---
-        const totalSales = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
-        const totalExp = filteredExp.reduce((sum, exp) => sum + exp.amount, 0);
-
-        setFilteredTotal(totalSales);
+        // Calculate Totals
+        setFilteredTotal(filteredSales.reduce((sum, sale) => sum + sale.total, 0));
         setFilteredOrders(filteredSales.length);
-        setFilteredExpenses(totalExp);
+        setFilteredExpenses(filteredExp.reduce((sum, exp) => sum + exp.amount, 0));
         setLowStockProducts(products.filter(p => p.stock <= 5));
 
-        // --- 4. ຄິດໄລ່ Sales Chart ---
+        // Prepare Sales Chart
         const salesMap: Record<string, number> = {};
         filteredSales.forEach(sale => {
             sale.items.forEach(item => {
                 const cat = item.category || 'ທົ່ວໄປ';
                 let amount = item.price * item.quantity;
                 if (item.priceCurrency === 'THB') amount = amount * currentRate;
-                
                 salesMap[cat] = (salesMap[cat] || 0) + amount;
             });
         });
-
-        const sortedSales = Object.keys(salesMap)
-            .map(key => ({ category: key, amount: salesMap[key], percentage: 0 }))
-            .sort((a, b) => b.amount - a.amount);
-        
+        const sortedSales = Object.keys(salesMap).map(key => ({ category: key, amount: salesMap[key], percentage: 0 })).sort((a, b) => b.amount - a.amount);
         const maxSale = sortedSales.length > 0 ? sortedSales[0].amount : 0;
-        const finalSalesChart = sortedSales.map(item => ({
-            ...item,
-            percentage: maxSale > 0 ? (item.amount / maxSale) * 100 : 0
-        }));
-        setSalesChartData(finalSalesChart);
+        setSalesChartData(sortedSales.map(item => ({ ...item, percentage: maxSale > 0 ? (item.amount / maxSale) * 100 : 0 })));
 
-        // --- 5. ຄິດໄລ່ Expense Chart ---
+        // Prepare Expense Chart
         const expMap: Record<string, number> = {};
         filteredExp.forEach(exp => {
             const cat = exp.category || 'ອື່ນໆ';
             expMap[cat] = (expMap[cat] || 0) + exp.amount;
         });
-
-        const sortedExp = Object.keys(expMap)
-            .map(key => ({ category: key, amount: expMap[key], percentage: 0 }))
-            .sort((a, b) => b.amount - a.amount);
-
+        const sortedExp = Object.keys(expMap).map(key => ({ category: key, amount: expMap[key], percentage: 0 })).sort((a, b) => b.amount - a.amount);
         const maxExp = sortedExp.length > 0 ? sortedExp[0].amount : 0;
-        const finalExpChart = sortedExp.map(item => ({
-            ...item,
-            percentage: maxExp > 0 ? (item.amount / maxExp) * 100 : 0
-        }));
-        setExpenseChartData(finalExpChart);
+        setExpenseChartData(sortedExp.map(item => ({ ...item, percentage: maxExp > 0 ? (item.amount / maxExp) * 100 : 0 })));
 
     }, [salesHistory, expensesData, filterType, currentDate, customStart, customEnd, products, currentRate]);
 
+    // Handlers
     const handleNavigateDate = (dir: 'prev' | 'next') => {
         const newDate = new Date(currentDate);
         const val = dir === 'next' ? 1 : -1;
@@ -181,6 +167,17 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
         else if (filterType === 'month') newDate.setMonth(newDate.getMonth() + val);
         else if (filterType === 'year') newDate.setFullYear(newDate.getFullYear() + val);
         setCurrentDate(newDate);
+    };
+
+    // 🟢 ຟັງຊັນປ່ຽນວັນທີ (Native & Custom)
+    const onDateChange = (event: any, selectedDate?: Date) => {
+        // Android: ປິດທັນທີ
+        if (Platform.OS === 'android') setShowDatePicker(false);
+        
+        if (selectedDate) {
+            if (pickerMode === 'start') setCustomStart(selectedDate);
+            else setCustomEnd(selectedDate);
+        }
     };
 
     const getDateLabel = () => {
@@ -193,20 +190,12 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
         return '';
     };
 
-    const handleCustomDateChange = (event: any, selectedDate?: Date) => {
-        if (Platform.OS === 'android') setShowDatePicker(false);
-        if (selectedDate) {
-            if (pickerMode === 'start') setCustomStart(selectedDate);
-            else setCustomEnd(selectedDate);
-        }
-    };
-
     const profit = filteredTotal - filteredExpenses;
 
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             
-            {/* Filter Section */}
+            {/* Filter Tabs */}
             <View style={styles.filterSection}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterTabs}>
                     {['day', 'week', 'month', 'year', 'custom'].map((type) => (
@@ -236,27 +225,31 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
                 )}
             </View>
 
-            {/* Stats Grid */}
+            {/* Dashboard Stats */}
             <View style={styles.statsGrid}>
+                {/* Sale Card */}
                 <View style={[styles.statCard, { backgroundColor: COLORS.primary }]}>
                     <View style={styles.iconCircleWhite}><Ionicons name="cash" size={24} color={COLORS.primary} /></View>
-                    <View><Text style={styles.statLabelWhite}>ຍອດຂາຍລວມ</Text><Text style={styles.statValueWhite}>{formatNumber(filteredTotal)} ₭</Text></View>
+                    <View><Text style={styles.statLabelWhite}>ຍອດຂາຍ</Text><Text style={styles.statValueWhite}>{formatNumber(filteredTotal)} ₭</Text></View>
                 </View>
+                {/* Profit Card */}
                 <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
                     <View style={[styles.iconCircle, { backgroundColor: '#E0F2F1' }]}><Ionicons name="trending-up" size={24} color={COLORS.primaryDark} /></View>
-                    <View><Text style={styles.statLabel}>ກຳໄລສິດທິ</Text><Text style={[styles.statValue, { color: profit >= 0 ? COLORS.success : COLORS.danger }]}>{profit >= 0 ? '+' : ''}{formatNumber(profit)}</Text></View>
+                    <View><Text style={styles.statLabel}>ກຳໄລ</Text><Text style={[styles.statValue, { color: profit >= 0 ? COLORS.success : COLORS.danger }]}>{profit >= 0 ? '+' : ''}{formatNumber(profit)}</Text></View>
                 </View>
+                {/* Orders Card */}
                 <View style={[styles.statCard, { backgroundColor: COLORS.secondary }]}>
                     <View style={styles.iconCircleWhite}><Ionicons name="receipt" size={24} color={COLORS.secondaryDark} /></View>
-                    <View><Text style={styles.statLabelWhite}>ອໍເດີທັງໝົດ</Text><Text style={styles.statValueWhite}>{filteredOrders} ບິນ</Text></View>
+                    <View><Text style={styles.statLabelWhite}>ອໍເດີ</Text><Text style={styles.statValueWhite}>{filteredOrders}</Text></View>
                 </View>
+                {/* Expenses Card */}
                 <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
                     <View style={[styles.iconCircle, { backgroundColor: '#FFEBEE' }]}><Ionicons name="wallet-outline" size={24} color={COLORS.danger} /></View>
                     <View><Text style={styles.statLabel}>ລາຍຈ່າຍ</Text><Text style={[styles.statValue, { color: COLORS.danger }]}>{formatNumber(filteredExpenses)}</Text></View>
                 </View>
             </View>
 
-            {/* Low Stock */}
+            {/* Low Stock Warning */}
             {lowStockProducts.length > 0 && (
                 <View style={styles.sectionContainer}>
                     <View style={styles.sectionHeader}><Ionicons name="alert-circle" size={20} color={COLORS.secondaryDark} /><Text style={styles.sectionTitle}>ສິນຄ້າໃກ້ໝົດ ({lowStockProducts.length})</Text></View>
@@ -268,44 +261,17 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
                 </View>
             )}
 
-            {/* Sales Chart */}
+            {/* Charts Section */}
             <View style={styles.chartContainer}>
-                <Text style={styles.chartTitle}>ຍອດຂາຍແຍກຕາມໝວດໝູ່</Text>
-                {salesChartData.length > 0 ? (
-                    salesChartData.map((item, index) => (
-                        <View key={index} style={styles.chartRow}>
-                            <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
-                                <Text style={styles.chartLabel}>{item.category}</Text>
-                                <Text style={styles.chartValue}>{formatNumber(item.amount)} ₭</Text>
-                            </View>
-                            <View style={styles.progressBarBg}>
-                                <View style={[styles.progressBarFill, { width: `${item.percentage}%`, backgroundColor: COLORS.primary }]} />
-                            </View>
+                <Text style={styles.chartTitle}>ຍອດຂາຍຕາມໝວດໝູ່</Text>
+                {salesChartData.length > 0 ? salesChartData.map((item, index) => (
+                    <View key={index} style={styles.chartRow}>
+                        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
+                            <Text style={styles.chartLabel}>{item.category}</Text><Text style={styles.chartValue}>{formatNumber(item.amount)} ₭</Text>
                         </View>
-                    ))
-                ) : (
-                    <Text style={styles.noDataText}>ບໍ່ມີຂໍ້ມູນການຂາຍໃນຊ່ວງເວລານີ້</Text>
-                )}
-            </View>
-
-            {/* Expense Chart */}
-            <View style={[styles.chartContainer, { marginBottom: 30 }]}>
-                <Text style={styles.chartTitle}>ລາຍຈ່າຍແຍກຕາມໝວດໝູ່</Text>
-                {expenseChartData.length > 0 ? (
-                    expenseChartData.map((item, index) => (
-                        <View key={index} style={styles.chartRow}>
-                            <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
-                                <Text style={styles.chartLabel}>{item.category}</Text>
-                                <Text style={[styles.chartValue, {color: COLORS.danger}]}>{formatNumber(item.amount)} ₭</Text>
-                            </View>
-                            <View style={styles.progressBarBg}>
-                                <View style={[styles.progressBarFill, { width: `${item.percentage}%`, backgroundColor: COLORS.danger }]} />
-                            </View>
-                        </View>
-                    ))
-                ) : (
-                    <Text style={styles.noDataText}>ບໍ່ມີຂໍ້ມູນລາຍຈ່າຍໃນຊ່ວງເວລານີ້</Text>
-                )}
+                        <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${item.percentage}%`, backgroundColor: COLORS.primary }]} /></View>
+                    </View>
+                )) : <Text style={styles.noDataText}>ບໍ່ມີຂໍ້ມູນ</Text>}
             </View>
 
             {/* Custom Date Modal */}
@@ -314,28 +280,27 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
                     <View style={styles.pickerContainer}>
                         <Text style={styles.pickerTitle}>ເລືອກຊ່ວງວັນທີ</Text>
                         <View style={styles.pickerRow}>
+                            {/* 🟢 ປຸ່ມເລີ່ມຕົ້ນ: ກົດແລ້ວເປີດ Calendar ທັນທີ */}
                             <TouchableOpacity style={styles.dateInput} onPress={() => { setPickerMode('start'); setShowDatePicker(true); }}>
                                 <Text style={styles.pickerLabel}>ເລີ່ມຕົ້ນ</Text>
                                 <Text style={styles.pickerValue}>{formatDate(customStart)}</Text>
                             </TouchableOpacity>
                             <Ionicons name="arrow-forward" size={20} color="#ccc" />
+                            {/* 🟢 ປຸ່ມສິ້ນສຸດ: ກົດແລ້ວເປີດ Calendar ທັນທີ */}
                             <TouchableOpacity style={styles.dateInput} onPress={() => { setPickerMode('end'); setShowDatePicker(true); }}>
                                 <Text style={styles.pickerLabel}>ສິ້ນສຸດ</Text>
                                 <Text style={styles.pickerValue}>{formatDate(customEnd)}</Text>
                             </TouchableOpacity>
                         </View>
+                        <TouchableOpacity style={styles.confirmBtn} onPress={() => setShowCustomPicker(false)}><Text style={styles.confirmText}>ຕົກລົງ</Text></TouchableOpacity>
                         
-                        <TouchableOpacity style={styles.confirmBtn} onPress={() => setShowCustomPicker(false)}>
-                            <Text style={styles.confirmText}>ຕົກລົງ</Text>
-                        </TouchableOpacity>
-
-                        {/* 🟢 ຍ້າຍ DateTimePicker ມາໄວ້ທາງໃນ Modal ເພື່ອໃຫ້ສະແດງທັບໄດ້ທັນທີ */}
+                        {/* 🟢 DateTimePicker ວາງໄວ້ໃນ Modal ເພື່ອບໍ່ໃຫ້ຖືກບັງ */}
                         {showDatePicker && (
                             <DateTimePicker 
                                 value={pickerMode === 'start' ? customStart : customEnd} 
                                 mode="date" 
                                 display="default" 
-                                onChange={handleCustomDateChange} 
+                                onChange={onDateChange} 
                             />
                         )}
                     </View>
@@ -348,9 +313,7 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    
-    // Filter
-    filterSection: { backgroundColor: 'white', paddingBottom: 10, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1 },
+    filterSection: { backgroundColor: 'white', paddingBottom: 10, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 5 },
     filterTabs: { paddingHorizontal: 15, marginTop: 10, marginBottom: 10 },
     filterTab: { paddingHorizontal: 15, paddingVertical: 6, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
     activeTab: { backgroundColor: COLORS.primary },
@@ -360,10 +323,9 @@ const styles = StyleSheet.create({
     navBtn: { padding: 5 },
     dateLabel: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
     customDateDisplay: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, padding: 10, backgroundColor: '#f9f9f9', marginHorizontal: 20, borderRadius: 10 },
-
-    // Stats
+    
     statsGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 15, gap: 10, justifyContent: 'space-between' },
-    statCard: { width: (width - 40) / 2, padding: 15, borderRadius: 16, marginBottom: 5, elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, flexDirection: 'column', gap: 10 },
+    statCard: { width: (width - 40) / 2, padding: 15, borderRadius: 16, marginBottom: 5, elevation: 2, flexDirection: 'column', gap: 10 },
     iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     iconCircleWhite: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
     statLabel: { fontSize: 12, fontFamily: 'Lao-Regular', color: COLORS.textLight },
@@ -371,7 +333,6 @@ const styles = StyleSheet.create({
     statLabelWhite: { fontSize: 12, fontFamily: 'Lao-Regular', color: 'rgba(255,255,255,0.9)' },
     statValueWhite: { fontSize: 18, fontFamily: 'Lao-Bold', color: 'white' },
 
-    // Low Stock
     sectionContainer: { marginTop: 10, paddingHorizontal: 15, marginBottom: 20 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
     sectionTitle: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
@@ -379,8 +340,7 @@ const styles = StyleSheet.create({
     lowStockName: { fontFamily: 'Lao-Bold', color: '#C62828', fontSize: 12, marginBottom: 4 },
     lowStockValue: { fontFamily: 'Lao-Regular', color: '#C62828', fontSize: 10 },
 
-    // Chart Styles
-    chartContainer: { backgroundColor: 'white', marginHorizontal: 15, marginBottom: 15, padding: 15, borderRadius: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05 },
+    chartContainer: { backgroundColor: 'white', marginHorizontal: 15, marginBottom: 15, padding: 15, borderRadius: 16, elevation: 2 },
     chartTitle: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text, marginBottom: 15 },
     chartRow: { marginBottom: 15 },
     chartLabel: { fontFamily: 'Lao-Regular', fontSize: 14, color: COLORS.text },
@@ -389,7 +349,6 @@ const styles = StyleSheet.create({
     progressBarFill: { height: '100%', borderRadius: 4 },
     noDataText: { textAlign: 'center', color: '#ccc', fontFamily: 'Lao-Regular', padding: 20 },
 
-    // Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
     pickerContainer: { width: '85%', backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 5 },
     pickerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, textAlign: 'center', marginBottom: 20 },

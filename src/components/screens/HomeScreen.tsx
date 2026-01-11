@@ -13,7 +13,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { useExchangeRate } from '../../../hooks/useExchangeRate'; // 🟢 ດຶງ Rate ມາຄິດໄລ່ກຣາຟ
+import { useExchangeRate } from '../../../hooks/useExchangeRate';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../types';
 
@@ -26,7 +26,6 @@ interface HomeScreenProps {
 
 type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 
-// Type ສຳລັບຂໍ້ມູນກຣາຟ
 interface ChartData {
     category: string;
     amount: number;
@@ -54,7 +53,7 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
     const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
     const [expensesData, setExpensesData] = useState<any[]>([]);
 
-    // 🟢 Chart States
+    // Chart States
     const [salesChartData, setSalesChartData] = useState<ChartData[]>([]);
     const [expenseChartData, setExpenseChartData] = useState<ChartData[]>([]);
 
@@ -131,25 +130,22 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
         setFilteredExpenses(totalExp);
         setLowStockProducts(products.filter(p => p.stock <= 5));
 
-        // 🟢 --- 4. ຄິດໄລ່ Sales Chart (ແຍກຕາມໝວດໝູ່) ---
+        // --- 4. ຄິດໄລ່ Sales Chart ---
         const salesMap: Record<string, number> = {};
         filteredSales.forEach(sale => {
             sale.items.forEach(item => {
                 const cat = item.category || 'ທົ່ວໄປ';
                 let amount = item.price * item.quantity;
-                // ແປງເປັນກີບ ຖ້າເປັນບາດ
                 if (item.priceCurrency === 'THB') amount = amount * currentRate;
                 
                 salesMap[cat] = (salesMap[cat] || 0) + amount;
             });
         });
 
-        // ປ່ຽນເປັນ Array ແລະ Sort
         const sortedSales = Object.keys(salesMap)
             .map(key => ({ category: key, amount: salesMap[key], percentage: 0 }))
             .sort((a, b) => b.amount - a.amount);
         
-        // ຫາ Max ເພື່ອຄິດໄລ່ຄວາມຍາວຂອງເສັ້ນກຣາຟ
         const maxSale = sortedSales.length > 0 ? sortedSales[0].amount : 0;
         const finalSalesChart = sortedSales.map(item => ({
             ...item,
@@ -157,8 +153,7 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
         }));
         setSalesChartData(finalSalesChart);
 
-
-        // 🟢 --- 5. ຄິດໄລ່ Expense Chart (ແຍກຕາມໝວດໝູ່) ---
+        // --- 5. ຄິດໄລ່ Expense Chart ---
         const expMap: Record<string, number> = {};
         filteredExp.forEach(exp => {
             const cat = exp.category || 'ອື່ນໆ';
@@ -178,8 +173,6 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
 
     }, [salesHistory, expensesData, filterType, currentDate, customStart, customEnd, products, currentRate]);
 
-
-    // Navigation Helpers
     const handleNavigateDate = (dir: 'prev' | 'next') => {
         const newDate = new Date(currentDate);
         const val = dir === 'next' ? 1 : -1;
@@ -275,7 +268,7 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
                 </View>
             )}
 
-            {/* 🟢 6. Sales by Category Chart */}
+            {/* Sales Chart */}
             <View style={styles.chartContainer}>
                 <Text style={styles.chartTitle}>ຍອດຂາຍແຍກຕາມໝວດໝູ່</Text>
                 {salesChartData.length > 0 ? (
@@ -295,7 +288,7 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
                 )}
             </View>
 
-            {/* 🟢 7. Expenses by Category Chart */}
+            {/* Expense Chart */}
             <View style={[styles.chartContainer, { marginBottom: 30 }]}>
                 <Text style={styles.chartTitle}>ລາຍຈ່າຍແຍກຕາມໝວດໝູ່</Text>
                 {expenseChartData.length > 0 ? (
@@ -321,15 +314,33 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
                     <View style={styles.pickerContainer}>
                         <Text style={styles.pickerTitle}>ເລືອກຊ່ວງວັນທີ</Text>
                         <View style={styles.pickerRow}>
-                            <TouchableOpacity style={styles.dateInput} onPress={() => { setPickerMode('start'); setShowDatePicker(true); }}><Text style={styles.pickerLabel}>ເລີ່ມຕົ້ນ</Text><Text style={styles.pickerValue}>{formatDate(customStart)}</Text></TouchableOpacity>
+                            <TouchableOpacity style={styles.dateInput} onPress={() => { setPickerMode('start'); setShowDatePicker(true); }}>
+                                <Text style={styles.pickerLabel}>ເລີ່ມຕົ້ນ</Text>
+                                <Text style={styles.pickerValue}>{formatDate(customStart)}</Text>
+                            </TouchableOpacity>
                             <Ionicons name="arrow-forward" size={20} color="#ccc" />
-                            <TouchableOpacity style={styles.dateInput} onPress={() => { setPickerMode('end'); setShowDatePicker(true); }}><Text style={styles.pickerLabel}>ສິ້ນສຸດ</Text><Text style={styles.pickerValue}>{formatDate(customEnd)}</Text></TouchableOpacity>
+                            <TouchableOpacity style={styles.dateInput} onPress={() => { setPickerMode('end'); setShowDatePicker(true); }}>
+                                <Text style={styles.pickerLabel}>ສິ້ນສຸດ</Text>
+                                <Text style={styles.pickerValue}>{formatDate(customEnd)}</Text>
+                            </TouchableOpacity>
                         </View>
-                        <TouchableOpacity style={styles.confirmBtn} onPress={() => setShowCustomPicker(false)}><Text style={styles.confirmText}>ຕົກລົງ</Text></TouchableOpacity>
+                        
+                        <TouchableOpacity style={styles.confirmBtn} onPress={() => setShowCustomPicker(false)}>
+                            <Text style={styles.confirmText}>ຕົກລົງ</Text>
+                        </TouchableOpacity>
+
+                        {/* 🟢 ຍ້າຍ DateTimePicker ມາໄວ້ທາງໃນ Modal ເພື່ອໃຫ້ສະແດງທັບໄດ້ທັນທີ */}
+                        {showDatePicker && (
+                            <DateTimePicker 
+                                value={pickerMode === 'start' ? customStart : customEnd} 
+                                mode="date" 
+                                display="default" 
+                                onChange={handleCustomDateChange} 
+                            />
+                        )}
                     </View>
                 </View>
             </Modal>
-            {showDatePicker && (<DateTimePicker value={pickerMode === 'start' ? customStart : customEnd} mode="date" display="default" onChange={handleCustomDateChange} />)}
 
         </ScrollView>
     );
@@ -368,7 +379,7 @@ const styles = StyleSheet.create({
     lowStockName: { fontFamily: 'Lao-Bold', color: '#C62828', fontSize: 12, marginBottom: 4 },
     lowStockValue: { fontFamily: 'Lao-Regular', color: '#C62828', fontSize: 10 },
 
-    // 🟢 Chart Styles
+    // Chart Styles
     chartContainer: { backgroundColor: 'white', marginHorizontal: 15, marginBottom: 15, padding: 15, borderRadius: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05 },
     chartTitle: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text, marginBottom: 15 },
     chartRow: { marginBottom: 15 },

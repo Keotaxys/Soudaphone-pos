@@ -19,7 +19,7 @@ import {
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
 
-// ໝວດໝູ່ໜີ້ສິນ (ຄືກັບໃນ Web)
+// ໝວດໝູ່ໜີ້ສິນ
 const DEBT_CATEGORIES = ['ເງິນກູ້', 'ບັດເຄດິດ', 'ຢືມເພື່ອນ', 'ຜ່ອນສິນຄ້າ', 'ອື່ນໆ'];
 
 interface DebtItem {
@@ -39,12 +39,12 @@ export default function DebtScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   
-  // --- Form States (ໃຫ້ຕົງກັບຮູບພາບ Modal) ---
+  // Form States
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState(DEBT_CATEGORIES[0]);
   const [totalAmount, setTotalAmount] = useState('');
   const [interestRate, setInterestRate] = useState('');
-  const [monthlyPayment, setMonthlyPayment] = useState(''); // ຜ່ອນ/ເດືອນ
+  const [monthlyPayment, setMonthlyPayment] = useState('');
   const [dueDate, setDueDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -71,7 +71,7 @@ export default function DebtScreen() {
     return () => unsubscribe();
   }, []);
 
-  // 2. ບັນທຶກໜີ້ສິນໃໝ່ (Structure ດຽວກັບ Web App)
+  // 2. ບັນທຶກໜີ້ສິນໃໝ່
   const handleSaveDebt = async () => {
     if (!title || !totalAmount) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນຕົ້ນ');
@@ -108,7 +108,6 @@ export default function DebtScreen() {
 
     const newPaidAmount = (debt.paidAmount || 0) + amount;
     
-    // ປ້ອງກັນການຈ່າຍເກີນ
     if (newPaidAmount > debt.totalAmount) {
         Alert.alert('ຜິດພາດ', 'ຍອດຊຳລະເກີນກວ່າໜີ້ທີ່ຄ້າງຢູ່');
         return;
@@ -158,7 +157,7 @@ export default function DebtScreen() {
 
     return (
         <View style={styles.card}>
-            {/* Header: Title & Edit/Delete */}
+            {/* Header */}
             <View style={styles.cardHeader}>
                 <View>
                     <Text style={styles.cardTitle}>{item.title}</Text>
@@ -181,12 +180,13 @@ export default function DebtScreen() {
             </View>
             <View style={styles.progressInfo}>
                 <Text style={styles.progressText}>ຊຳລະແລ້ວ ({Math.round(progress * 100)}%)</Text>
+                {/* 🟢 ຍອດທີ່ຍັງເຫຼືອ ໃຊ້ສະຕາຍ remainingText */}
                 <Text style={styles.remainingText}>{formatNumber(remaining)} ກີບ</Text>
             </View>
 
             <View style={styles.divider} />
 
-            {/* Bottom Details Grid */}
+            {/* Details */}
             <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>ດອກເບ້ຍ (%)</Text>
@@ -246,7 +246,7 @@ export default function DebtScreen() {
         <Text style={styles.fabText}>ເພີ່ມໜີ້ໃໝ່</Text>
       </TouchableOpacity>
 
-      {/* Add Debt Modal (UI ຄືກັບ Web App) */}
+      {/* Add Debt Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -357,7 +357,9 @@ const styles = StyleSheet.create({
   progressBar: { height: '100%', backgroundColor: COLORS.success },
   progressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   progressText: { fontSize: 11, color: COLORS.success, fontFamily: 'Lao-Bold' },
-  remainingText: { fontSize: 12, color: COLORS.danger, fontFamily: 'Lao-Bold' },
+  
+  // 🟢 ປ່ຽນສີຍອດທີ່ຍັງເຫຼືອເປັນສີສົ້ມ
+  remainingText: { fontSize: 12, color: '#F57C00', fontFamily: 'Lao-Bold' },
 
   divider: { height: 1, backgroundColor: '#f5f5f5', marginBottom: 10 },
 

@@ -20,11 +20,12 @@ import { db } from '../../src/firebase';
 import { CartItem, COLORS, formatNumber, Product, SaleRecord, SIDEBAR_WIDTH } from '../../src/types';
 
 // Import Screens
+import CustomerScreen from '../../src/components/screens/CustomerScreen'; // 🟢 Import ໜ້າລູກຄ້າ
 import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
 import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
-import ProductsScreen from '../../src/components/screens/ProductsScreen'; // 🟢 Import ໜ້າສິນຄ້າ
+import ProductsScreen from '../../src/components/screens/ProductsScreen';
 import ReportScreen from '../../src/components/screens/ReportScreen';
 import ShiftScreen from '../../src/components/screens/ShiftScreen';
 
@@ -165,7 +166,6 @@ export default function App() {
       } catch (error) { Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້'); } 
   };
 
-  // 🟢 ຟັງຊັນລຶບສິນຄ້າ
   const deleteProduct = (id: string) => {
       Alert.alert('ຢືນຢັນການລຶບ', 'ທ່ານຕ້ອງການລຶບສິນຄ້ານີ້ແທ້ບໍ່?', [
           { text: 'ຍົກເລີກ', style: 'cancel' },
@@ -222,7 +222,6 @@ export default function App() {
                 />
             );
         
-        // 🟢 Case ສຳລັບໜ້າສິນຄ້າ (Products)
         case 'products':
             return (
                 <ProductsScreen 
@@ -245,6 +244,9 @@ export default function App() {
         case 'orders': return <OrderTrackingScreen />; 
         case 'shifts':
         case 'shift': return <ShiftScreen />; 
+        
+        // 🟢 Case ສຳລັບໜ້າລູກຄ້າ
+        case 'customers': return <CustomerScreen />;
 
         default: return (
             <View style={styles.center}>

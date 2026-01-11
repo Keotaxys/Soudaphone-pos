@@ -38,7 +38,8 @@ export default function DebtScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   
-  // Form States
+  // Form States (Add/Edit)
+  const [currentId, setCurrentId] = useState<string | null>(null); // ເພີ່ມ ID ສຳລັບແກ້ໄຂ
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState(DEBT_CATEGORIES[0]);
   const [totalAmount, setTotalAmount] = useState('');
@@ -53,33 +54,41 @@ export default function DebtScreen() {
   const [payAmount, setPayAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date());
 
-  // 🟢 ຟັງຊັນຊ່ວຍແປງຂໍ້ມູນ: ຕັດເຄື່ອງໝາຍຈຸດ (,) ອອກກ່ອນແປງເປັນຕົວເລກ
+  // 🟢 ຟັງຊັນແປງຂໍ້ມູນໃຫ້ແນ່ນອນ (ລົບ , ແລະ ຊ່ອງວ່າງ)
   const parseCurrency = (value: any) => {
-      if (!value) return 0;
-      // ຖ້າເປັນ string ໃຫ້ລຶບ , ອອກ
-      const stringValue = String(value).replace(/,/g, '');
-      const numberValue = parseFloat(stringValue);
-      return isNaN(numberValue) ? 0 : numberValue;
+      if (value === undefined || value === null || value === '') return 0;
+      const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
+      const num = parseFloat(strVal);
+      return isNaN(num) ? 0 : num;
   };
 
-  // 1. ດຶງຂໍ້ມູນຈາກ Firebase
+  // 1. ດຶງຂໍ້ມູນຈາກ Firebase (Mapping ແບບລະອຽດ)
   useEffect(() => {
     const debtRef = ref(db, 'debts');
     const unsubscribe = onValue(debtRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
+        console.log("Raw Data:", data); // 🟢 ເບິ່ງ Log ຖ້າຍັງບໍ່ຂຶ້ນ
+
         const list = Object.keys(data).map(key => {
             const item = data[key];
             return { 
                 id: key, 
                 ...item,
-                // 🟢 ໃຊ້ parseCurrency ແທນ Number() ທຳມະດາ
-                totalAmount: parseCurrency(item.totalAmount || item.amount || item.total),
-                paidAmount: parseCurrency(item.paidAmount || item.paid),
-                interestRate: parseCurrency(item.interestRate || item.rate),
-                monthlyPayment: parseCurrency(item.monthlyPayment || item.monthly),
-                // ດັກຈັບວັນທີ
-                dueDate: item.dueDate || item.date || new Date().toISOString()
+                // 🟢 ດັກຈັບຊື່ (Title/Name)
+                title: item.title || item.name || item.debtName || item.description || 'ບໍ່ລະບຸຊື່',
+                category: item.category || 'ອື່ນໆ',
+                
+                // 🟢 ດັກຈັບຍອດເງິນ (Amount/Total/Price/Loan)
+                totalAmount: parseCurrency(item.totalAmount || item.amount || item.total || item.price || item.loanAmount),
+                paidAmount: parseCurrency(item.paidAmount || item.paid || 0),
+                
+                // 🟢 ດັກຈັບດອກເບ້ຍ ແລະ ຜ່ອນຈ່າຍ
+                interestRate: parseCurrency(item.interestRate || item.rate || item.interest),
+                monthlyPayment: parseCurrency(item.monthlyPayment || item.monthly || item.installment),
+                
+                // 🟢 ດັກຈັບວັນທີ
+                dueDate: item.dueDate || item.date || item.endDate || new Date().toISOString()
             };
         });
         setDebts(list.reverse() as DebtItem[]);
@@ -90,38 +99,57 @@ export default function DebtScreen() {
     return () => unsubscribe();
   }, []);
 
-  // 2. ບັນທຶກໜີ້ໃໝ່
+  // 2. ບັນທຶກ (Add/Edit)
   const handleSaveDebt = async () => {
     if (!title || !totalAmount) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນ');
       return;
     }
 
-    const newDebt = {
+    const debtData = {
       title,
       category,
-      totalAmount: parseFloat(totalAmount.replace(/,/g, '')),
-      paidAmount: 0,
-      interestRate: parseFloat(interestRate) || 0,
-      monthlyPayment: parseFloat(monthlyPayment.replace(/,/g, '')) || 0,
+      totalAmount: parseCurrency(totalAmount),
+      // ຖ້າແກ້ໄຂ ໃຫ້ຮັກສາຍອດຈ່າຍເດີມໄວ້, ຖ້າໃໝ່ໃຫ້ເປັນ 0
+      paidAmount: currentId ? (debts.find(d => d.id === currentId)?.paidAmount || 0) : 0, 
+      interestRate: parseCurrency(interestRate),
+      monthlyPayment: parseCurrency(monthlyPayment),
       dueDate: dueDate.toISOString(),
-      createdAt: new Date().toISOString()
+      updatedAt: new Date().toISOString()
     };
 
     try {
-      await push(ref(db, 'debts'), newDebt);
+      if (currentId) {
+          // Update
+          await update(ref(db, `debts/${currentId}`), debtData);
+          Alert.alert('ສຳເລັດ', 'ແກ້ໄຂຂໍ້ມູນຮຽບຮ້ອຍ');
+      } else {
+          // Create New
+          await push(ref(db, 'debts'), { ...debtData, createdAt: new Date().toISOString() });
+          Alert.alert('ສຳເລັດ', 'ບັນທຶກໜີ້ສິນໃໝ່ຮຽບຮ້ອຍ');
+      }
       setModalVisible(false);
       resetForm();
-      Alert.alert('ສຳເລັດ', 'ບັນທຶກໜີ້ສິນຮຽບຮ້ອຍ');
     } catch (error) {
       Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້');
     }
   };
 
-  // 3. ບັນທຶກການຊຳລະ
+  // 3. ເປີດ Modal ແກ້ໄຂ
+  const openEditModal = (item: DebtItem) => {
+      setCurrentId(item.id);
+      setTitle(item.title);
+      setCategory(item.category);
+      setTotalAmount(item.totalAmount.toString());
+      setInterestRate(item.interestRate.toString());
+      setMonthlyPayment(item.monthlyPayment.toString());
+      setDueDate(new Date(item.dueDate));
+      setModalVisible(true);
+  };
+
   const handlePayment = async () => {
     if (!selectedDebt || !payAmount) return;
-    const amount = parseFloat(payAmount.replace(/,/g, ''));
+    const amount = parseCurrency(payAmount);
     
     const currentDebt = debts.find(d => d.id === selectedDebt.id) || selectedDebt;
     const newPaidAmount = (currentDebt.paidAmount || 0) + amount;
@@ -157,6 +185,7 @@ export default function DebtScreen() {
   };
 
   const resetForm = () => {
+    setCurrentId(null);
     setTitle('');
     setCategory(DEBT_CATEGORIES[0]);
     setTotalAmount('');
@@ -188,14 +217,22 @@ export default function DebtScreen() {
 
     return (
         <View style={styles.card}>
+            {/* Header: Title, Category, Edit, Delete */}
             <View style={styles.cardHeader}>
-                <View>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
+                <View style={{flex: 1}}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
                     <Text style={styles.categoryBadge}>{item.category}</Text>
                 </View>
-                <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                    <Ionicons name="trash-outline" size={20} color="#ccc" />
-                </TouchableOpacity>
+                
+                {/* 🟢 ປຸ່ມແກ້ໄຂ ແລະ ລຶບ */}
+                <View style={styles.headerActions}>
+                    <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
+                        <Ionicons name="pencil" size={18} color={COLORS.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.iconBtn}>
+                        <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <View style={styles.amountRow}>
@@ -270,12 +307,13 @@ export default function DebtScreen() {
         <Text style={styles.fabText}>ເພີ່ມໜີ້ໃໝ່</Text>
       </TouchableOpacity>
 
-      {/* Add Debt Modal */}
+      {/* Add/Edit Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>ເພີ່ມໜີ້ສິນໃໝ່</Text>
+                    {/* 🟢 ສະແດງຂໍ້ຄວາມວ່າ ເພີ່ມ ຫຼື ແກ້ໄຂ */}
+                    <Text style={styles.modalTitle}>{currentId ? 'ແກ້ໄຂຂໍ້ມູນ' : 'ເພີ່ມໜີ້ສິນໃໝ່'}</Text>
                     <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
                 </View>
 
@@ -331,10 +369,7 @@ export default function DebtScreen() {
 
       {/* Payment Modal */}
       <Modal visible={paymentModalVisible} animationType="fade" transparent>
-        <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-            style={styles.modalOverlay}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>ບັນທຶກການຊຳລະໜີ້</Text>
@@ -412,8 +447,12 @@ const styles = StyleSheet.create({
 
   card: { backgroundColor: 'white', borderRadius: 8, marginBottom: 15, padding: 15, elevation: 2, borderLeftWidth: 5, borderLeftColor: COLORS.primary, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 },
-  cardTitle: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text },
+  cardTitle: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text, flex: 1 },
   categoryBadge: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#888', marginTop: 2 },
+  
+  // 🟢 ຈັດການປຸ່ມແກ້ໄຂ ແລະ ລຶບ
+  headerActions: { flexDirection: 'row', gap: 10 },
+  iconBtn: { padding: 5 },
 
   amountRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 5 },
   label: { fontSize: 13, fontFamily: 'Lao-Regular', color: '#666' },
@@ -421,7 +460,6 @@ const styles = StyleSheet.create({
 
   progressContainer: { height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden', marginVertical: 5 },
   progressBar: { height: '100%', backgroundColor: COLORS.primary }, 
-  
   progressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   progressText: { fontSize: 11, color: COLORS.primary, fontFamily: 'Lao-Bold' },
   remainingText: { fontSize: 12, color: '#F57C00', fontFamily: 'Lao-Bold' },
@@ -439,7 +477,6 @@ const styles = StyleSheet.create({
   actionButtons: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   historyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, backgroundColor: '#f5f5f5', borderRadius: 8 },
   historyText: { fontSize: 12, color: '#555', fontFamily: 'Lao-Regular' },
-  deleteBtn: { padding: 8, backgroundColor: '#FFEBEE', borderRadius: 8 },
   
   payBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.primary, paddingVertical: 8, paddingHorizontal: 15, borderRadius: 8 },
   payBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 13 },

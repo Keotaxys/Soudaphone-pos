@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-// 🟢 1. Import ແບບ * as FileSystem
 import * as FileSystem from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
@@ -42,7 +41,10 @@ export default function ReportDashboard() {
   const [totalExpense, setTotalExpense] = useState(0);
   const [totalDebt, setTotalDebt] = useState(0);
   
+  // 🟢 State ສຳລັບ Chart ແລະ Top 5
   const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [salesByCategory, setSalesByCategory] = useState<any[]>([]);
+  const [expensesByCategory, setExpensesByCategory] = useState<any[]>([]);
 
   const parseCurrency = (value: any) => {
       if (value === undefined || value === null || value === '') return 0;
@@ -105,6 +107,7 @@ export default function ReportDashboard() {
       end.setMonth(11, 31);
     }
 
+    // --- Filter Sales ---
     const fSales = sales.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
@@ -112,27 +115,59 @@ export default function ReportDashboard() {
     setFilteredSales(fSales);
     setTotalRevenue(fSales.reduce((sum, s) => sum + parseCurrency(s.total || s.amountReceived), 0));
 
+    // 📊 1. ວິເຄາະ Top 5 Products & Sales Category
     const productStats: any = {};
+    const catStats: any = {};
+
     fSales.forEach(sale => {
         if (sale.items && Array.isArray(sale.items)) {
             sale.items.forEach((item: any) => {
+                // Top Products
                 if (!productStats[item.name]) {
                     productStats[item.name] = { ...item, totalSold: 0, totalAmount: 0 };
                 }
                 productStats[item.name].totalSold += item.quantity;
                 productStats[item.name].totalAmount += (item.price * item.quantity);
+
+                // Category Stats
+                const catName = item.category || 'ທົ່ວໄປ';
+                if (!catStats[catName]) catStats[catName] = 0;
+                catStats[catName] += (item.price * item.quantity);
             });
         }
     });
+
+    // Sort & Set Top 5
     const sortedProducts = Object.values(productStats).sort((a: any, b: any) => b.totalSold - a.totalSold).slice(0, 5);
     setTopProducts(sortedProducts);
 
+    // Sort & Set Sales Categories
+    const sortedSalesCat = Object.keys(catStats)
+        .map(key => ({ label: key, value: catStats[key] }))
+        .sort((a, b) => b.value - a.value);
+    setSalesByCategory(sortedSalesCat);
+
+
+    // --- Filter Expenses ---
     const fExpenses = expenses.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
     });
     setFilteredExpenses(fExpenses);
     setTotalExpense(fExpenses.reduce((sum, e) => sum + parseCurrency(e.amount), 0));
+
+    // 📊 2. ວິເຄາະ Expense Category
+    const expCatStats: any = {};
+    fExpenses.forEach(exp => {
+        const catName = exp.category || 'ອື່ນໆ';
+        if (!expCatStats[catName]) expCatStats[catName] = 0;
+        expCatStats[catName] += parseCurrency(exp.amount);
+    });
+
+    const sortedExpCat = Object.keys(expCatStats)
+        .map(key => ({ label: key, value: expCatStats[key] }))
+        .sort((a, b) => b.value - a.value);
+    setExpensesByCategory(sortedExpCat);
 
   }, [sales, expenses, filterType, currentDate]);
 
@@ -146,22 +181,17 @@ export default function ReportDashboard() {
     setCurrentDate(newDate);
   };
 
-  // 🟢 Export Excel (CSV) - ແກ້ໄຂ Error ບ່ອນນີ້
   const generateExcel = async () => {
-      let csvContent = "Date,Type,Description,Amount\n";
-      
+      let csvContent = "Date,Type,Category,Description,Amount\n";
       filteredSales.forEach(s => {
-          csvContent += `${new Date(s.date).toLocaleDateString()},Sale,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
+          csvContent += `${new Date(s.date).toLocaleDateString()},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
       });
       filteredExpenses.forEach(e => {
-          csvContent += `${new Date(e.date).toLocaleDateString()},Expense,${e.category},-${parseCurrency(e.amount)}\n`;
+          csvContent += `${new Date(e.date).toLocaleDateString()},Expense,${e.category},${e.note || '-'},-${parseCurrency(e.amount)}\n`;
       });
 
-      // 🟢 2. ໃຊ້ (FileSystem as any) ເພື່ອບັງຄັບໃຫ້ TS ຜ່ານ
       const docDir = (FileSystem as any).documentDirectory;
       const fileName = `${docDir}report_${new Date().getTime()}.csv`;
-      
-      // 🟢 3. ໃຊ້ string 'utf8' ແທນ EncodingType.UTF8
       await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
       await shareAsync(fileName);
   };
@@ -200,9 +230,10 @@ export default function ReportDashboard() {
     await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
   };
 
+  // --- Components ---
+
   const SummaryCard = ({ label, amount, color, icon, isProfit = false }: any) => {
     const displayColor = isProfit && amount < 0 ? COLORS.danger : color;
-    
     return (
         <View style={[styles.card, { borderLeftColor: displayColor, borderLeftWidth: 5 }]}>
         <View>
@@ -218,28 +249,28 @@ export default function ReportDashboard() {
     );
   };
 
-  const SimpleChart = () => {
-    const maxVal = Math.max(totalRevenue, totalExpense) || 1;
-    const revHeight = (totalRevenue / maxVal) * 150;
-    const expHeight = (totalExpense / maxVal) * 150;
+  // 🟢 Category Bar Chart Component
+  const CategoryChart = ({ title, data, color }: { title: string, data: any[], color: string }) => {
+      const maxValue = Math.max(...data.map(d => d.value)) || 1;
+      
+      if (data.length === 0) return null;
 
-    return (
-        <View style={styles.chartBox}>
-            <Text style={styles.chartTitle}>ປຽບທຽບ ລາຍຮັບ vs ລາຍຈ່າຍ</Text>
-            <View style={styles.chartArea}>
-                <View style={styles.barGroup}>
-                    <Text style={[styles.barLabel, {color: COLORS.primary}]}>{formatNumber(totalRevenue)}</Text>
-                    <View style={[styles.bar, { height: revHeight || 2, backgroundColor: COLORS.primary }]} />
-                    <Text style={styles.barTitle}>ລາຍຮັບ</Text>
-                </View>
-                <View style={styles.barGroup}>
-                    <Text style={[styles.barLabel, {color: COLORS.danger}]}>{formatNumber(totalExpense)}</Text>
-                    <View style={[styles.bar, { height: expHeight || 2, backgroundColor: COLORS.danger }]} />
-                    <Text style={styles.barTitle}>ລາຍຈ່າຍ</Text>
-                </View>
-            </View>
-        </View>
-    );
+      return (
+          <View style={styles.chartBox}>
+              <Text style={styles.chartTitle}>{title}</Text>
+              {data.map((item, index) => (
+                  <View key={index} style={styles.chartRow}>
+                      <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
+                          <Text style={styles.chartLabel}>{item.label}</Text>
+                          <Text style={[styles.chartValue, {color}]}>{formatNumber(item.value)} ₭</Text>
+                      </View>
+                      <View style={styles.chartTrack}>
+                          <View style={[styles.chartBar, { width: `${(item.value / maxValue) * 100}%`, backgroundColor: color }]} />
+                      </View>
+                  </View>
+              ))}
+          </View>
+      );
   };
 
   const renderContent = () => {
@@ -248,7 +279,8 @@ export default function ReportDashboard() {
               const profit = totalRevenue - totalExpense;
               return (
                   <ScrollView showsVerticalScrollIndicator={false}>
-                      <SimpleChart />
+                      
+                      {/* Summary Cards */}
                       <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10}}>
                         <View style={{width: '100%'}}>
                             <SummaryCard label="ກຳໄລສຸດທິ" amount={profit} color={COLORS.success} icon="trending-up" isProfit={true} />
@@ -257,24 +289,33 @@ export default function ReportDashboard() {
                         <View style={{flex: 1}}><SummaryCard label="ລາຍຈ່າຍ" amount={totalExpense} color={COLORS.danger} icon="wallet" /></View>
                       </View>
                       
+                      {/* 🏆 5 ອັນດັບສິນຄ້າຂາຍດີ */}
                       {topProducts.length > 0 && (
                           <View style={styles.topProductsCard}>
-                              <Text style={styles.sectionHeader}>🏆 5 ອັນດັບສິນຄ້າຂາຍດີ</Text>
+                              <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionHeader}>🏆 5 ອັນດັບສິນຄ້າຂາຍດີ</Text>
+                              </View>
                               {topProducts.map((prod, index) => (
                                   <View key={index} style={styles.topProductRow}>
                                       <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
-                                          <Text style={styles.rankText}>#{index + 1}</Text>
+                                          <View style={[styles.rankBadge, index === 0 ? {backgroundColor: '#FFD700'} : index === 1 ? {backgroundColor: '#C0C0C0'} : index === 2 ? {backgroundColor: '#CD7F32'} : {}]}>
+                                            <Text style={[styles.rankText, index < 3 ? {color: 'white'} : {}]}>{index + 1}</Text>
+                                          </View>
                                           <Image source={prod.imageUrl ? { uri: prod.imageUrl } : { uri: 'https://via.placeholder.com/50' }} style={styles.prodImage} />
                                           <View style={{marginLeft: 10}}>
                                               <Text style={styles.prodName} numberOfLines={1}>{prod.name}</Text>
-                                              <Text style={styles.prodSold}>ຂາຍແລ້ວ: {prod.totalSold}</Text>
+                                              <Text style={styles.prodSold}>ຂາຍອອກ: {prod.totalSold} ໜ່ວຍ</Text>
                                           </View>
                                       </View>
-                                      <Text style={styles.prodAmount}>{formatNumber(prod.totalAmount)} ₭</Text>
+                                      <Text style={styles.prodAmount}>{formatNumber(prod.totalAmount)}</Text>
                                   </View>
                               ))}
                           </View>
                       )}
+
+                      {/* 📊 Category Charts */}
+                      <CategoryChart title="💰 ລາຍຮັບແຍກຕາມໝວດໝູ່" data={salesByCategory} color={COLORS.primary} />
+                      <CategoryChart title="💸 ລາຍຈ່າຍແຍກຕາມໝວດໝູ່" data={expensesByCategory} color={COLORS.danger} />
 
                       <View style={styles.debtCard}>
                           <Text style={styles.debtTitle}>ສະຖານະໜີ້ສິນລວມ</Text>
@@ -418,13 +459,16 @@ const styles = StyleSheet.create({
   cardLabel: { fontSize: 12, color: '#888', fontFamily: 'Lao-Regular' },
   cardAmount: { fontSize: 18, fontFamily: 'Lao-Bold', marginTop: 2 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2, alignItems: 'center' },
-  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 20 },
-  chartArea: { flexDirection: 'row', alignItems: 'flex-end', height: 180, gap: 40 },
-  barGroup: { alignItems: 'center' },
-  bar: { width: 40, borderRadius: 5 },
-  barLabel: { fontSize: 12, fontFamily: 'Lao-Bold', marginBottom: 5 },
-  barTitle: { marginTop: 10, fontFamily: 'Lao-Regular', color: '#666' },
+  
+  // 🟢 Chart Styles
+  chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
+  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 10 },
+  chartRow: { marginBottom: 10 },
+  chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
+  chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
+  chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
+  chartBar: { height: '100%', borderRadius: 4 },
+
   debtCard: { backgroundColor: '#FFF3E0', padding: 15, borderRadius: 12, alignItems: 'center', borderLeftWidth: 5, borderLeftColor: COLORS.secondary },
   debtTitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#E65100' },
   debtAmount: { fontSize: 24, fontFamily: 'Lao-Bold', color: '#E65100', marginVertical: 5 },
@@ -434,10 +478,14 @@ const styles = StyleSheet.create({
   listSub: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#999' },
   listAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
+  
+  // 🟢 Top Products Styles
   topProductsCard: { backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
-  sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text, marginBottom: 10 },
-  topProductRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  rankText: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#999', marginRight: 10, width: 20 },
+  sectionHeaderRow: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 10, marginBottom: 10 },
+  sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
+  topProductRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  rankBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  rankText: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#666' },
   prodImage: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#f0f0f0' },
   prodName: { fontFamily: 'Lao-Bold', fontSize: 13, color: COLORS.text },
   prodSold: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#666' },

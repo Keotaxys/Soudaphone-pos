@@ -315,9 +315,8 @@ export default function DebtScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 🟢 Payment Modal (ແກ້ໄຂ Layout & Keyboard) */}
+      {/* Payment Modal */}
       <Modal visible={paymentModalVisible} animationType="fade" transparent>
-        {/* 1. ໃຊ້ KeyboardAvoidingView ແບບເຕັມຈໍ */}
         <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
             style={styles.modalOverlay}
@@ -328,7 +327,6 @@ export default function DebtScreen() {
                     <TouchableOpacity onPress={() => setPaymentModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
                 </View>
 
-                {/* 2. ໃຊ້ ScrollView ເພື່ອໃຫ້ເລື່ອນໄດ້ເມື່ອຄີບອດບັງ */}
                 <ScrollView contentContainerStyle={{flexGrow: 1}} showsVerticalScrollIndicator={false}>
                     {selectedDebt && (
                         <View style={{marginBottom: 20}}>
@@ -363,7 +361,8 @@ export default function DebtScreen() {
                     {/* Summary Row */}
                     <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 20}}>
                         <Text style={{fontFamily: 'Lao-Bold', fontSize: 16, color: '#333'}}>ຍອດຊຳລະທັງໝົດ</Text>
-                        <Text style={{fontFamily: 'Lao-Bold', fontSize: 20, color: '#2E7D32'}}>{payAmount || '0'} ກີບ</Text>
+                        {/* 🟢 ແກ້ໄຂ: ໃຊ້ສີ Theme ແທນສີຂຽວ Hardcode */}
+                        <Text style={{fontFamily: 'Lao-Bold', fontSize: 20, color: COLORS.primary}}>{payAmount || '0'} ກີບ</Text>
                     </View>
 
                     {/* Buttons */}
@@ -371,7 +370,8 @@ export default function DebtScreen() {
                         <TouchableOpacity style={styles.cancelBtn} onPress={() => setPaymentModalVisible(false)}>
                             <Text style={styles.cancelBtnText}>ຍົກເລີກ</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.saveBtn, {backgroundColor: '#2E7D32'}]} onPress={handlePayment}>
+                        {/* 🟢 ແກ້ໄຂ: ປຸ່ມ Save ເປັນສີ Theme */}
+                        <TouchableOpacity style={styles.saveBtn} onPress={handlePayment}>
                             <Text style={styles.saveBtnText}>ບັນທຶກການຊຳລະ</Text>
                         </TouchableOpacity>
                     </View>
@@ -410,10 +410,12 @@ const styles = StyleSheet.create({
   amountTotal: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
 
   progressContainer: { height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden', marginVertical: 5 },
-  progressBar: { height: '100%', backgroundColor: COLORS.primary }, 
+  // ✅ ໃຊ້ COLORS.success (ສີຂຽວ) ສຳລັບ Progress Bar ຄືເກົ່າ ເພາະມັນສື່ຄວາມໝາຍວ່າ "ຈ່າຍແລ້ວ" ໄດ້ດີ
+  progressBar: { height: '100%', backgroundColor: COLORS.success }, 
+  
   progressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  progressText: { fontSize: 11, color: COLORS.primary, fontFamily: 'Lao-Bold' },
-  remainingText: { fontSize: 12, color: '#F57C00', fontFamily: 'Lao-Bold' },
+  progressText: { fontSize: 11, color: COLORS.success, fontFamily: 'Lao-Bold' },
+  remainingText: { fontSize: 12, color: '#F57C00', fontFamily: 'Lao-Bold' }, // ສີສົ້ມ
 
   divider: { height: 1, backgroundColor: '#f5f5f5', marginBottom: 10 },
 
@@ -429,9 +431,12 @@ const styles = StyleSheet.create({
   historyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, backgroundColor: '#f5f5f5', borderRadius: 8 },
   historyText: { fontSize: 12, color: '#555', fontFamily: 'Lao-Regular' },
   deleteBtn: { padding: 8, backgroundColor: '#FFEBEE', borderRadius: 8 },
+  
+  // ✅ ປຸ່ມຊຳລະສີ Theme
   payBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.primary, paddingVertical: 8, paddingHorizontal: 15, borderRadius: 8 },
   payBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 13 },
 
+  // ✅ FAB ສີ Theme
   fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, elevation: 5 },
   fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 8 },
 
@@ -439,7 +444,6 @@ const styles = StyleSheet.create({
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  // Modal Style
   modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, elevation: 5, maxHeight: '80%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
@@ -447,8 +451,8 @@ const styles = StyleSheet.create({
   inputLabel: { fontSize: 13, fontFamily: 'Lao-Bold', color: '#555', marginBottom: 5, marginTop: 10 },
   input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Bold' },
   
-  // 🟢 Input ສຳລັບຈຳນວນເງິນ (ໃຫຍ່ຂຶ້ນ)
-  inputLarge: { backgroundColor: '#f9f9f9', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Bold', fontSize: 20, textAlign: 'right' },
+  // ✅ Input ສຳລັບຈຳນວນເງິນ (ໃຫຍ່ຂຶ້ນ) ແລະ ຕົວໜັງສືສີ Theme
+  inputLarge: { backgroundColor: '#f9f9f9', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Bold', fontSize: 20, textAlign: 'right', color: COLORS.primary },
 
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   catChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#eee' },
@@ -457,9 +461,11 @@ const styles = StyleSheet.create({
   
   dateInput: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
   
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 30, marginBottom: 20 }, // ເພີ່ມ Margin Bottom
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 30, marginBottom: 20 },
   cancelBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: '#f5f5f5' },
   cancelBtnText: { color: '#666', fontFamily: 'Lao-Bold' },
+  
+  // ✅ ປຸ່ມ Save ສີ Theme
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' }
 });

@@ -7,16 +7,16 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Keyboard,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Keyboard,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
@@ -25,7 +25,6 @@ import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
 const ORANGE_COLOR = '#F57C00';
 const ORANGE_BG = '#FFF3E0';
 
-// ລາຍຊື່ໝວດໝູ່ (ຄືເກົ່າ)
 const EXPENSE_CATEGORIES = [
     'ຄ່າເຊົ່າ', 'ປັບປຸງສະຖານທີ່', 'ໄຟຟ້າ', 'ນ້ຳປະປາ', 'ອິນເຕີເນັດ',
     'ພະນັກງານ', 'ດອກເບ້ຍເງິນກູ້', 'ດອກເບ້ຍບັດເຄຣດິດ', 'ຂົນສົ່ງ',
@@ -71,7 +70,7 @@ export default function ExpenseScreen() {
         return () => unsubscribe();
     }, []);
 
-    // 🟢 2. ຟັງຊັນ Download Template
+    // 2. ຟັງຊັນ Download Template
     const handleDownloadTemplate = async () => {
         const csvContent = "Category,Amount,Description,Date(YYYY-MM-DD)\nຄ່າເຊົ່າ,500000,ຈ່າຍຄ່າເຊົ່າຮ້ານ,2024-01-01\n";
         const fileName = `${FileSystem.documentDirectory}expense_template.csv`;
@@ -83,7 +82,7 @@ export default function ExpenseScreen() {
         }
     };
 
-    // 🟢 3. ຟັງຊັນ Export
+    // 3. ຟັງຊັນ Export
     const handleExport = async () => {
         let csvContent = "Date,Category,Amount,Description\n";
         expenses.forEach(item => {
@@ -98,7 +97,7 @@ export default function ExpenseScreen() {
         }
     };
 
-    // 🟢 4. ຟັງຊັນ Import
+    // 4. ຟັງຊັນ Import
     const handleImport = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'application/vnd.ms-excel', '*/*'] });
@@ -212,7 +211,7 @@ export default function ExpenseScreen() {
             {/* Form Section */}
             <View style={styles.formCard}>
                 
-                {/* 🟢 Action Buttons Row (Import/Export/Template) */}
+                {/* Action Buttons Row */}
                 <View style={styles.actionRowTop}>
                     <Text style={styles.headerTitle}>{id ? '✏️ ແກ້ໄຂ' : '➕ ເພີ່ມລາຍຈ່າຍ'}</Text>
                     <View style={{flexDirection: 'row', gap: 5}}>
@@ -265,9 +264,9 @@ export default function ExpenseScreen() {
                             <Ionicons name="close" size={24} color="white" />
                         </TouchableOpacity>
                     )}
-                    {/* 🟢 ປຸ່ມ Save ສີສົ້ມ */}
+                    {/* 🟢 ປຸ່ມ Save ສີ Teal (Theme) */}
                     <TouchableOpacity 
-                        style={[styles.saveBtn, { backgroundColor: ORANGE_COLOR }]} 
+                        style={[styles.saveBtn, { backgroundColor: id ? COLORS.secondary : COLORS.primary }]} 
                         onPress={handleSave}
                     >
                         <Text style={styles.saveBtnText}>{id ? 'ອັບເດດລາຍຈ່າຍ' : 'ບັນທຶກລາຍຈ່າຍ'}</Text>
@@ -359,7 +358,6 @@ const styles = StyleSheet.create({
     // Form Styles
     formCard: { backgroundColor: 'white', margin: 15, padding: 15, borderRadius: 15, elevation: 3, shadowColor: COLORS.primary, shadowOpacity: 0.1 },
     
-    // 🟢 Action Row Top (ສຳລັບປຸ່ມ Export)
     actionRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     headerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primaryDark },
     iconBtn: { padding: 5, backgroundColor: ORANGE_BG, borderRadius: 8 },

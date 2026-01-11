@@ -1,7 +1,8 @@
 import { useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import * as ImagePicker from 'expo-image-picker';
-import { onValue, push, ref, remove, update } from 'firebase/database';
+// 🟢 ແກ້ໄຂແລ້ວ: Import ມາໃຫ້ຄົບທັງໝົດ (onValue, push, ref, remove, set, update)
+import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,15 +21,15 @@ import { db } from '../../src/firebase';
 import { CartItem, COLORS, formatNumber, Product, SaleRecord, SIDEBAR_WIDTH } from '../../src/types';
 
 // Import Screens
-import CustomerScreen from '../../src/components/screens/CustomerScreen';
-import DebtScreen from '../../src/components/screens/DebtScreen'; // 🟢 Import ໜ້າໜີ້ສິນ
 import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
-import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
-import ProductsScreen from '../../src/components/screens/ProductsScreen';
 import ReportScreen from '../../src/components/screens/ReportScreen';
+import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
 import ShiftScreen from '../../src/components/screens/ShiftScreen';
+import ProductsScreen from '../../src/components/screens/ProductsScreen';
+import CustomerScreen from '../../src/components/screens/CustomerScreen';
+import DebtScreen from '../../src/components/screens/DebtScreen';
 
 // Import UI Components
 import Footer from '../../src/components/ui/Footer';
@@ -38,6 +39,7 @@ import Sidebar from '../../src/components/ui/Sidebar';
 // Import Modals
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
+import EditShopModal from '../../src/components/modals/EditShopModal';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -52,15 +54,22 @@ export default function App() {
   const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   
-  // --- UI & Navigation States ---
+  // Shop Info State
+  const [shopInfo, setShopInfo] = useState({
+      name: 'ຮ້ານ ສຸດາພອນ',
+      id: 'ID: 8888 9999',
+      logo: ''
+  });
+  
+  // --- UI States ---
   const [loading, setLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState<string>('home'); 
   const [menuVisible, setMenuVisible] = useState(false);
-  
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
 
   // --- Modals States ---
   const [productModalVisible, setProductModalVisible] = useState(false);
+  const [shopModalVisible, setShopModalVisible] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanMode, setScanMode] = useState<'sell' | 'edit'>('sell');
   const [editingProduct, setEditingProduct] = useState<Product>({
@@ -71,6 +80,15 @@ export default function App() {
   // Firebase Listeners
   // ============================================================
   useEffect(() => {
+    // 1. ດຶງຂໍ້ມູນຮ້ານ
+    const shopRef = ref(db, 'shopInfo');
+    const unsubscribeShop = onValue(shopRef, (snapshot) => {
+        if (snapshot.exists()) {
+            setShopInfo(snapshot.val());
+        }
+    });
+
+    // 2. ດຶງສິນຄ້າ
     const productsRef = ref(db, 'products');
     const unsubscribeProducts = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -81,6 +99,7 @@ export default function App() {
       setLoading(false);
     });
 
+    // 3. ດຶງຍອດຂາຍ
     const salesRef = ref(db, 'sales');
     const unsubscribeSales = onValue(salesRef, (snapshot) => {
         if(snapshot.exists()){
@@ -90,7 +109,7 @@ export default function App() {
         } else { setSalesHistory([]); }
     });
 
-    return () => { unsubscribeProducts(); unsubscribeSales(); };
+    return () => { unsubscribeProducts(); unsubscribeSales(); unsubscribeShop(); };
   }, []);
 
   // ============================================================
@@ -104,6 +123,31 @@ export default function App() {
     } else { 
         Animated.timing(slideAnim, { toValue: -SIDEBAR_WIDTH, duration: 300, easing: Easing.in(Easing.ease), useNativeDriver: true }).start(() => setMenuVisible(false)); 
     }
+  };
+
+  // ບັນທຶກຂໍ້ມູນຮ້ານ
+  const saveShopInfo = async () => {
+      try {
+          await set(ref(db, 'shopInfo'), shopInfo);
+          setShopModalVisible(false);
+          Alert.alert('ສຳເລັດ', 'ບັນທຶກຂໍ້ມູນຮ້ານຮຽບຮ້ອຍ');
+      } catch (error) {
+          Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້');
+      }
+  };
+
+  // ເລືອກໂລໂກ້ຮ້ານ
+  const pickShopLogo = async () => {
+      let result = await ImagePicker.launchImageLibraryAsync({ 
+          mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+          allowsEditing: true, 
+          aspect: [1, 1], 
+          quality: 0.5, 
+          base64: true 
+      }); 
+      if (!result.canceled) { 
+          setShopInfo({ ...shopInfo, logo: `data:image/jpeg;base64,${result.assets[0].base64}` }); 
+      }
   };
 
   const addToCart = (product: Product) => {
@@ -203,64 +247,51 @@ export default function App() {
 
   if (!fontsLoaded || loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
-  // ============================================================
-  // Render Content Switcher
-  // ============================================================
   const renderContent = () => {
     switch (currentTab) {
-        case 'home': 
-            return <HomeScreen salesHistory={salesHistory} products={products} />;
-        
-        case 'pos': 
-            return (
-                <POSScreen 
-                    products={products} cart={cart} addToCart={addToCart}
-                    openEditProductModal={(p) => { setEditingProduct(p); setProductModalVisible(true); }} 
-                    openAddProductModal={() => { setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); setProductModalVisible(true); }}
-                    openScanner={openScanner} totalItems={totalItems} totalLAK={totalLAK}
-                    formatNumber={formatNumber} updateQuantity={updateQuantity}
-                    removeFromCart={removeFromCart} onCheckout={handleCheckout}
-                />
-            );
-        
-        case 'products':
-            return (
-                <ProductsScreen 
-                    products={products}
-                    onAddProduct={() => { 
-                        setEditingProduct({ name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); 
-                        setProductModalVisible(true); 
-                    }}
-                    onEditProduct={(p) => { 
-                        setEditingProduct(p); 
-                        setProductModalVisible(true); 
-                    }}
-                    onDeleteProduct={deleteProduct}
-                />
-            );
-
-        case 'expense': return <ExpenseScreen />;
-        case 'report':
-        case 'history': return <ReportScreen salesHistory={salesHistory} />;
-        case 'orders': return <OrderTrackingScreen />; 
-        case 'shifts':
-        case 'shift': return <ShiftScreen />; 
-        case 'customers': return <CustomerScreen />;
-        
-        // 🟢 Case ສຳລັບໜ້າໜີ້ສິນ (Loans/Debts)
-        case 'debts': return <DebtScreen />;
-
-        default: return (
-            <View style={styles.center}>
-                <Text style={{fontFamily: 'Lao-Bold', fontSize: 18}}>Coming Soon: {currentTab}</Text>
-            </View>
+        case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
+        case 'pos': return (
+            <POSScreen 
+                products={products} cart={cart} addToCart={addToCart}
+                openEditProductModal={(p) => { setEditingProduct(p); setProductModalVisible(true); }} 
+                openAddProductModal={() => { setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); setProductModalVisible(true); }}
+                openScanner={openScanner} totalItems={totalItems} totalLAK={totalLAK}
+                formatNumber={formatNumber} updateQuantity={updateQuantity}
+                removeFromCart={removeFromCart} onCheckout={handleCheckout}
+            />
         );
+        case 'products': return (
+            <ProductsScreen 
+                products={products}
+                onAddProduct={() => { 
+                    setEditingProduct({ name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); 
+                    setProductModalVisible(true); 
+                }}
+                onEditProduct={(p) => { setEditingProduct(p); setProductModalVisible(true); }}
+                onDeleteProduct={deleteProduct}
+            />
+        );
+        case 'expense': return <ExpenseScreen />;
+        case 'report': case 'history': return <ReportScreen salesHistory={salesHistory} />;
+        case 'orders': return <OrderTrackingScreen />; 
+        case 'shifts': case 'shift': return <ShiftScreen />; 
+        case 'customers': return <CustomerScreen />;
+        case 'debts': return <DebtScreen />;
+        default: return <View style={styles.center}><Text style={{fontFamily: 'Lao-Bold'}}>Coming Soon</Text></View>;
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header onMenuPress={() => toggleMenu(true)} />
+      {/* Header */}
+      <Header 
+        onMenuPress={() => toggleMenu(true)} 
+        shopName={shopInfo.name}
+        shopId={shopInfo.id}
+        shopLogo={shopInfo.logo}
+        onEditPress={() => setShopModalVisible(true)}
+      />
+      
       <View style={{flex: 1, backgroundColor: COLORS.background}}>
           {renderContent()}
       </View>
@@ -269,6 +300,8 @@ export default function App() {
         visible={menuVisible} slideAnim={slideAnim} onClose={() => toggleMenu(false)}
         currentTab={currentTab} onNavigate={(tab) => { setCurrentTab(tab); toggleMenu(false); }}
       />
+      
+      {/* Product Modal */}
       <ProductModal 
         visible={productModalVisible} onClose={() => setProductModalVisible(false)} 
         product={editingProduct} setProduct={setEditingProduct} onSave={saveProduct} 
@@ -278,6 +311,20 @@ export default function App() {
         }} 
         onScan={() => openScanner('edit')}
       />
+
+      {/* Shop Info Modal */}
+      <EditShopModal 
+        visible={shopModalVisible} 
+        onClose={() => setShopModalVisible(false)}
+        shopName={shopInfo.name}
+        setShopName={(t) => setShopInfo({...shopInfo, name: t})}
+        shopId={shopInfo.id}
+        setShopId={(t) => setShopInfo({...shopInfo, id: t})}
+        shopLogo={shopInfo.logo}
+        onPickImage={pickShopLogo}
+        onSave={saveShopInfo}
+      />
+
       <ScannerModal visible={isScanning} onClose={() => setIsScanning(false)} onScanned={handleBarCodeScanned} />
     </SafeAreaView>
   );

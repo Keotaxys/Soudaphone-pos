@@ -1,46 +1,83 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLORS } from '../../types';
 
 interface HeaderProps {
   onMenuPress: () => void;
+  title?: string;
+  // 🟢 ເພີ່ມ Props ຮັບຂໍ້ມູນຮ້ານ
+  shopName?: string;
+  shopId?: string;
+  shopLogo?: string;
+  onEditPress?: () => void; // 🟢 ຟັງຊັນກົດປຸ່ມແກ້ໄຂ
 }
 
-export default function Header({ onMenuPress }: HeaderProps) {
+export default function Header({ 
+  onMenuPress, 
+  title = "Soudaphone POS",
+  shopName = "ຮ້ານ ສຸດາພອນ",
+  shopId = "ID: 8888 9999",
+  shopLogo,
+  onEditPress
+}: HeaderProps) {
   return (
-    <View>
-      <View style={styles.topHeader}>
-          <Text style={styles.appName}>Soudaphone POS</Text>
-          <View style={{flexDirection: 'row', gap: 15}}>
-             <Ionicons name="notifications-outline" size={24} color="white" />
-             <Ionicons name="menu" size={24} color="white" onPress={onMenuPress} />
-          </View>
+    <View style={styles.container}>
+      <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
+      
+      {/* Top Bar */}
+      <View style={styles.topBar}>
+        <Text style={styles.appTitle}>{title}</Text>
+        <View style={styles.rightIcons}>
+          <TouchableOpacity><Ionicons name="notifications-outline" size={24} color="white" /></TouchableOpacity>
+          <TouchableOpacity onPress={onMenuPress}><Ionicons name="menu" size={30} color="white" /></TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-             <Text style={styles.avatarText}>S</Text>
+      {/* Shop Info Card */}
+      <View style={styles.shopCard}>
+        <View style={styles.shopInfo}>
+          {/* 🟢 ສະແດງໂລໂກ້ຮ້ານ (ຖ້າບໍ່ມີໃຊ້ໂຕ S) */}
+          {shopLogo ? (
+            <Image source={{ uri: shopLogo }} style={styles.shopLogo} />
+          ) : (
+            <View style={styles.shopLogoPlaceholder}>
+              <Text style={styles.shopLogoText}>{shopName.charAt(0)}</Text>
+            </View>
+          )}
+          
+          <View>
+            <Text style={styles.shopName}>{shopName}</Text>
+            <Text style={styles.shopId}>{shopId}</Text>
           </View>
-          <View style={{justifyContent: 'center'}}>
-              <Text style={styles.shopName}>ຮ້ານ ສຸດາພອນ</Text>
-              <Text style={styles.shopId}>ID: 8888 9999</Text>
-          </View>
-          <TouchableOpacity style={styles.editProfileBtn}>
-              <Text style={{fontSize: 12, color: '#666'}}>ແກ້ໄຂ</Text>
-          </TouchableOpacity>
+        </View>
+        
+        {/* 🟢 ປຸ່ມແກ້ໄຂ (ປ່ຽນ Font ແລ້ວ) */}
+        <TouchableOpacity style={styles.editBtn} onPress={onEditPress}>
+          <Text style={styles.editBtnText}>ແກ້ໄຂ</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  topHeader: { backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingTop: 50, paddingBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  appName: { color: 'white', fontSize: 20, fontFamily: 'Lao-Bold' },
-  profileSection: { backgroundColor: 'white', padding: 15, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  avatarContainer: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center', marginRight: 15, overflow: 'hidden' },
-  avatarText: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary },
-  shopName: { fontSize: 16, fontFamily: 'Lao-Bold', color: '#333' },
-  shopId: { fontSize: 14, color: '#666', fontFamily: 'Lao-Regular' },
-  editProfileBtn: { position: 'absolute', right: 20, backgroundColor: '#f0f0f0', paddingHorizontal: 15, paddingVertical: 5, borderRadius: 20 },
+  container: { backgroundColor: COLORS.primary, paddingBottom: 20, paddingTop: StatusBar.currentHeight || 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
+  appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },
+  rightIcons: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  
+  shopCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', marginHorizontal: 20, padding: 15, borderRadius: 15, elevation: 3 },
+  shopInfo: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  
+  shopLogo: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eee' },
+  shopLogoPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E0F2F1', justifyContent: 'center', alignItems: 'center' },
+  shopLogoText: { fontSize: 24, fontFamily: 'Lao-Bold', color: COLORS.primary },
+  
+  shopName: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text },
+  shopId: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
+  
+  editBtn: { backgroundColor: '#f0f0f0', paddingVertical: 5, paddingHorizontal: 15, borderRadius: 20 },
+  // 🟢 Font ປ່ຽນເປັນ Lao-Regular (ຫຼື Bold ຕາມມັກ)
+  editBtnText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
 });

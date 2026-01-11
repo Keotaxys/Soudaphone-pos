@@ -11,7 +11,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-// 🟢 ລຶບ formatNumber ອອກຈາກການ import ເພາະເຮົາຈະຮັບຜ່ານ props ແທນ
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
 import { CartItem, COLORS, Product } from '../../types';
 
@@ -27,7 +26,6 @@ interface POSScreenProps {
   updateQuantity: (id: string, delta: number) => void;
   removeFromCart: (id: string) => void;
   onCheckout: (paymentDetails: any) => void;
-  // 🟢 ເພີ່ມ Type ນີ້ເຂົ້າໄປ ເພື່ອໃຫ້ມັນຮັບ formatNumber ຈາກ App.tsx ໄດ້
   formatNumber: (num: number | string | undefined) => string;
 }
 
@@ -35,7 +33,7 @@ export default function POSScreen({
   products, cart, addToCart, openEditProductModal,
   openAddProductModal, openScanner, totalItems, totalLAK,
   updateQuantity, removeFromCart, onCheckout,
-  formatNumber // 🟢 ຮັບ Props ເຂົ້າມາໃຊ້ງານ
+  formatNumber
 }: POSScreenProps) {
 
   const exchangeRate = useExchangeRate();
@@ -119,7 +117,12 @@ export default function POSScreen({
             onLongPress={() => openEditProductModal(item)}
           >
             <View style={styles.imageContainer}>
-                <Image source={item.imageUrl ? { uri: item.imageUrl } : require('../../../../assets/icon.png')} style={styles.productImage} />
+                {/* 🟢 ແກ້ໄຂ Path ຮູບພາບ: ໃຊ້ ../../../ ແທນ ../../../../ */}
+                <Image 
+                    source={item.imageUrl ? { uri: item.imageUrl } : require('../../../assets/icon.png')} 
+                    style={styles.productImage} 
+                />
+                
                 {/* 🟢 Tag ສະກຸນເງິນເປັນສີ Theme */}
                 <View style={[styles.currencyTag, { backgroundColor: item.priceCurrency === 'LAK' ? COLORS.primary : COLORS.secondary }]}>
                     <Text style={styles.currencyText}>{item.priceCurrency}</Text>
@@ -168,7 +171,11 @@ export default function POSScreen({
                   <ScrollView style={styles.cartList}>
                       {cart.map((item) => (
                           <View key={item.id} style={styles.cartItem}>
-                              <Image source={item.imageUrl ? { uri: item.imageUrl } : require('../../../../assets/icon.png')} style={styles.cartItemImg} />
+                              {/* 🟢 ແກ້ໄຂ Path ຮູບພາບໃນກະຕ່າຄືກັນ */}
+                              <Image 
+                                source={item.imageUrl ? { uri: item.imageUrl } : require('../../../assets/icon.png')} 
+                                style={styles.cartItemImg} 
+                              />
                               <View style={{flex: 1, marginLeft: 10}}>
                                   <Text style={styles.cartItemName}>{item.name}</Text>
                                   <Text style={styles.cartItemPrice}>

@@ -61,7 +61,7 @@ export default function DebtScreen() {
       return isNaN(num) ? 0 : num;
   };
 
-  // 1. ດຶງຂໍ້ມູນຈາກ Firebase (🟢 ແກ້ໄຂໃຫ້ຕົງກັບຮູບ 7.png)
+  // 1. ດຶງຂໍ້ມູນຈາກ Firebase
   useEffect(() => {
     const debtRef = ref(db, 'debts');
     const unsubscribe = onValue(debtRef, (snapshot) => {
@@ -71,13 +71,9 @@ export default function DebtScreen() {
         const list = Object.keys(data).map(key => {
             const item = data[key];
             
-            // 🟢 1. ດຶງຍອດເງິນຕົ້ນ (originalAmount ຈາກຮູບ 7.png)
             const total = parseCurrency(item.originalAmount || item.totalAmount || item.amount);
-            
-            // 🟢 2. ດຶງຍອດຄົງເຫຼືອ (remainingBalance ຈາກຮູບ 7.png)
             const remaining = parseCurrency(item.remainingBalance);
             
-            // 🟢 3. ຄິດໄລ່ຍອດທີ່ຈ່າຍໄປແລ້ວ (ຖ້າບໍ່ມີ field paidAmount ໃຫ້ເອົາ ຕົ້ນ - ຄົງເຫຼືອ)
             let paid = parseCurrency(item.paidAmount || item.paid);
             if (paid === 0 && total > 0 && item.remainingBalance !== undefined) {
                 paid = total - remaining;
@@ -86,13 +82,10 @@ export default function DebtScreen() {
             return { 
                 id: key, 
                 ...item,
-                // 🟢 Map ຊື່ (name ຈາກຮູບ 7.png)
                 title: item.name || item.title || 'ບໍ່ລະບຸຊື່',
                 category: item.category || 'ອື່ນໆ',
-                
                 totalAmount: total,
                 paidAmount: paid,
-                
                 interestRate: parseCurrency(item.interestRate),
                 monthlyPayment: parseCurrency(item.monthlyPayment),
                 dueDate: item.dueDate || new Date().toISOString()
@@ -106,7 +99,7 @@ export default function DebtScreen() {
     return () => unsubscribe();
   }, []);
 
-  // 2. ບັນທຶກ (Add/Edit) - 🟢 ບັນທຶກ field ໃຫ້ຕົງກັບ Web (name, originalAmount)
+  // 2. ບັນທຶກ (Add/Edit)
   const handleSaveDebt = async () => {
     if (!title || !totalAmount) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນ');
@@ -116,17 +109,13 @@ export default function DebtScreen() {
     const amountNum = parseCurrency(totalAmount);
 
     const debtData = {
-      name: title, // Web ໃຊ້ name
-      title: title, // Mobile ໃຊ້ title (ບັນທຶກທັງສອງເພື່ອຄວາມຊົວ)
+      name: title,
+      title: title,
       category,
-      
-      originalAmount: amountNum, // Web ໃຊ້ originalAmount
-      totalAmount: amountNum,    // Mobile ໃຊ້ totalAmount
-      
-      // ເລີ່ມຕົ້ນ: ຄົງເຫຼືອ = ເງິນຕົ້ນ, ຈ່າຍແລ້ວ = 0
-      remainingBalance: amountNum, 
+      originalAmount: amountNum,
+      totalAmount: amountNum,
+      remainingBalance: amountNum,
       paidAmount: 0,
-      
       interestRate: parseCurrency(interestRate),
       monthlyPayment: parseCurrency(monthlyPayment),
       dueDate: dueDate.toISOString(),
@@ -135,7 +124,6 @@ export default function DebtScreen() {
 
     try {
       if (currentId) {
-          // Update (ພິເສດ: ຕ້ອງຄິດໄລ່ remainingBalance ໃໝ່ຖ້າມີການແກ້ຍອດຕົ້ນ)
           const oldDebt = debts.find(d => d.id === currentId);
           const oldPaid = oldDebt?.paidAmount || 0;
           const newRemaining = amountNum - oldPaid;
@@ -168,7 +156,7 @@ export default function DebtScreen() {
       setModalVisible(true);
   };
 
-  // 3. ບັນທຶກການຊຳລະ (🟢 ອັບເດດ remainingBalance ນຳ)
+  // 3. ບັນທຶກການຊຳລະ
   const handlePayment = async () => {
     if (!selectedDebt || !payAmount) return;
     const amount = parseCurrency(payAmount);
@@ -191,7 +179,7 @@ export default function DebtScreen() {
     try {
         await update(ref(db, `debts/${currentDebt.id}`), { 
             paidAmount: newPaidAmount,
-            remainingBalance: newRemaining // 🟢 ອັບເດດ Field ນີ້ໃຫ້ Web App
+            remainingBalance: newRemaining
         });
         await push(ref(db, `debts/${currentDebt.id}/history`), paymentRecord);
         setPaymentModalVisible(false);
@@ -243,6 +231,7 @@ export default function DebtScreen() {
 
     return (
         <View style={styles.card}>
+            {/* Header */}
             <View style={styles.cardHeader}>
                 <View style={{flex: 1}}>
                     <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
@@ -463,51 +452,78 @@ export default function DebtScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  
   headerContainer: { backgroundColor: 'white', padding: 20, paddingBottom: 15, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 2 },
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text },
   headerSub: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
-  card: { backgroundColor: 'white', borderRadius: 8, marginBottom: 15, padding: 15, elevation: 2, borderLeftWidth: 5, borderLeftColor: COLORS.primary, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 },
+
+  card: { 
+    backgroundColor: 'white', 
+    borderRadius: 8, 
+    marginBottom: 15, 
+    padding: 15, 
+    elevation: 2, 
+    // 🟢 ປ່ຽນເປັນ Border Top
+    borderTopWidth: 5, 
+    borderTopColor: COLORS.primary,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 
+  },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 },
   cardTitle: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text, flex: 1 },
   categoryBadge: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#888', marginTop: 2 },
   headerActions: { flexDirection: 'row', gap: 10 },
   iconBtn: { padding: 5 },
+
   amountRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 5 },
   label: { fontSize: 13, fontFamily: 'Lao-Regular', color: '#666' },
   amountTotal: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
+
   progressContainer: { height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden', marginVertical: 5 },
   progressBar: { height: '100%', backgroundColor: COLORS.primary }, 
   progressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   progressText: { fontSize: 11, color: COLORS.primary, fontFamily: 'Lao-Bold' },
   remainingText: { fontSize: 12, color: '#F57C00', fontFamily: 'Lao-Bold' },
+
   divider: { height: 1, backgroundColor: '#f5f5f5', marginBottom: 10 },
+
   detailsGrid: { backgroundColor: '#F9FAFB', padding: 12, borderRadius: 6, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   detailItem: { flex: 1 },
   detailLabel: { fontSize: 11, color: '#888', fontFamily: 'Lao-Regular' },
   detailValue: { fontSize: 13, color: '#333', fontFamily: 'Lao-Bold', marginTop: 2 },
+
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12 },
   dueDateText: { fontSize: 12, color: '#666', fontFamily: 'Lao-Regular' },
+  
   actionButtons: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   historyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, backgroundColor: '#f5f5f5', borderRadius: 8 },
   historyText: { fontSize: 12, color: '#555', fontFamily: 'Lao-Regular' },
+  deleteBtn: { padding: 8, backgroundColor: '#FFEBEE', borderRadius: 8 },
+  
   payBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.primary, paddingVertical: 8, paddingHorizontal: 15, borderRadius: 8 },
   payBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 13 },
+
   fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, elevation: 5 },
   fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 8 },
+
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, elevation: 5, maxHeight: '80%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
+  
   inputLabel: { fontSize: 13, fontFamily: 'Lao-Bold', color: '#555', marginBottom: 5, marginTop: 10 },
   input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Bold' },
   inputLarge: { backgroundColor: '#f9f9f9', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Bold', fontSize: 20, textAlign: 'right' },
+
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   catChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#eee' },
   activeCatChip: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   catText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
+  
   dateInput: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
+  
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 30, marginBottom: 20 },
   cancelBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: '#f5f5f5' },
   cancelBtnText: { color: '#666', fontFamily: 'Lao-Bold' },

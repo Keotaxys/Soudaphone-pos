@@ -1,7 +1,6 @@
 import { useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import * as ImagePicker from 'expo-image-picker';
-// 🟢 ແກ້ໄຂແລ້ວ: Import ມາໃຫ້ຄົບທັງໝົດ (onValue, push, ref, remove, set, update)
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -24,12 +23,13 @@ import { CartItem, COLORS, formatNumber, Product, SaleRecord, SIDEBAR_WIDTH } fr
 import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
-import ReportScreen from '../../src/components/screens/ReportScreen';
-import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
-import ShiftScreen from '../../src/components/screens/ShiftScreen';
-import ProductsScreen from '../../src/components/screens/ProductsScreen';
+// 🟢 ປ່ຽນຈາກ ReportScreen ເປັນ ReportDashboard
 import CustomerScreen from '../../src/components/screens/CustomerScreen';
 import DebtScreen from '../../src/components/screens/DebtScreen';
+import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
+import ProductsScreen from '../../src/components/screens/ProductsScreen';
+import ReportDashboard from '../../src/components/screens/ReportDashboard';
+import ShiftScreen from '../../src/components/screens/ShiftScreen';
 
 // Import UI Components
 import Footer from '../../src/components/ui/Footer';
@@ -37,9 +37,9 @@ import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
 // Import Modals
+import EditShopModal from '../../src/components/modals/EditShopModal';
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
-import EditShopModal from '../../src/components/modals/EditShopModal';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -125,7 +125,6 @@ export default function App() {
     }
   };
 
-  // ບັນທຶກຂໍ້ມູນຮ້ານ
   const saveShopInfo = async () => {
       try {
           await set(ref(db, 'shopInfo'), shopInfo);
@@ -136,7 +135,6 @@ export default function App() {
       }
   };
 
-  // ເລືອກໂລໂກ້ຮ້ານ
   const pickShopLogo = async () => {
       let result = await ImagePicker.launchImageLibraryAsync({ 
           mediaTypes: ImagePicker.MediaTypeOptions.Images, 
@@ -272,7 +270,11 @@ export default function App() {
             />
         );
         case 'expense': return <ExpenseScreen />;
-        case 'report': case 'history': return <ReportScreen salesHistory={salesHistory} />;
+        
+        // 🟢 ປ່ຽນເປັນ ReportDashboard (ບໍ່ຕ້ອງສົ່ງ props ແລ້ວ)
+        case 'report': 
+        case 'history': return <ReportDashboard />;
+        
         case 'orders': return <OrderTrackingScreen />; 
         case 'shifts': case 'shift': return <ShiftScreen />; 
         case 'customers': return <CustomerScreen />;
@@ -283,7 +285,6 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <Header 
         onMenuPress={() => toggleMenu(true)} 
         shopName={shopInfo.name}

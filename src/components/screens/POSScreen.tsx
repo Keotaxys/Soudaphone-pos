@@ -1,18 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    FlatList,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+// 🟢 ລຶບ formatNumber ອອກຈາກການ import ເພາະເຮົາຈະຮັບຜ່ານ props ແທນ
+import { COLORS, Product, CartItem } from '../../types';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
-import { CartItem, COLORS, formatNumber, Product } from '../../types';
 
 interface POSScreenProps {
   products: Product[];
@@ -26,12 +27,15 @@ interface POSScreenProps {
   updateQuantity: (id: string, delta: number) => void;
   removeFromCart: (id: string) => void;
   onCheckout: (paymentDetails: any) => void;
+  // 🟢 ເພີ່ມ Type ນີ້ເຂົ້າໄປ ເພື່ອໃຫ້ມັນຮັບ formatNumber ຈາກ App.tsx ໄດ້
+  formatNumber: (num: number | string | undefined) => string;
 }
 
 export default function POSScreen({
   products, cart, addToCart, openEditProductModal,
   openAddProductModal, openScanner, totalItems, totalLAK,
-  updateQuantity, removeFromCart, onCheckout
+  updateQuantity, removeFromCart, onCheckout,
+  formatNumber // 🟢 ຮັບ Props ເຂົ້າມາໃຊ້ງານ
 }: POSScreenProps) {
 
   const exchangeRate = useExchangeRate();
@@ -116,7 +120,7 @@ export default function POSScreen({
           >
             <View style={styles.imageContainer}>
                 <Image source={item.imageUrl ? { uri: item.imageUrl } : require('../../../../assets/icon.png')} style={styles.productImage} />
-                {/* 🟢 ແກ້ໄຂ: Tag LAK ເປັນສີ Theme */}
+                {/* 🟢 Tag ສະກຸນເງິນເປັນສີ Theme */}
                 <View style={[styles.currencyTag, { backgroundColor: item.priceCurrency === 'LAK' ? COLORS.primary : COLORS.secondary }]}>
                     <Text style={styles.currencyText}>{item.priceCurrency}</Text>
                 </View>
@@ -183,7 +187,7 @@ export default function POSScreen({
                       ))}
                   </ScrollView>
 
-                  {/* Payment Section in Cart */}
+                  {/* Payment Section */}
                   <View style={styles.paymentSection}>
                       <View style={styles.currencyToggle}>
                           <TouchableOpacity 
@@ -208,7 +212,6 @@ export default function POSScreen({
                           </Text>
                       </View>
 
-                      {/* 🟢 ປຸ່ມຢືນຢັນການຊຳລະເປັນສີ Theme */}
                       <TouchableOpacity style={styles.checkoutBtn} onPress={() => setCheckoutModalVisible(true)}>
                           <Text style={styles.checkoutBtnText}>ຢືນຢັນການຊຳລະ</Text>
                       </TouchableOpacity>
@@ -217,7 +220,7 @@ export default function POSScreen({
           </View>
       </Modal>
 
-      {/* --- Checkout Modal (Final Step) --- */}
+      {/* --- Checkout Modal --- */}
       <Modal visible={checkoutModalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>
               <View style={[styles.modalContent, {height: 'auto', paddingBottom: 30}]}>
@@ -283,8 +286,8 @@ const styles = StyleSheet.create({
   
   // Action Buttons
   actionRow: { flexDirection: 'row', padding: 15, gap: 10 },
-  scanBtn: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.primary, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 5 }, // 🟢 ປ່ຽນເປັນສີ Theme
-  addBtn: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.secondary, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 5 }, // 🟢 ສີສົ້ມຄືເກົ່າ
+  scanBtn: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.primary, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 5 },
+  addBtn: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.secondary, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 5 },
   btnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
 
   // Product Grid
@@ -327,14 +330,14 @@ const styles = StyleSheet.create({
   paymentSection: { padding: 20, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#FAFAFA' },
   currencyToggle: { flexDirection: 'row', gap: 10, marginBottom: 15 },
   currencyBtn: { flex: 1, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#ddd', alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
-  activeCurrency: { backgroundColor: COLORS.primary, borderColor: COLORS.primary }, // 🟢 ສີ Theme
+  activeCurrency: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   currencyBtnText: { fontFamily: 'Lao-Bold', color: '#666' },
   
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   totalLabel: { fontFamily: 'Lao-Regular', fontSize: 16, color: '#666' },
-  totalValue: { fontFamily: 'Lao-Bold', fontSize: 24, color: COLORS.primary }, // 🟢 ຕົວເລກສີ Theme
+  totalValue: { fontFamily: 'Lao-Bold', fontSize: 24, color: COLORS.primary },
 
-  checkoutBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center' }, // 🟢 ປຸ່ມຢືນຢັນສີ Theme
+  checkoutBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center' },
   checkoutBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },
 
   // Checkout Modal Specifics

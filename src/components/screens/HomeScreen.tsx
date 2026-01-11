@@ -1,10 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { signOut } from 'firebase/auth'; // 🟢 1. Import signOut
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   FlatList,
   Modal,
@@ -16,7 +14,7 @@ import {
   View
 } from 'react-native';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
-import { auth, db } from '../../firebase'; // 🟢 Import auth
+import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../types';
 
 const { width } = Dimensions.get('window');
@@ -72,24 +70,6 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
     });
     return () => unsubscribe();
   }, []);
-
-  // 🟢 2. ຟັງຊັນ Logout
-  const handleLogout = () => {
-      Alert.alert('ອອກຈາກລະບົບ', 'ທ່ານຕ້ອງການອອກຈາກລະບົບແທ້ບໍ່?', [
-          { text: 'ຍົກເລີກ', style: 'cancel' },
-          { 
-              text: 'ອອກຈາກລະບົບ', 
-              style: 'destructive', 
-              onPress: async () => {
-                  try {
-                      await signOut(auth);
-                  } catch (error) {
-                      Alert.alert('Error', 'ອອກຈາກລະບົບບໍ່ໄດ້');
-                  }
-              } 
-          }
-      ]);
-  };
 
   const getDateRange = () => {
     let start = new Date(currentDate);
@@ -205,28 +185,20 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
       
       {/* Filter Tabs */}
       <View style={styles.filterSection}>
-        
-        {/* 🟢 3. ເພີ່ມ Header Row ທີ່ມີປຸ່ມ Logout */}
-        <View style={styles.topHeader}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterTabs}>
-            {['day', 'week', 'month', 'year', 'custom'].map((type) => (
-                <TouchableOpacity
-                key={type}
-                style={[styles.filterTab, filterType === type && styles.activeTab]}
-                onPress={() => { setFilterType(type as FilterType); if (type === 'custom') setShowCustomPicker(true); }}
-                >
-                <Text style={[styles.filterText, filterType === type && styles.activeText]}>
-                    {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
-                </Text>
-                </TouchableOpacity>
-            ))}
-            </ScrollView>
-            
-            {/* 🟢 ປຸ່ມ Logout */}
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-                <Ionicons name="log-out-outline" size={22} color={COLORS.danger} />
+        {/* 🟢 ແກ້ໄຂ: ເອົາປຸ່ມ Logout ອອກ ເຫຼືອແຕ່ Tabs */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterTabs}>
+          {['day', 'week', 'month', 'year', 'custom'].map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[styles.filterTab, filterType === type && styles.activeTab]}
+              onPress={() => { setFilterType(type as FilterType); if (type === 'custom') setShowCustomPicker(true); }}
+            >
+              <Text style={[styles.filterText, filterType === type && styles.activeText]}>
+                {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
+              </Text>
             </TouchableOpacity>
-        </View>
+          ))}
+        </ScrollView>
 
         {filterType !== 'custom' ? (
           <View style={styles.navRow}>
@@ -358,17 +330,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   
   filterSection: { backgroundColor: 'white', paddingBottom: 10, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 5 },
-  
-  // 🟢 Styles ສຳລັບແຖວເທິງ (Tabs + Logout)
-  topHeader: { flexDirection: 'row', alignItems: 'center', paddingRight: 15 },
-  logoutBtn: { padding: 8, backgroundColor: '#FFEBEE', borderRadius: 20, marginLeft: 5 },
-
-  filterTabs: { paddingHorizontal: 15, marginTop: 10, marginBottom: 10, flex: 1 },
+  filterTabs: { paddingHorizontal: 15, marginTop: 10, marginBottom: 10 },
   filterTab: { paddingHorizontal: 15, paddingVertical: 6, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
   activeTab: { backgroundColor: COLORS.primary },
   filterText: { fontFamily: 'Lao-Regular', color: '#666' },
   activeText: { color: 'white', fontFamily: 'Lao-Bold' },
-  
   navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 },
   navBtn: { padding: 5 },
   dateLabel: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },

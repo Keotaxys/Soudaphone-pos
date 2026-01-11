@@ -6,11 +6,11 @@ import { COLORS } from '../../types';
 interface HeaderProps {
   onMenuPress: () => void;
   title?: string;
-  // 🟢 ເພີ່ມ Props ຮັບຂໍ້ມູນຮ້ານ
   shopName?: string;
   shopId?: string;
   shopLogo?: string;
-  onEditPress?: () => void; // 🟢 ຟັງຊັນກົດປຸ່ມແກ້ໄຂ
+  onEditPress?: () => void;
+  onLogout?: () => void; // 🟢 1. ເພີ່ມ Props ຮັບຟັງຊັນ Logout
 }
 
 export default function Header({ 
@@ -19,7 +19,8 @@ export default function Header({
   shopName = "ຮ້ານ ສຸດາພອນ",
   shopId = "ID: 8888 9999",
   shopLogo,
-  onEditPress
+  onEditPress,
+  onLogout // 🟢 ຮັບຄ່າ
 }: HeaderProps) {
   return (
     <View style={styles.container}>
@@ -29,15 +30,25 @@ export default function Header({
       <View style={styles.topBar}>
         <Text style={styles.appTitle}>{title}</Text>
         <View style={styles.rightIcons}>
-          <TouchableOpacity><Ionicons name="notifications-outline" size={24} color="white" /></TouchableOpacity>
-          <TouchableOpacity onPress={onMenuPress}><Ionicons name="menu" size={30} color="white" /></TouchableOpacity>
+          
+          {/* 🟢 2. ເພີ່ມປຸ່ມ Logout ໄວ້ບ່ອນນີ້ (ຂ້າງ icon notification) */}
+          <TouchableOpacity onPress={onLogout}>
+            <Ionicons name="log-out-outline" size={24} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity>
+            <Ionicons name="notifications-outline" size={24} color="white" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={onMenuPress}>
+            <Ionicons name="menu" size={30} color="white" />
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* Shop Info Card */}
       <View style={styles.shopCard}>
         <View style={styles.shopInfo}>
-          {/* 🟢 ສະແດງໂລໂກ້ຮ້ານ (ຖ້າບໍ່ມີໃຊ້ໂຕ S) */}
           {shopLogo ? (
             <Image source={{ uri: shopLogo }} style={styles.shopLogo} />
           ) : (
@@ -52,7 +63,6 @@ export default function Header({
           </View>
         </View>
         
-        {/* 🟢 ປຸ່ມແກ້ໄຂ (ປ່ຽນ Font ແລ້ວ) */}
         <TouchableOpacity style={styles.editBtn} onPress={onEditPress}>
           <Text style={styles.editBtnText}>ແກ້ໄຂ</Text>
         </TouchableOpacity>
@@ -65,6 +75,8 @@ const styles = StyleSheet.create({
   container: { backgroundColor: COLORS.primary, paddingBottom: 20, paddingTop: StatusBar.currentHeight || 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
   appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },
+  
+  // 🟢 gap: 15 ຈະຊ່ວຍຈັດໄລຍະຫ່າງລະຫວ່າງ Logout, Notification ແລະ Menu ໃຫ້ເທົ່າກັນ
   rightIcons: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   
   shopCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', marginHorizontal: 20, padding: 15, borderRadius: 15, elevation: 3 },
@@ -78,6 +90,5 @@ const styles = StyleSheet.create({
   shopId: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
   
   editBtn: { backgroundColor: '#f0f0f0', paddingVertical: 5, paddingHorizontal: 15, borderRadius: 20 },
-  // 🟢 Font ປ່ຽນເປັນ Lao-Regular (ຫຼື Bold ຕາມມັກ)
   editBtnText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
 });

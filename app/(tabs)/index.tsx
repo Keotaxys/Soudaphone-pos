@@ -1,8 +1,8 @@
 import { useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import * as ImagePicker from 'expo-image-picker';
-// 🟢 Import auth ແລະ onAuthStateChanged
-import { onAuthStateChanged, User } from 'firebase/auth';
+// 🟢 Import signOut
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -16,22 +16,22 @@ import {
   View
 } from 'react-native';
 
-import { auth, db } from '../../src/firebase'; // 🟢 Import auth
+import { auth, db } from '../../src/firebase';
 
 // Import Types & Helpers
 import { CartItem, COLORS, formatNumber, Product, SaleRecord, SIDEBAR_WIDTH } from '../../src/types';
 
 // Import Screens
-import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
-import HomeScreen from '../../src/components/screens/HomeScreen';
-import POSScreen from '../../src/components/screens/POSScreen';
-import ReportDashboard from '../../src/components/screens/ReportDashboard';
-import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
-import ShiftScreen from '../../src/components/screens/ShiftScreen';
-import ProductsScreen from '../../src/components/screens/ProductsScreen';
 import CustomerScreen from '../../src/components/screens/CustomerScreen';
 import DebtScreen from '../../src/components/screens/DebtScreen';
-import LoginScreen from '../../src/components/screens/LoginScreen'; // 🟢 Import Login Screen
+import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
+import HomeScreen from '../../src/components/screens/HomeScreen';
+import LoginScreen from '../../src/components/screens/LoginScreen';
+import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
+import POSScreen from '../../src/components/screens/POSScreen';
+import ProductsScreen from '../../src/components/screens/ProductsScreen';
+import ReportDashboard from '../../src/components/screens/ReportDashboard';
+import ShiftScreen from '../../src/components/screens/ShiftScreen';
 
 // Import UI Components
 import Footer from '../../src/components/ui/Footer';
@@ -39,9 +39,9 @@ import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
 // Import Modals
+import EditShopModal from '../../src/components/modals/EditShopModal';
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
-import EditShopModal from '../../src/components/modals/EditShopModal';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -51,7 +51,7 @@ export default function App() {
 
   const [permission, requestPermission] = useCameraPermissions();
 
-  // 🟢 User Authentication State
+  // Authentication State
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
 
@@ -81,7 +81,7 @@ export default function App() {
       name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: ''
   });
 
-  // 🟢 Monitor Auth State Change
+  // Monitor Auth State
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -90,11 +90,9 @@ export default function App() {
     return unsubscribeAuth;
   }, []);
 
-  // ============================================================
-  // Firebase Listeners (ເຮັດວຽກເມື່ອມີ User ແລ້ວເທົ່ານັ້ນ)
-  // ============================================================
+  // Firebase Listeners
   useEffect(() => {
-    if (!user) return; // 🟢 ຖ້າບໍ່ມີ User ບໍ່ຕ້ອງດຶງຂໍ້ມູນ
+    if (!user) return;
 
     const shopRef = ref(db, 'shopInfo');
     const unsubscribeShop = onValue(shopRef, (snapshot) => {
@@ -121,12 +119,9 @@ export default function App() {
     });
 
     return () => { unsubscribeProducts(); unsubscribeSales(); unsubscribeShop(); };
-  }, [user]); // 🟢 Dependency ເປັນ [user]
+  }, [user]);
 
-  // ============================================================
-  // Logic Functions (ຄືເດີມ)
-  // ============================================================
-
+  // Logic Functions
   const toggleMenu = (show: boolean) => {
     if (show) { 
         setMenuVisible(true); 
@@ -134,6 +129,24 @@ export default function App() {
     } else { 
         Animated.timing(slideAnim, { toValue: -SIDEBAR_WIDTH, duration: 300, easing: Easing.in(Easing.ease), useNativeDriver: true }).start(() => setMenuVisible(false)); 
     }
+  };
+
+  // 🟢 ຟັງຊັນ Logout
+  const handleLogout = () => {
+      Alert.alert('ອອກຈາກລະບົບ', 'ທ່ານຕ້ອງການອອກຈາກລະບົບແທ້ບໍ່?', [
+          { text: 'ຍົກເລີກ', style: 'cancel' },
+          { 
+              text: 'ອອກຈາກລະບົບ', 
+              style: 'destructive', 
+              onPress: async () => {
+                  try {
+                      await signOut(auth);
+                  } catch (error) {
+                      Alert.alert('Error', 'ອອກຈາກລະບົບບໍ່ໄດ້');
+                  }
+              } 
+          }
+      ]);
   };
 
   const saveShopInfo = async () => {
@@ -226,18 +239,12 @@ export default function App() {
 
   const removeFromCart = (id: string) => { setCart(prev => prev.filter(item => item.id !== id)); };
 
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalLAK = cart.filter(i => i.priceCurrency !== 'THB').reduce((sum, i) => sum + (i.price * i.quantity), 0);
-
-  // 🟢 Loading Check
   if (!fontsLoaded || initializing) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
-  // 🟢 Login Check: ຖ້າຍັງບໍ່ມີ User ໃຫ້ສະແດງ LoginScreen
   if (!user) {
       return <LoginScreen />;
   }
 
-  // 🟢 Main App Content (ຈະເຮັດວຽກເມື່ອມີ User ແລ້ວ)
   const renderContent = () => {
     switch (currentTab) {
         case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
@@ -271,12 +278,14 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* 🟢 ສົ່ງ onLogout ໃຫ້ Header */}
       <Header 
         onMenuPress={() => toggleMenu(true)} 
         shopName={shopInfo.name}
         shopId={shopInfo.id}
         shopLogo={shopInfo.logo}
         onEditPress={() => setShopModalVisible(true)}
+        onLogout={handleLogout} 
       />
       
       <View style={{flex: 1, backgroundColor: COLORS.background}}>
@@ -288,7 +297,6 @@ export default function App() {
         currentTab={currentTab} onNavigate={(tab) => { setCurrentTab(tab); toggleMenu(false); }}
       />
       
-      {/* Modals */}
       <ProductModal visible={productModalVisible} onClose={() => setProductModalVisible(false)} product={editingProduct} setProduct={setEditingProduct} onSave={saveProduct} onPickImage={async () => { let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true }); if (!result.canceled) { setEditingProduct({ ...editingProduct, imageUrl: `data:image/jpeg;base64,${result.assets[0].base64}` }); } }} onScan={() => openScanner('edit')} />
       <EditShopModal visible={shopModalVisible} onClose={() => setShopModalVisible(false)} shopName={shopInfo.name} setShopName={(t) => setShopInfo({...shopInfo, name: t})} shopId={shopInfo.id} setShopId={(t) => setShopInfo({...shopInfo, id: t})} shopLogo={shopInfo.logo} onPickImage={pickShopLogo} onSave={saveShopInfo} />
       <ScannerModal visible={isScanning} onClose={() => setIsScanning(false)} onScanned={handleBarCodeScanned} />

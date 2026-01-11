@@ -10,7 +10,7 @@ interface HeaderProps {
   shopId?: string;
   shopLogo?: string;
   onEditPress?: () => void;
-  onLogout?: () => void; // 🟢 1. ເພີ່ມ Props ຮັບຟັງຊັນ Logout
+  onLogout?: () => void;
 }
 
 export default function Header({ 
@@ -20,7 +20,7 @@ export default function Header({
   shopId = "ID: 8888 9999",
   shopLogo,
   onEditPress,
-  onLogout // 🟢 ຮັບຄ່າ
+  onLogout 
 }: HeaderProps) {
   return (
     <View style={styles.container}>
@@ -28,22 +28,26 @@ export default function Header({
       
       {/* Top Bar */}
       <View style={styles.topBar}>
-        <Text style={styles.appTitle}>{title}</Text>
-        <View style={styles.rightIcons}>
-          
-          {/* 🟢 2. ເພີ່ມປຸ່ມ Logout ໄວ້ບ່ອນນີ້ (ຂ້າງ icon notification) */}
-          <TouchableOpacity onPress={onLogout}>
-            <Ionicons name="log-out-outline" size={24} color="white" />
-          </TouchableOpacity>
-
-          <TouchableOpacity>
-            <Ionicons name="notifications-outline" size={24} color="white" />
-          </TouchableOpacity>
-          
+        
+        {/* 🟢 ດ້ານຊ້າຍ: ເມນູ + ຊື່ແອັບ */}
+        <View style={styles.leftContainer}>
           <TouchableOpacity onPress={onMenuPress}>
             <Ionicons name="menu" size={30} color="white" />
           </TouchableOpacity>
+          <Text style={styles.appTitle}>{title}</Text>
         </View>
+
+        {/* 🟢 ດ້ານຂວາ: ແຈ້ງເຕືອນ + Logout */}
+        <View style={styles.rightIcons}>
+          <TouchableOpacity>
+            <Ionicons name="notifications-outline" size={24} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={onLogout}>
+            <Ionicons name="log-out-outline" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+
       </View>
 
       {/* Shop Info Card */}
@@ -73,10 +77,15 @@ export default function Header({
 
 const styles = StyleSheet.create({
   container: { backgroundColor: COLORS.primary, paddingBottom: 20, paddingTop: StatusBar.currentHeight || 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
+  
+  // 🟢 Top Bar Layout: ຈັດໃຫ້ມີຊ້າຍ-ຂວາ
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
+  
+  // 🟢 Left Container: ຈັດເມນູຄູ່ກັບຊື່
+  leftContainer: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },
   
-  // 🟢 gap: 15 ຈະຊ່ວຍຈັດໄລຍະຫ່າງລະຫວ່າງ Logout, Notification ແລະ Menu ໃຫ້ເທົ່າກັນ
+  // 🟢 Right Icons: ຈັດແຈ້ງເຕືອນຄູ່ກັບ Logout
   rightIcons: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   
   shopCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', marginHorizontal: 20, padding: 15, borderRadius: 15, elevation: 3 },

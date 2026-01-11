@@ -93,11 +93,13 @@ export default function POSScreen({
       
       {/* --- Action Buttons (Scan & Add) --- */}
       <View style={styles.actionRow}>
+        {/* 🟢 ປຸ່ມ Scan ເປັນສີ Theme (Teal) */}
         <TouchableOpacity style={styles.scanBtn} onPress={openScanner}>
             <Ionicons name="barcode-outline" size={24} color="white" />
             <Text style={styles.btnText}>ສະແກນ</Text>
         </TouchableOpacity>
         
+        {/* 🟢 ປຸ່ມ Add ເປັນສີສົ້ມ (Secondary) ຄືເກົ່າ */}
         <TouchableOpacity style={styles.addBtn} onPress={openAddProductModal}>
             <Ionicons name="add-circle-outline" size={24} color="white" />
             <Text style={styles.btnText}>ເພີ່ມສິນຄ້າ</Text>
@@ -117,13 +119,13 @@ export default function POSScreen({
             onLongPress={() => openEditProductModal(item)}
           >
             <View style={styles.imageContainer}>
-                {/* 🟢 ແກ້ໄຂ Path ຮູບພາບ: ໃຊ້ ../../../ ແທນ ../../../../ */}
+                {/* 🟢 ໃຊ້ຮູບ Placeholder ແທນ require ປ້ອງກັນ Error Path */}
                 <Image 
-                    source={item.imageUrl ? { uri: item.imageUrl } : require('../../../assets/icon.png')} 
+                    source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://via.placeholder.com/150' }} 
                     style={styles.productImage} 
                 />
                 
-                {/* 🟢 Tag ສະກຸນເງິນເປັນສີ Theme */}
+                {/* 🟢 Tag ສະກຸນເງິນເປັນສີ Theme (Teal) */}
                 <View style={[styles.currencyTag, { backgroundColor: item.priceCurrency === 'LAK' ? COLORS.primary : COLORS.secondary }]}>
                     <Text style={styles.currencyText}>{item.priceCurrency}</Text>
                 </View>
@@ -171,9 +173,8 @@ export default function POSScreen({
                   <ScrollView style={styles.cartList}>
                       {cart.map((item) => (
                           <View key={item.id} style={styles.cartItem}>
-                              {/* 🟢 ແກ້ໄຂ Path ຮູບພາບໃນກະຕ່າຄືກັນ */}
                               <Image 
-                                source={item.imageUrl ? { uri: item.imageUrl } : require('../../../assets/icon.png')} 
+                                source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://via.placeholder.com/150' }} 
                                 style={styles.cartItemImg} 
                               />
                               <View style={{flex: 1, marginLeft: 10}}>
@@ -214,11 +215,13 @@ export default function POSScreen({
 
                       <View style={styles.totalRow}>
                           <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
+                          {/* 🟢 ຕົວເລກຍອດລວມເປັນສີ Theme */}
                           <Text style={styles.totalValue}>
                               {formatNumber(paymentCurrency === 'LAK' ? totalBaseLAK : totalTHB)} {paymentCurrency === 'LAK' ? '₭' : '฿'}
                           </Text>
                       </View>
 
+                      {/* 🟢 ປຸ່ມຢືນຢັນເປັນສີ Theme */}
                       <TouchableOpacity style={styles.checkoutBtn} onPress={() => setCheckoutModalVisible(true)}>
                           <Text style={styles.checkoutBtnText}>ຢືນຢັນການຊຳລະ</Text>
                       </TouchableOpacity>
@@ -291,13 +294,11 @@ export default function POSScreen({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   
-  // Action Buttons
   actionRow: { flexDirection: 'row', padding: 15, gap: 10 },
   scanBtn: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.primary, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 5 },
   addBtn: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.secondary, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 5 },
   btnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
 
-  // Product Grid
   productCard: { flex: 1, margin: 5, backgroundColor: 'white', borderRadius: 12, overflow: 'hidden', elevation: 2, position: 'relative' },
   imageContainer: { width: '100%', height: 140, backgroundColor: '#f0f0f0', position: 'relative' },
   productImage: { width: '100%', height: '100%', resizeMode: 'cover' },
@@ -311,14 +312,12 @@ const styles = StyleSheet.create({
   productPrice: { fontFamily: 'Lao-Bold', fontSize: 16, marginTop: 2 },
   addIcon: { position: 'absolute', bottom: 10, right: 10, width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
 
-  // Floating Cart
   cartFloat: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: 'white', borderRadius: 30, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.2 },
   cartIconBadge: { flexDirection: 'row', alignItems: 'center' },
   badge: { backgroundColor: COLORS.danger, width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginLeft: -10, marginTop: -10 },
   badgeText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
   cartTotalText: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primary },
 
-  // Cart Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: 'white', height: '80%', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
@@ -333,7 +332,6 @@ const styles = StyleSheet.create({
   qtyBtn: { padding: 8, width: 30, alignItems: 'center' },
   qtyText: { fontFamily: 'Lao-Bold', paddingHorizontal: 10 },
 
-  // Payment Section
   paymentSection: { padding: 20, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#FAFAFA' },
   currencyToggle: { flexDirection: 'row', gap: 10, marginBottom: 15 },
   currencyBtn: { flex: 1, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#ddd', alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
@@ -347,7 +345,6 @@ const styles = StyleSheet.create({
   checkoutBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center' },
   checkoutBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },
 
-  // Checkout Modal Specifics
   label: { fontFamily: 'Lao-Bold', marginBottom: 10, color: COLORS.text },
   methodBtn: { flex: 1, padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#eee', alignItems: 'center', gap: 5 },
   activeMethod: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },

@@ -1,25 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { signOut } from 'firebase/auth'; // 🟢 1. Import signOut
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Dimensions,
-    FlatList,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  FlatList,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
-import { db } from '../../firebase';
+import { auth, db } from '../../firebase'; // 🟢 Import auth
 import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../types';
 
 const { width } = Dimensions.get('window');
 
-// 🟢 ກຳນົດສີສົ້ມໃໝ່
 const ORANGE_COLOR = '#FF7043';
 const ORANGE_BG = '#FFF3E0';
 const ORANGE_TEXT = '#E64A19';
@@ -71,6 +72,24 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
     });
     return () => unsubscribe();
   }, []);
+
+  // 🟢 2. ຟັງຊັນ Logout
+  const handleLogout = () => {
+      Alert.alert('ອອກຈາກລະບົບ', 'ທ່ານຕ້ອງການອອກຈາກລະບົບແທ້ບໍ່?', [
+          { text: 'ຍົກເລີກ', style: 'cancel' },
+          { 
+              text: 'ອອກຈາກລະບົບ', 
+              style: 'destructive', 
+              onPress: async () => {
+                  try {
+                      await signOut(auth);
+                  } catch (error) {
+                      Alert.alert('Error', 'ອອກຈາກລະບົບບໍ່ໄດ້');
+                  }
+              } 
+          }
+      ]);
+  };
 
   const getDateRange = () => {
     let start = new Date(currentDate);
@@ -186,19 +205,28 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
       
       {/* Filter Tabs */}
       <View style={styles.filterSection}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterTabs}>
-          {['day', 'week', 'month', 'year', 'custom'].map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={[styles.filterTab, filterType === type && styles.activeTab]}
-              onPress={() => { setFilterType(type as FilterType); if (type === 'custom') setShowCustomPicker(true); }}
-            >
-              <Text style={[styles.filterText, filterType === type && styles.activeText]}>
-                {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
-              </Text>
+        
+        {/* 🟢 3. ເພີ່ມ Header Row ທີ່ມີປຸ່ມ Logout */}
+        <View style={styles.topHeader}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterTabs}>
+            {['day', 'week', 'month', 'year', 'custom'].map((type) => (
+                <TouchableOpacity
+                key={type}
+                style={[styles.filterTab, filterType === type && styles.activeTab]}
+                onPress={() => { setFilterType(type as FilterType); if (type === 'custom') setShowCustomPicker(true); }}
+                >
+                <Text style={[styles.filterText, filterType === type && styles.activeText]}>
+                    {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
+                </Text>
+                </TouchableOpacity>
+            ))}
+            </ScrollView>
+            
+            {/* 🟢 ປຸ່ມ Logout */}
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                <Ionicons name="log-out-outline" size={22} color={COLORS.danger} />
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+        </View>
 
         {filterType !== 'custom' ? (
           <View style={styles.navRow}>
@@ -221,7 +249,6 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
           <View><Text style={styles.statLabelWhite}>ຍອດຂາຍ</Text><Text style={styles.statValueWhite}>{formatNumber(filteredTotal)} ₭</Text></View>
         </View>
         
-        {/* 🟢 Card ກຳໄລ (Teal Theme) */}
         <View style={[styles.statCard, { backgroundColor: '#E0F2F1', borderWidth: 1, borderColor: COLORS.primary }]}>
           <View style={[styles.iconCircle, { backgroundColor: 'white' }]}><Ionicons name="trending-up" size={24} color={COLORS.primary} /></View>
           <View>
@@ -235,7 +262,6 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
           <View><Text style={styles.statLabelWhite}>ອໍເດີ</Text><Text style={styles.statValueWhite}>{filteredOrders}</Text></View>
         </View>
         
-        {/* 🟢 Card ລາຍຈ່າຍ (ສີສົ້ມ) */}
         <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
           <View style={[styles.iconCircle, { backgroundColor: ORANGE_BG }]}><Ionicons name="wallet-outline" size={24} color={ORANGE_COLOR} /></View>
           <View><Text style={styles.statLabel}>ລາຍຈ່າຍ</Text><Text style={[styles.statValue, { color: ORANGE_COLOR }]}>{formatNumber(filteredExpenses)}</Text></View>
@@ -273,7 +299,6 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
           <View key={index} style={styles.chartRow}>
             <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
               <Text style={styles.chartLabel}>{item.category}</Text>
-              {/* 🟢 Chart ລາຍຈ່າຍເປັນສີສົ້ມ */}
               <Text style={[styles.chartValue, {color: ORANGE_COLOR}]}>{formatNumber(item.amount)} ₭</Text>
             </View>
             <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${item.percentage}%`, backgroundColor: ORANGE_COLOR }]} /></View>
@@ -333,11 +358,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   
   filterSection: { backgroundColor: 'white', paddingBottom: 10, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 5 },
-  filterTabs: { paddingHorizontal: 15, marginTop: 10, marginBottom: 10 },
+  
+  // 🟢 Styles ສຳລັບແຖວເທິງ (Tabs + Logout)
+  topHeader: { flexDirection: 'row', alignItems: 'center', paddingRight: 15 },
+  logoutBtn: { padding: 8, backgroundColor: '#FFEBEE', borderRadius: 20, marginLeft: 5 },
+
+  filterTabs: { paddingHorizontal: 15, marginTop: 10, marginBottom: 10, flex: 1 },
   filterTab: { paddingHorizontal: 15, paddingVertical: 6, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
   activeTab: { backgroundColor: COLORS.primary },
   filterText: { fontFamily: 'Lao-Regular', color: '#666' },
   activeText: { color: 'white', fontFamily: 'Lao-Bold' },
+  
   navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 },
   navBtn: { padding: 5 },
   dateLabel: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
@@ -356,7 +387,6 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
   sectionTitle: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
   
-  // 🟢 Low Stock Styles (ສີສົ້ມ)
   lowStockCard: { backgroundColor: ORANGE_BG, padding: 10, borderRadius: 10, marginRight: 10, minWidth: 120, borderWidth: 1, borderColor: '#FFE0B2' },
   lowStockName: { fontFamily: 'Lao-Bold', color: ORANGE_TEXT, fontSize: 12, marginBottom: 4 },
   lowStockValue: { fontFamily: 'Lao-Regular', color: ORANGE_TEXT, fontSize: 10 },

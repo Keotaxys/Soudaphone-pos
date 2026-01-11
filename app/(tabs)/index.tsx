@@ -1,7 +1,6 @@
 import { useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import * as ImagePicker from 'expo-image-picker';
-// 🟢 Import signOut
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
@@ -131,7 +130,6 @@ export default function App() {
     }
   };
 
-  // 🟢 ຟັງຊັນ Logout
   const handleLogout = () => {
       Alert.alert('ອອກຈາກລະບົບ', 'ທ່ານຕ້ອງການອອກຈາກລະບົບແທ້ບໍ່?', [
           { text: 'ຍົກເລີກ', style: 'cancel' },
@@ -239,6 +237,10 @@ export default function App() {
 
   const removeFromCart = (id: string) => { setCart(prev => prev.filter(item => item.id !== id)); };
 
+  // 🟢 ຄິດໄລ່ຍອດລວມ (Total Calculation) - ແກ້ໄຂ Error ບ່ອນນີ້
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalLAK = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
   if (!fontsLoaded || initializing) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
   if (!user) {
@@ -253,7 +255,9 @@ export default function App() {
                 products={products} cart={cart} addToCart={addToCart}
                 openEditProductModal={(p) => { setEditingProduct(p); setProductModalVisible(true); }} 
                 openAddProductModal={() => { setEditingProduct({ name: '', price: 0, stock: 1, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); setProductModalVisible(true); }}
-                openScanner={openScanner} totalItems={totalItems} totalLAK={totalLAK}
+                openScanner={openScanner} 
+                totalItems={totalItems} // 🟢 ສົ່ງຄ່າໄປ
+                totalLAK={totalLAK}     // 🟢 ສົ່ງຄ່າໄປ
                 formatNumber={formatNumber} updateQuantity={updateQuantity}
                 removeFromCart={removeFromCart} onCheckout={handleCheckout}
             />
@@ -278,7 +282,6 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 🟢 ສົ່ງ onLogout ໃຫ້ Header */}
       <Header 
         onMenuPress={() => toggleMenu(true)} 
         shopName={shopInfo.name}

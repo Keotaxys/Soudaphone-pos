@@ -1,16 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+// 🟢 ແກ້ໄຂ Import: ດຶງສະເພາະສິ່ງທີ່ໃຊ້ (ແກ້ບັນຫາ TypeScript Error)
+import { documentDirectory, EncodingType, writeAsStringAsync } from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   FlatList,
   Image,
-  Modal,
-  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -18,7 +17,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import * as FileSystem from 'expo-file-system';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
 
@@ -55,19 +53,16 @@ export default function ReportDashboard() {
 
   useEffect(() => {
     const fetchData = () => {
-      // Sales
       onValue(ref(db, 'sales'), (snapshot) => {
         const data = snapshot.val();
         if (data) setSales(Object.keys(data).map(key => ({ id: key, ...data[key] })));
         else setSales([]);
       });
-      // Expenses
       onValue(ref(db, 'expenses'), (snapshot) => {
         const data = snapshot.val();
         if (data) setExpenses(Object.keys(data).map(key => ({ id: key, ...data[key] })));
         else setExpenses([]);
       });
-      // Debts
       onValue(ref(db, 'debts'), (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -117,7 +112,6 @@ export default function ReportDashboard() {
     setFilteredSales(fSales);
     setTotalRevenue(fSales.reduce((sum, s) => sum + parseCurrency(s.total || s.amountReceived), 0));
 
-    // Top 5 Products
     const productStats: any = {};
     fSales.forEach(sale => {
         if (sale.items && Array.isArray(sale.items)) {
@@ -156,14 +150,15 @@ export default function ReportDashboard() {
       let csvContent = "Date,Type,Description,Amount\n";
       
       filteredSales.forEach(s => {
-          csvContent += `${new Date(s.date).toLocaleDateString()},Sale,Bill #${s.id.slice(-4)},${parseCurrency(s.total)}\n`;
+          csvContent += `${new Date(s.date).toLocaleDateString()},Sale,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
       });
       filteredExpenses.forEach(e => {
           csvContent += `${new Date(e.date).toLocaleDateString()},Expense,${e.category},-${parseCurrency(e.amount)}\n`;
       });
 
-      const fileName = `${FileSystem.documentDirectory}report_${new Date().getTime()}.csv`;
-      await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
+      // 🟢 ໃຊ້ຕົວປ່ຽນທີ່ Import ມາໂດຍກົງ
+      const fileName = `${documentDirectory}report_${new Date().getTime()}.csv`;
+      await writeAsStringAsync(fileName, csvContent, { encoding: EncodingType.UTF8 });
       await shareAsync(fileName);
   };
 
@@ -250,17 +245,9 @@ export default function ReportDashboard() {
               return (
                   <ScrollView showsVerticalScrollIndicator={false}>
                       <SimpleChart />
-                      
                       <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10}}>
                         <View style={{width: '100%'}}>
-                            {/* 🟢 ແກ້ໄຂຄຳສັບຢູ່ບ່ອນນີ້ */}
-                            <SummaryCard 
-                                label="ກຳໄລສຸດທິ" 
-                                amount={profit} 
-                                color={COLORS.success} 
-                                icon="trending-up" 
-                                isProfit={true} 
-                            />
+                            <SummaryCard label="ກຳໄລສຸດທິ" amount={profit} color={COLORS.success} icon="trending-up" isProfit={true} />
                         </View>
                         <View style={{flex: 1}}><SummaryCard label="ຍອດຂາຍລວມ" amount={totalRevenue} color={COLORS.primary} icon="cash" /></View>
                         <View style={{flex: 1}}><SummaryCard label="ລາຍຈ່າຍ" amount={totalExpense} color={COLORS.danger} icon="wallet" /></View>
@@ -273,10 +260,7 @@ export default function ReportDashboard() {
                                   <View key={index} style={styles.topProductRow}>
                                       <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
                                           <Text style={styles.rankText}>#{index + 1}</Text>
-                                          <Image 
-                                            source={prod.imageUrl ? { uri: prod.imageUrl } : { uri: 'https://via.placeholder.com/50' }} 
-                                            style={styles.prodImage} 
-                                          />
+                                          <Image source={prod.imageUrl ? { uri: prod.imageUrl } : { uri: 'https://via.placeholder.com/50' }} style={styles.prodImage} />
                                           <View style={{marginLeft: 10}}>
                                               <Text style={styles.prodName} numberOfLines={1}>{prod.name}</Text>
                                               <Text style={styles.prodSold}>ຂາຍແລ້ວ: {prod.totalSold}</Text>
@@ -446,7 +430,6 @@ const styles = StyleSheet.create({
   listSub: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#999' },
   listAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
-  
   topProductsCard: { backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
   sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text, marginBottom: 10 },
   topProductRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },

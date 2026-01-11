@@ -1,7 +1,7 @@
 import { useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import * as ImagePicker from 'expo-image-picker';
-import { onValue, push, ref, update } from 'firebase/database';
+import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -24,6 +24,7 @@ import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
 import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
+import ProductsScreen from '../../src/components/screens/ProductsScreen'; // 🟢 Import ໜ້າສິນຄ້າ
 import ReportScreen from '../../src/components/screens/ReportScreen';
 import ShiftScreen from '../../src/components/screens/ShiftScreen';
 
@@ -64,7 +65,9 @@ export default function App() {
       name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: ''
   });
 
+  // ============================================================
   // Firebase Listeners
+  // ============================================================
   useEffect(() => {
     const productsRef = ref(db, 'products');
     const unsubscribeProducts = onValue(productsRef, (snapshot) => {
@@ -87,6 +90,10 @@ export default function App() {
 
     return () => { unsubscribeProducts(); unsubscribeSales(); };
   }, []);
+
+  // ============================================================
+  // Logic Functions
+  // ============================================================
 
   const toggleMenu = (show: boolean) => {
     if (show) { 
@@ -158,6 +165,24 @@ export default function App() {
       } catch (error) { Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້'); } 
   };
 
+  // 🟢 ຟັງຊັນລຶບສິນຄ້າ
+  const deleteProduct = (id: string) => {
+      Alert.alert('ຢືນຢັນການລຶບ', 'ທ່ານຕ້ອງການລຶບສິນຄ້ານີ້ແທ້ບໍ່?', [
+          { text: 'ຍົກເລີກ', style: 'cancel' },
+          { 
+              text: 'ລຶບ', 
+              style: 'destructive', 
+              onPress: async () => {
+                  try {
+                      await remove(ref(db, `products/${id}`));
+                  } catch (error) {
+                      Alert.alert('Error', 'ລຶບບໍ່ໄດ້');
+                  }
+              } 
+          }
+      ]);
+  };
+
   const updateQuantity = (id: string, delta: number) => { 
       setCart(prev => prev.map(item => { 
           if (item.id === id) { 
@@ -183,7 +208,6 @@ export default function App() {
   const renderContent = () => {
     switch (currentTab) {
         case 'home': 
-            // 🟢 ແກ້ໄຂ: ສົ່ງ products={products} ໃຫ້ HomeScreen
             return <HomeScreen salesHistory={salesHistory} products={products} />;
         
         case 'pos': 
@@ -197,6 +221,24 @@ export default function App() {
                     removeFromCart={removeFromCart} onCheckout={handleCheckout}
                 />
             );
+        
+        // 🟢 Case ສຳລັບໜ້າສິນຄ້າ (Products)
+        case 'products':
+            return (
+                <ProductsScreen 
+                    products={products}
+                    onAddProduct={() => { 
+                        setEditingProduct({ name: '', price: 0, stock: 0, priceCurrency: 'LAK', imageUrl: '', barcode: '' }); 
+                        setProductModalVisible(true); 
+                    }}
+                    onEditProduct={(p) => { 
+                        setEditingProduct(p); 
+                        setProductModalVisible(true); 
+                    }}
+                    onDeleteProduct={deleteProduct}
+                />
+            );
+
         case 'expense': return <ExpenseScreen />;
         case 'report':
         case 'history': return <ReportScreen salesHistory={salesHistory} />;

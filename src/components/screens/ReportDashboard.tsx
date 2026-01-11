@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as FileSystem from 'expo-file-system';
+// @ts-ignore
+import * as FileSystem from 'expo-file-system/legacy';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -73,7 +75,7 @@ export default function ReportDashboard() {
                 const paid = parseCurrency(item.paidAmount || item.paid);
                 let remaining = parseCurrency(item.remainingBalance);
                 if (remaining === 0 && total > 0) remaining = total - paid;
-                return { ...item, remainingBalance: remaining };
+                return { ...item, id: key, remainingBalance: remaining };
             });
             setDebts(list);
             const debtSum = list.reduce((sum, item: any) => sum + item.remainingBalance, 0);
@@ -106,6 +108,7 @@ export default function ReportDashboard() {
       end.setMonth(11, 31);
     }
 
+    // Filter Sales
     const fSales = sales.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
@@ -141,6 +144,7 @@ export default function ReportDashboard() {
         .sort((a, b) => b.value - a.value);
     setSalesByCategory(sortedSalesCat);
 
+    // Filter Expenses
     const fExpenses = expenses.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
@@ -173,18 +177,23 @@ export default function ReportDashboard() {
   };
 
   const generateExcel = async () => {
-      let csvContent = "Date,Type,Description,Amount\n";
+      let csvContent = "Date,Type,Category,Description,Amount\n";
       filteredSales.forEach(s => {
-          csvContent += `${new Date(s.date).toLocaleDateString()},Sale,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
+          csvContent += `${new Date(s.date).toLocaleDateString()},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
       });
       filteredExpenses.forEach(e => {
           csvContent += `${new Date(e.date).toLocaleDateString()},Expense,${e.category},${e.note || '-'},-${parseCurrency(e.amount)}\n`;
       });
 
-      const docDir = (FileSystem as any).documentDirectory;
-      const fileName = `${docDir}report_${new Date().getTime()}.csv`;
-      await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
-      await shareAsync(fileName);
+      try {
+          const docDir = FileSystem.documentDirectory;
+          const fileName = `${docDir}report_${new Date().getTime()}.csv`;
+          
+          await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
+          await shareAsync(fileName);
+      } catch (error) {
+          Alert.alert("Error", "ບໍ່ສາມາດ Export Excel ໄດ້: " + error);
+      }
   };
 
   const generatePDF = async () => {
@@ -283,6 +292,7 @@ export default function ReportDashboard() {
     );
   };
 
+  // Helper Key Extractor
   const keyExtractor = (item: any, index: number) => item.id ? item.id.toString() : index.toString();
 
   const renderContent = () => {
@@ -469,18 +479,23 @@ const styles = StyleSheet.create({
   cardLabel: { fontSize: 12, color: '#888', fontFamily: 'Lao-Regular' },
   cardAmount: { fontSize: 18, fontFamily: 'Lao-Bold', marginTop: 2 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  
+  // 🟢 Chart Area Styles (ທີ່ເຄີຍຂາດ)
   chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
   chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 10 },
-  chartRow: { marginBottom: 10 },
-  chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
-  chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
-  chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-  chartBar: { height: '100%', borderRadius: 4 },
   chartArea: { flexDirection: 'row', alignItems: 'flex-end', height: 180, gap: 40 },
   barGroup: { alignItems: 'center' },
   bar: { width: 40, borderRadius: 5 },
   barLabel: { fontSize: 12, fontFamily: 'Lao-Bold', marginBottom: 5 },
   barTitle: { marginTop: 10, fontFamily: 'Lao-Regular', color: '#666' },
+  
+  // 🟢 Category Chart Row Styles (ທີ່ເຄີຍຂາດ)
+  chartRow: { marginBottom: 10 },
+  chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
+  chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
+  chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
+  chartBar: { height: '100%', borderRadius: 4 },
+
   debtCard: { backgroundColor: '#FFF3E0', padding: 15, borderRadius: 12, alignItems: 'center', borderLeftWidth: 5, borderLeftColor: COLORS.secondary },
   debtTitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#E65100' },
   debtAmount: { fontSize: 24, fontFamily: 'Lao-Bold', color: '#E65100', marginVertical: 5 },
@@ -490,6 +505,8 @@ const styles = StyleSheet.create({
   listSub: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#999' },
   listAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
+  
+  // 🟢 Top Products Styles (ທີ່ເຄີຍຂາດ)
   topProductsCard: { backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
   sectionHeaderRow: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 10, marginBottom: 10 },
   sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },

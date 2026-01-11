@@ -229,7 +229,8 @@ export default function ReportDashboard() {
   };
 
   const SummaryCard = ({ label, amount, color, icon, isProfit = false }: any) => {
-    const displayColor = isProfit && amount < 0 ? COLORS.danger : color;
+    // 🟢 ຖ້າເປັນກຳໄລ: ລົບ = ສີສົ້ມ, ບວກ = ສີທີ່ສົ່ງມາ (Teal)
+    const displayColor = isProfit && amount < 0 ? '#F57C00' : color;
     return (
         <View style={[styles.card, { borderLeftColor: displayColor, borderLeftWidth: 5 }]}>
         <View>
@@ -266,14 +267,14 @@ export default function ReportDashboard() {
       );
   };
 
-  // 🟢 Horizontal Chart (ລວງນອນ)
   const HorizontalChart = () => {
     const maxVal = Math.max(totalRevenue, totalExpense) || 1;
     return (
         <View style={styles.chartBox}>
             <Text style={styles.chartTitle}>ປຽບທຽບ ລາຍຮັບ vs ລາຍຈ່າຍ</Text>
+            
             {/* ລາຍຮັບ (Income) */}
-            <View style={styles.chartRow}>
+            <View style={styles.hChartRow}>
                 <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
                     <Text style={styles.chartLabel}>ລາຍຮັບ</Text>
                     <Text style={[styles.chartValue, {color: COLORS.primary}]}>{formatNumber(totalRevenue)} ₭</Text>
@@ -282,8 +283,9 @@ export default function ReportDashboard() {
                     <View style={[styles.chartBar, { width: `${(totalRevenue / maxVal) * 100}%`, backgroundColor: COLORS.primary }]} />
                 </View>
             </View>
+
             {/* ລາຍຈ່າຍ (Expense) - ສີສົ້ມ */}
-            <View style={styles.chartRow}>
+            <View style={styles.hChartRow}>
                 <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
                     <Text style={styles.chartLabel}>ລາຍຈ່າຍ</Text>
                     <Text style={[styles.chartValue, {color: '#F57C00'}]}>{formatNumber(totalExpense)} ₭</Text>
@@ -306,10 +308,10 @@ export default function ReportDashboard() {
                   <ScrollView showsVerticalScrollIndicator={false}>
                       <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10}}>
                         <View style={{width: '100%'}}>
-                            <SummaryCard label="ກຳໄລສຸດທິ" amount={profit} color={COLORS.success} icon="trending-up" isProfit={true} />
+                            {/* 🟢 ກຳໄລ: ສົ່ງສີ Teal ໄປ (ຖ້າລົບມັນຈະປ່ຽນເປັນສົ້ມເອງ) */}
+                            <SummaryCard label="ກຳໄລສຸດທິ" amount={profit} color={COLORS.primary} icon="trending-up" isProfit={true} />
                         </View>
                         <View style={{flex: 1}}><SummaryCard label="ຍອດຂາຍລວມ" amount={totalRevenue} color={COLORS.primary} icon="cash" /></View>
-                        {/* 🟢 ລາຍຈ່າຍ ໃຊ້ສີສົ້ມ */}
                         <View style={{flex: 1}}><SummaryCard label="ລາຍຈ່າຍ" amount={totalExpense} color="#F57C00" icon="wallet" /></View>
                       </View>
                       
@@ -339,7 +341,6 @@ export default function ReportDashboard() {
                       )}
 
                       <CategoryChart title="💰 ລາຍຮັບແຍກຕາມໝວດໝູ່" data={salesByCategory} color={COLORS.primary} />
-                      {/* 🟢 ລາຍຈ່າຍແຍກຕາມໝວດໝູ່ ໃຊ້ສີສົ້ມ */}
                       <CategoryChart title="💸 ລາຍຈ່າຍແຍກຕາມໝວດໝູ່" data={expensesByCategory} color="#F57C00" />
 
                       <View style={styles.debtCard}>
@@ -379,7 +380,6 @@ export default function ReportDashboard() {
                                 <Text style={styles.listTitle}>{item.category}</Text>
                                 <Text style={styles.listSub}>{item.note || 'ບໍ່ມີໝາຍເຫດ'}</Text>
                             </View>
-                            {/* 🟢 ລາຍການລາຍຈ່າຍ ໃຊ້ສີສົ້ມ */}
                             <Text style={[styles.listAmount, {color: '#F57C00'}]}>-{formatNumber(parseCurrency(item.amount))}</Text>
                         </View>
                     )}
@@ -415,7 +415,6 @@ export default function ReportDashboard() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ລາຍງານ (Reports)</Text>
         <View style={{flexDirection: 'row', gap: 5}}>
-            {/* 🟢 ປຸ່ມ Excel ສີ Theme */}
             <TouchableOpacity style={[styles.exportBtn, {backgroundColor: COLORS.primary}]} onPress={generateExcel}>
                 <Ionicons name="document-text-outline" size={16} color="white" />
                 <Text style={styles.exportText}>Excel</Text>
@@ -489,12 +488,13 @@ const styles = StyleSheet.create({
   
   // Chart Styles
   chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
-  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 10 },
-  chartRow: { marginBottom: 10 },
+  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 15 },
+  hChartRow: { marginBottom: 15 },
   chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
   chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
   chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
   chartBar: { height: '100%', borderRadius: 4 },
+  chartRow: { marginBottom: 10 },
 
   debtCard: { backgroundColor: '#FFF3E0', padding: 15, borderRadius: 12, alignItems: 'center', borderLeftWidth: 5, borderLeftColor: COLORS.secondary },
   debtTitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#E65100' },
@@ -506,7 +506,6 @@ const styles = StyleSheet.create({
   listAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
   
-  // Top Products Styles
   topProductsCard: { backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
   sectionHeaderRow: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 10, marginBottom: 10 },
   sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },

@@ -1,19 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  FlatList,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    FlatList,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 // 🟢 ລຶບ formatNumber ອອກຈາກການ import ເພາະເຮົາຈະຮັບຜ່ານ props ແທນ
-import { COLORS, Product, CartItem } from '../../types';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
+import { CartItem, COLORS, Product } from '../../types';
 
 interface POSScreenProps {
   products: Product[];

@@ -6,6 +6,7 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -41,7 +42,6 @@ export default function ReportDashboard() {
   const [totalExpense, setTotalExpense] = useState(0);
   const [totalDebt, setTotalDebt] = useState(0);
   
-  // 🟢 State ສຳລັບ Chart ແລະ Top 5
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [salesByCategory, setSalesByCategory] = useState<any[]>([]);
   const [expensesByCategory, setExpensesByCategory] = useState<any[]>([]);
@@ -53,18 +53,26 @@ export default function ReportDashboard() {
       return isNaN(num) ? 0 : num;
   };
 
+  // 🟢 Helper: Safe Key Extractor (ແກ້ໄຂ Error Unique Key)
+  const keyExtractor = (item: any, index: number) => {
+      return item.id ? item.id.toString() : index.toString();
+  };
+
   useEffect(() => {
     const fetchData = () => {
+      // Sales
       onValue(ref(db, 'sales'), (snapshot) => {
         const data = snapshot.val();
         if (data) setSales(Object.keys(data).map(key => ({ id: key, ...data[key] })));
         else setSales([]);
       });
+      // Expenses
       onValue(ref(db, 'expenses'), (snapshot) => {
         const data = snapshot.val();
         if (data) setExpenses(Object.keys(data).map(key => ({ id: key, ...data[key] })));
         else setExpenses([]);
       });
+      // Debts
       onValue(ref(db, 'debts'), (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -74,7 +82,7 @@ export default function ReportDashboard() {
                 const paid = parseCurrency(item.paidAmount || item.paid);
                 let remaining = parseCurrency(item.remainingBalance);
                 if (remaining === 0 && total > 0) remaining = total - paid;
-                return { ...item, remainingBalance: remaining };
+                return { ...item, id: key, remainingBalance: remaining };
             });
             setDebts(list);
             const debtSum = list.reduce((sum, item: any) => sum + item.remainingBalance, 0);
@@ -107,7 +115,7 @@ export default function ReportDashboard() {
       end.setMonth(11, 31);
     }
 
-    // --- Filter Sales ---
+    // Filter Sales
     const fSales = sales.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
@@ -115,7 +123,7 @@ export default function ReportDashboard() {
     setFilteredSales(fSales);
     setTotalRevenue(fSales.reduce((sum, s) => sum + parseCurrency(s.total || s.amountReceived), 0));
 
-    // 📊 1. ວິເຄາະ Top 5 Products & Sales Category
+    // Stats
     const productStats: any = {};
     const catStats: any = {};
 
@@ -137,18 +145,15 @@ export default function ReportDashboard() {
         }
     });
 
-    // Sort & Set Top 5
     const sortedProducts = Object.values(productStats).sort((a: any, b: any) => b.totalSold - a.totalSold).slice(0, 5);
     setTopProducts(sortedProducts);
 
-    // Sort & Set Sales Categories
     const sortedSalesCat = Object.keys(catStats)
         .map(key => ({ label: key, value: catStats[key] }))
         .sort((a, b) => b.value - a.value);
     setSalesByCategory(sortedSalesCat);
 
-
-    // --- Filter Expenses ---
+    // Filter Expenses
     const fExpenses = expenses.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
@@ -156,7 +161,6 @@ export default function ReportDashboard() {
     setFilteredExpenses(fExpenses);
     setTotalExpense(fExpenses.reduce((sum, e) => sum + parseCurrency(e.amount), 0));
 
-    // 📊 2. ວິເຄາະ Expense Category
     const expCatStats: any = {};
     fExpenses.forEach(exp => {
         const catName = exp.category || 'ອື່ນໆ';
@@ -230,8 +234,6 @@ export default function ReportDashboard() {
     await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
   };
 
-  // --- Components ---
-
   const SummaryCard = ({ label, amount, color, icon, isProfit = false }: any) => {
     const displayColor = isProfit && amount < 0 ? COLORS.danger : color;
     return (
@@ -249,12 +251,9 @@ export default function ReportDashboard() {
     );
   };
 
-  // 🟢 Category Bar Chart Component
   const CategoryChart = ({ title, data, color }: { title: string, data: any[], color: string }) => {
       const maxValue = Math.max(...data.map(d => d.value)) || 1;
-      
       if (data.length === 0) return null;
-
       return (
           <View style={styles.chartBox}>
               <Text style={styles.chartTitle}>{title}</Text>
@@ -273,14 +272,37 @@ export default function ReportDashboard() {
       );
   };
 
+  const SimpleChart = () => {
+    const maxVal = Math.max(totalRevenue, totalExpense) || 1;
+    const revHeight = (totalRevenue / maxVal) * 150;
+    const expHeight = (totalExpense / maxVal) * 150;
+
+    return (
+        <View style={styles.chartBox}>
+            <Text style={styles.chartTitle}>ປຽບທຽບ ລາຍຮັບ vs ລາຍຈ່າຍ</Text>
+            <View style={styles.chartArea}>
+                <View style={styles.barGroup}>
+                    <Text style={[styles.barLabel, {color: COLORS.primary}]}>{formatNumber(totalRevenue)}</Text>
+                    <View style={[styles.bar, { height: revHeight || 2, backgroundColor: COLORS.primary }]} />
+                    <Text style={styles.barTitle}>ລາຍຮັບ</Text>
+                </View>
+                <View style={styles.barGroup}>
+                    <Text style={[styles.barLabel, {color: COLORS.danger}]}>{formatNumber(totalExpense)}</Text>
+                    <View style={[styles.bar, { height: expHeight || 2, backgroundColor: COLORS.danger }]} />
+                    <Text style={styles.barTitle}>ລາຍຈ່າຍ</Text>
+                </View>
+            </View>
+        </View>
+    );
+  };
+
   const renderContent = () => {
       switch (activeTab) {
           case 'overview':
               const profit = totalRevenue - totalExpense;
               return (
                   <ScrollView showsVerticalScrollIndicator={false}>
-                      
-                      {/* Summary Cards */}
+                      <SimpleChart />
                       <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10}}>
                         <View style={{width: '100%'}}>
                             <SummaryCard label="ກຳໄລສຸດທິ" amount={profit} color={COLORS.success} icon="trending-up" isProfit={true} />
@@ -289,7 +311,6 @@ export default function ReportDashboard() {
                         <View style={{flex: 1}}><SummaryCard label="ລາຍຈ່າຍ" amount={totalExpense} color={COLORS.danger} icon="wallet" /></View>
                       </View>
                       
-                      {/* 🏆 5 ອັນດັບສິນຄ້າຂາຍດີ */}
                       {topProducts.length > 0 && (
                           <View style={styles.topProductsCard}>
                               <View style={styles.sectionHeaderRow}>
@@ -313,7 +334,6 @@ export default function ReportDashboard() {
                           </View>
                       )}
 
-                      {/* 📊 Category Charts */}
                       <CategoryChart title="💰 ລາຍຮັບແຍກຕາມໝວດໝູ່" data={salesByCategory} color={COLORS.primary} />
                       <CategoryChart title="💸 ລາຍຈ່າຍແຍກຕາມໝວດໝູ່" data={expensesByCategory} color={COLORS.danger} />
 
@@ -328,7 +348,7 @@ export default function ReportDashboard() {
               return (
                   <FlatList 
                     data={filteredSales}
-                    keyExtractor={item => item.id}
+                    keyExtractor={keyExtractor} // 🟢 ໃຊ້ Safe Key Extractor
                     contentContainerStyle={{paddingBottom: 50}}
                     renderItem={({item}) => (
                         <View style={styles.listItem}>
@@ -346,7 +366,7 @@ export default function ReportDashboard() {
               return (
                 <FlatList 
                     data={filteredExpenses}
-                    keyExtractor={item => item.id}
+                    keyExtractor={keyExtractor} // 🟢 ໃຊ້ Safe Key Extractor
                     contentContainerStyle={{paddingBottom: 50}}
                     renderItem={({item}) => (
                         <View style={styles.listItem}>
@@ -364,7 +384,7 @@ export default function ReportDashboard() {
               return (
                 <FlatList 
                     data={debts}
-                    keyExtractor={item => item.id}
+                    keyExtractor={keyExtractor} // 🟢 ໃຊ້ Safe Key Extractor
                     contentContainerStyle={{paddingBottom: 50}}
                     renderItem={({item}) => (
                         <View style={styles.listItem}>
@@ -459,16 +479,13 @@ const styles = StyleSheet.create({
   cardLabel: { fontSize: 12, color: '#888', fontFamily: 'Lao-Regular' },
   cardAmount: { fontSize: 18, fontFamily: 'Lao-Bold', marginTop: 2 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  
-  // 🟢 Chart Styles
-  chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
-  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 10 },
-  chartRow: { marginBottom: 10 },
-  chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
-  chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
-  chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-  chartBar: { height: '100%', borderRadius: 4 },
-
+  chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2, alignItems: 'center' },
+  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 20 },
+  chartArea: { flexDirection: 'row', alignItems: 'flex-end', height: 180, gap: 40 },
+  barGroup: { alignItems: 'center' },
+  bar: { width: 40, borderRadius: 5 },
+  barLabel: { fontSize: 12, fontFamily: 'Lao-Bold', marginBottom: 5 },
+  barTitle: { marginTop: 10, fontFamily: 'Lao-Regular', color: '#666' },
   debtCard: { backgroundColor: '#FFF3E0', padding: 15, borderRadius: 12, alignItems: 'center', borderLeftWidth: 5, borderLeftColor: COLORS.secondary },
   debtTitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#E65100' },
   debtAmount: { fontSize: 24, fontFamily: 'Lao-Bold', color: '#E65100', marginVertical: 5 },
@@ -479,7 +496,14 @@ const styles = StyleSheet.create({
   listAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
   
-  // 🟢 Top Products Styles
+  // Chart Row Styles
+  chartRow: { marginBottom: 10 },
+  chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
+  chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
+  chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
+  chartBar: { height: '100%', borderRadius: 4 },
+
+  // Top Products Styles
   topProductsCard: { backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
   sectionHeaderRow: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 10, marginBottom: 10 },
   sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },

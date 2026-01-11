@@ -1,165 +1,69 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { onValue, ref } from 'firebase/database';
+import { ref, remove } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Dimensions,
+    Alert,
     FlatList,
-    Modal,
-    Platform,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-import { useExchangeRate } from '../../../hooks/useExchangeRate';
 import { db } from '../../firebase';
-import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../types';
+import { COLORS, formatDate, formatNumber, SaleRecord } from '../../types';
 
-const { width } = Dimensions.get('window');
+type FilterType = 'day' | 'week' | 'month' | 'year' | 'all';
 
-interface HomeScreenProps {
+interface ReportScreenProps {
     salesHistory: SaleRecord[];
-    products: Product[];
 }
 
-type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
-
-interface ChartData {
-    category: string;
-    amount: number;
-    percentage: number;
-}
-
-export default function HomeScreen({ salesHistory, products }: HomeScreenProps) {
-
-    const exchangeRate = useExchangeRate();
-    const currentRate = exchangeRate > 0 ? exchangeRate : 680;
-
-    // --- Filter States ---
+export default function ReportScreen({ salesHistory }: ReportScreenProps) {
+    const [filteredSales, setFilteredSales] = useState<SaleRecord[]>([]);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
     const [filterType, setFilterType] = useState<FilterType>('day');
     const [currentDate, setCurrentDate] = useState(new Date());
-    
-    // Custom Range States
-    const [customStart, setCustomStart] = useState(new Date());
-    const [customEnd, setCustomEnd] = useState(new Date());
-    const [showCustomPicker, setShowCustomPicker] = useState(false);
-    
-    // Date Picker States
-    const [pickerMode, setPickerMode] = useState<'start' | 'end'>('start');
     const [showDatePicker, setShowDatePicker] = useState(false);
 
-    // --- Data States ---
-    const [filteredTotal, setFilteredTotal] = useState(0);
-    const [filteredOrders, setFilteredOrders] = useState(0);
-    const [filteredExpenses, setFilteredExpenses] = useState(0);
-    const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
-    const [expensesData, setExpensesData] = useState<any[]>([]);
-
-    // Chart States
-    const [salesChartData, setSalesChartData] = useState<ChartData[]>([]);
-    const [expenseChartData, setExpenseChartData] = useState<ChartData[]>([]);
-
-    // 1. ດຶງຂໍ້ມູນ Expenses
     useEffect(() => {
-        const expenseRef = ref(db, 'expenses');
-        const unsubscribe = onValue(expenseRef, (snapshot) => {
-            if (snapshot.exists()) {
-                setExpensesData(Object.values(snapshot.val()));
-            } else {
-                setExpensesData([]);
-            }
-        });
-        return () => unsubscribe();
-    }, []);
+        if (filterType === 'all') {
+            setFilteredSales(salesHistory);
+            return;
+        }
 
-    // 2. Logic ການກັ່ນຕອງວັນທີ
-    const getDateRange = () => {
-        let start = new Date(currentDate);
-        let end = new Date(currentDate);
+        const start = new Date(currentDate);
+        const end = new Date(currentDate);
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
 
-        switch (filterType) {
-            case 'day': break;
-            case 'week':
-                const day = start.getDay();
-                const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-                start.setDate(diff);
-                end.setDate(start.getDate() + 6);
-                end.setHours(23, 59, 59, 999);
-                break;
-            case 'month':
-                start.setDate(1);
-                end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-                end.setHours(23, 59, 59, 999);
-                break;
-            case 'year':
-                start.setMonth(0, 1);
-                end.setMonth(11, 31);
-                end.setHours(23, 59, 59, 999);
-                break;
-            case 'custom':
-                start = new Date(customStart);
-                start.setHours(0, 0, 0, 0);
-                end = new Date(customEnd);
-                end.setHours(23, 59, 59, 999);
-                break;
+        if (filterType === 'week') {
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+            start.setDate(diff);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+        } else if (filterType === 'month') {
+            start.setDate(1);
+            end.setMonth(start.getMonth() + 1, 0);
+            end.setHours(23, 59, 59, 999);
+        } else if (filterType === 'year') {
+            start.setMonth(0, 1);
+            end.setMonth(11, 31);
+            end.setHours(23, 59, 59, 999);
         }
-        return { start, end };
-    };
 
-    // 3. ປະມວນຜົນຂໍ້ມູນ
-    useEffect(() => {
-        const { start, end } = getDateRange();
-
-        // Filter Sales
-        const filteredSales = salesHistory.filter(sale => {
+        const filtered = salesHistory.filter(sale => {
+            if (!sale.date) return false;
             const d = new Date(sale.date);
-            return d >= start && d <= end && sale.status !== 'ຍົກເລີກ';
+            return d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
         });
 
-        // Filter Expenses
-        const filteredExp = expensesData.filter(exp => {
-            const d = new Date(exp.date);
-            return d >= start && d <= end;
-        });
+        setFilteredSales(filtered);
+    }, [salesHistory, filterType, currentDate]);
 
-        // Calculate Totals
-        setFilteredTotal(filteredSales.reduce((sum, sale) => sum + sale.total, 0));
-        setFilteredOrders(filteredSales.length);
-        setFilteredExpenses(filteredExp.reduce((sum, exp) => sum + exp.amount, 0));
-        setLowStockProducts(products.filter(p => p.stock <= 5));
-
-        // Prepare Sales Chart
-        const salesMap: Record<string, number> = {};
-        filteredSales.forEach(sale => {
-            sale.items.forEach(item => {
-                const cat = item.category || 'ທົ່ວໄປ';
-                let amount = item.price * item.quantity;
-                if (item.priceCurrency === 'THB') amount = amount * currentRate;
-                salesMap[cat] = (salesMap[cat] || 0) + amount;
-            });
-        });
-        const sortedSales = Object.keys(salesMap).map(key => ({ category: key, amount: salesMap[key], percentage: 0 })).sort((a, b) => b.amount - a.amount);
-        const maxSale = sortedSales.length > 0 ? sortedSales[0].amount : 0;
-        setSalesChartData(sortedSales.map(item => ({ ...item, percentage: maxSale > 0 ? (item.amount / maxSale) * 100 : 0 })));
-
-        // Prepare Expense Chart
-        const expMap: Record<string, number> = {};
-        filteredExp.forEach(exp => {
-            const cat = exp.category || 'ອື່ນໆ';
-            expMap[cat] = (expMap[cat] || 0) + exp.amount;
-        });
-        const sortedExp = Object.keys(expMap).map(key => ({ category: key, amount: expMap[key], percentage: 0 })).sort((a, b) => b.amount - a.amount);
-        const maxExp = sortedExp.length > 0 ? sortedExp[0].amount : 0;
-        setExpenseChartData(sortedExp.map(item => ({ ...item, percentage: maxExp > 0 ? (item.amount / maxExp) * 100 : 0 })));
-
-    }, [salesHistory, expensesData, filterType, currentDate, customStart, customEnd, products, currentRate]);
-
-    // Handlers
-    const handleNavigateDate = (dir: 'prev' | 'next') => {
+    const handleNavigate = (dir: 'prev' | 'next') => {
         const newDate = new Date(currentDate);
         const val = dir === 'next' ? 1 : -1;
         if (filterType === 'day') newDate.setDate(newDate.getDate() + val);
@@ -169,193 +73,129 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
         setCurrentDate(newDate);
     };
 
-    // 🟢 ຟັງຊັນປ່ຽນວັນທີ (Native & Custom)
-    const onDateChange = (event: any, selectedDate?: Date) => {
-        // Android: ປິດທັນທີ
-        if (Platform.OS === 'android') setShowDatePicker(false);
-        
-        if (selectedDate) {
-            if (pickerMode === 'start') setCustomStart(selectedDate);
-            else setCustomEnd(selectedDate);
-        }
+    const handleDelete = (id: string) => {
+        Alert.alert('ຢືນຢັນ', 'ລຶບບິນນີ້ແທ້ບໍ່?', [
+            { text: 'ຍົກເລີກ' },
+            { text: 'ລຶບ', style: 'destructive', onPress: async () => await remove(ref(db, `sales/${id}`)) }
+        ]);
     };
-
-    const getDateLabel = () => {
-        if (filterType === 'custom') return `${formatDate(customStart)} - ${formatDate(customEnd)}`;
-        const { start, end } = getDateRange();
-        if (filterType === 'day') return formatDate(start);
-        if (filterType === 'week') return `${formatDate(start)} - ${formatDate(end)}`;
-        if (filterType === 'month') return start.toLocaleDateString('lo-LA', { month: 'long', year: 'numeric' });
-        if (filterType === 'year') return start.getFullYear().toString();
-        return '';
-    };
-
-    const profit = filteredTotal - filteredExpenses;
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            
-            {/* Filter Tabs */}
+        <View style={styles.container}>
             <View style={styles.filterSection}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterTabs}>
-                    {['day', 'week', 'month', 'year', 'custom'].map((type) => (
-                        <TouchableOpacity
-                            key={type}
-                            style={[styles.filterTab, filterType === type && styles.activeTab]}
-                            onPress={() => { setFilterType(type as FilterType); if (type === 'custom') setShowCustomPicker(true); }}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
+                    {['day', 'week', 'month', 'year', 'all'].map((t) => (
+                        <TouchableOpacity 
+                            key={t} 
+                            style={[styles.tab, filterType === t && styles.activeTab]}
+                            onPress={() => setFilterType(t as FilterType)}
                         >
-                            <Text style={[styles.filterText, filterType === type && styles.activeText]}>
-                                {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
+                            <Text style={[styles.tabText, filterType === t && styles.activeTabText]}>
+                                {t === 'day' ? 'ມື້' : t === 'week' ? 'ອາທິດ' : t === 'month' ? 'ເດືອນ' : t === 'year' ? 'ປີ' : 'ທັງໝົດ'}
                             </Text>
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
 
-                {filterType !== 'custom' ? (
+                {filterType !== 'all' && (
                     <View style={styles.navRow}>
-                        <TouchableOpacity onPress={() => handleNavigateDate('prev')} style={styles.navBtn}><Ionicons name="chevron-back" size={24} color={COLORS.primary} /></TouchableOpacity>
-                        <Text style={styles.dateLabel}>{getDateLabel()}</Text>
-                        <TouchableOpacity onPress={() => handleNavigateDate('next')} style={styles.navBtn}><Ionicons name="chevron-forward" size={24} color={COLORS.primary} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleNavigate('prev')}><Ionicons name="chevron-back" size={24} color={COLORS.primary} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                            <Text style={styles.dateLabel}>
+                                {filterType === 'day' ? formatDate(currentDate) : currentDate.toLocaleDateString('lo-LA', { month: 'long', year: 'numeric' })}
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleNavigate('next')}><Ionicons name="chevron-forward" size={24} color={COLORS.primary} /></TouchableOpacity>
                     </View>
-                ) : (
-                    <TouchableOpacity style={styles.customDateDisplay} onPress={() => setShowCustomPicker(true)}>
-                        <Ionicons name="calendar" size={20} color={COLORS.primary} />
-                        <Text style={styles.dateLabel}>{getDateLabel()}</Text>
-                    </TouchableOpacity>
                 )}
             </View>
 
-            {/* Dashboard Stats */}
-            <View style={styles.statsGrid}>
-                {/* Sale Card */}
-                <View style={[styles.statCard, { backgroundColor: COLORS.primary }]}>
-                    <View style={styles.iconCircleWhite}><Ionicons name="cash" size={24} color={COLORS.primary} /></View>
-                    <View><Text style={styles.statLabelWhite}>ຍອດຂາຍ</Text><Text style={styles.statValueWhite}>{formatNumber(filteredTotal)} ₭</Text></View>
-                </View>
-                {/* Profit Card */}
-                <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
-                    <View style={[styles.iconCircle, { backgroundColor: '#E0F2F1' }]}><Ionicons name="trending-up" size={24} color={COLORS.primaryDark} /></View>
-                    <View><Text style={styles.statLabel}>ກຳໄລ</Text><Text style={[styles.statValue, { color: profit >= 0 ? COLORS.success : COLORS.danger }]}>{profit >= 0 ? '+' : ''}{formatNumber(profit)}</Text></View>
-                </View>
-                {/* Orders Card */}
-                <View style={[styles.statCard, { backgroundColor: COLORS.secondary }]}>
-                    <View style={styles.iconCircleWhite}><Ionicons name="receipt" size={24} color={COLORS.secondaryDark} /></View>
-                    <View><Text style={styles.statLabelWhite}>ອໍເດີ</Text><Text style={styles.statValueWhite}>{filteredOrders}</Text></View>
-                </View>
-                {/* Expenses Card */}
-                <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
-                    <View style={[styles.iconCircle, { backgroundColor: '#FFEBEE' }]}><Ionicons name="wallet-outline" size={24} color={COLORS.danger} /></View>
-                    <View><Text style={styles.statLabel}>ລາຍຈ່າຍ</Text><Text style={[styles.statValue, { color: COLORS.danger }]}>{formatNumber(filteredExpenses)}</Text></View>
-                </View>
-            </View>
+            <FlatList
+                data={filteredSales}
+                keyExtractor={(item) => item.id!}
+                contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
+                renderItem={({ item }) => {
+                    const isExpanded = expandedId === item.id;
+                    return (
+                        <View style={styles.card}>
+                            <TouchableOpacity style={styles.cardHeader} onPress={() => setExpandedId(isExpanded ? null : item.id!)}>
+                                <View style={styles.headerLeft}>
+                                    <View style={[styles.iconCircle, { backgroundColor: item.paymentMethod === 'CASH' ? '#E8F5E9' : '#E3F2FD' }]}>
+                                        <Ionicons name={item.paymentMethod === 'CASH' ? "cash-outline" : "qr-code-outline"} size={20} color={item.paymentMethod === 'CASH' ? COLORS.success : COLORS.primary} />
+                                    </View>
+                                    <View>
+                                        <Text style={styles.billId}>ບິນ #{item.id?.slice(-5).toUpperCase()}</Text>
+                                        <Text style={styles.billTime}>{new Date(item.date).toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' })}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.headerRight}>
+                                    <Text style={styles.billTotal}>{formatNumber(item.total)} ₭</Text>
+                                    <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color="#ccc" />
+                                </View>
+                            </TouchableOpacity>
 
-            {/* Low Stock Warning */}
-            {lowStockProducts.length > 0 && (
-                <View style={styles.sectionContainer}>
-                    <View style={styles.sectionHeader}><Ionicons name="alert-circle" size={20} color={COLORS.secondaryDark} /><Text style={styles.sectionTitle}>ສິນຄ້າໃກ້ໝົດ ({lowStockProducts.length})</Text></View>
-                    <FlatList horizontal data={lowStockProducts} keyExtractor={item => item.id!} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 5 }}
-                        renderItem={({ item }) => (
-                            <View style={styles.lowStockCard}><Text style={styles.lowStockName} numberOfLines={1}>{item.name}</Text><Text style={styles.lowStockValue}>ເຫຼືອ: {item.stock}</Text></View>
-                        )}
-                    />
-                </View>
+                            {isExpanded && (
+                                <View style={styles.details}>
+                                    <View style={styles.infoRow}>
+                                        <Text style={styles.infoText}>📍 ແຫຼ່ງ: {item.source || 'ໜ້າຮ້ານ'}</Text>
+                                        <Text style={styles.infoText}>💰 ຊຳລະ: {item.paymentMethod}</Text>
+                                    </View>
+                                    <View style={styles.itemList}>
+                                        {item.items.map((prod, i) => (
+                                            <View key={i} style={styles.prodLine}>
+                                                <Text style={styles.prodName}>{prod.name} x{prod.quantity}</Text>
+                                                <Text style={styles.prodPrice}>{formatNumber(prod.price * prod.quantity)}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                    <TouchableOpacity style={styles.delBtn} onPress={() => handleDelete(item.id!)}>
+                                        <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
+                                        <Text style={styles.delBtnText}>ລຶບບິນ</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                    );
+                }}
+                ListEmptyComponent={
+                    <View style={{ alignItems: 'center', marginTop: 50 }}>
+                        <Text style={{ color: '#999', fontFamily: 'Lao-Regular' }}>ບໍ່ມີຂໍ້ມູນການຂາຍ</Text>
+                    </View>
+                }
+            />
+
+            {showDatePicker && (
+                <DateTimePicker value={currentDate} mode="date" display="default" onChange={(e, d) => { setShowDatePicker(false); if(d) setCurrentDate(d); }} />
             )}
-
-            {/* Charts Section */}
-            <View style={styles.chartContainer}>
-                <Text style={styles.chartTitle}>ຍອດຂາຍຕາມໝວດໝູ່</Text>
-                {salesChartData.length > 0 ? salesChartData.map((item, index) => (
-                    <View key={index} style={styles.chartRow}>
-                        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
-                            <Text style={styles.chartLabel}>{item.category}</Text><Text style={styles.chartValue}>{formatNumber(item.amount)} ₭</Text>
-                        </View>
-                        <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${item.percentage}%`, backgroundColor: COLORS.primary }]} /></View>
-                    </View>
-                )) : <Text style={styles.noDataText}>ບໍ່ມີຂໍ້ມູນ</Text>}
-            </View>
-
-            {/* Custom Date Modal */}
-            <Modal visible={showCustomPicker} transparent={true} animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.pickerContainer}>
-                        <Text style={styles.pickerTitle}>ເລືອກຊ່ວງວັນທີ</Text>
-                        <View style={styles.pickerRow}>
-                            {/* 🟢 ປຸ່ມເລີ່ມຕົ້ນ: ກົດແລ້ວເປີດ Calendar ທັນທີ */}
-                            <TouchableOpacity style={styles.dateInput} onPress={() => { setPickerMode('start'); setShowDatePicker(true); }}>
-                                <Text style={styles.pickerLabel}>ເລີ່ມຕົ້ນ</Text>
-                                <Text style={styles.pickerValue}>{formatDate(customStart)}</Text>
-                            </TouchableOpacity>
-                            <Ionicons name="arrow-forward" size={20} color="#ccc" />
-                            {/* 🟢 ປຸ່ມສິ້ນສຸດ: ກົດແລ້ວເປີດ Calendar ທັນທີ */}
-                            <TouchableOpacity style={styles.dateInput} onPress={() => { setPickerMode('end'); setShowDatePicker(true); }}>
-                                <Text style={styles.pickerLabel}>ສິ້ນສຸດ</Text>
-                                <Text style={styles.pickerValue}>{formatDate(customEnd)}</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <TouchableOpacity style={styles.confirmBtn} onPress={() => setShowCustomPicker(false)}><Text style={styles.confirmText}>ຕົກລົງ</Text></TouchableOpacity>
-                        
-                        {/* 🟢 DateTimePicker ວາງໄວ້ໃນ Modal ເພື່ອບໍ່ໃຫ້ຖືກບັງ */}
-                        {showDatePicker && (
-                            <DateTimePicker 
-                                value={pickerMode === 'start' ? customStart : customEnd} 
-                                mode="date" 
-                                display="default" 
-                                onChange={onDateChange} 
-                            />
-                        )}
-                    </View>
-                </View>
-            </Modal>
-
-        </ScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    filterSection: { backgroundColor: 'white', paddingBottom: 10, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 5 },
-    filterTabs: { paddingHorizontal: 15, marginTop: 10, marginBottom: 10 },
-    filterTab: { paddingHorizontal: 15, paddingVertical: 6, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
+    filterSection: { backgroundColor: 'white', paddingBottom: 15, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 5 },
+    tabRow: { paddingHorizontal: 15, marginTop: 10, marginBottom: 15 },
+    tab: { paddingHorizontal: 15, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 10 },
     activeTab: { backgroundColor: COLORS.primary },
-    filterText: { fontFamily: 'Lao-Regular', color: '#666' },
-    activeText: { color: 'white', fontFamily: 'Lao-Bold' },
-    navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 },
-    navBtn: { padding: 5 },
+    tabText: { fontFamily: 'Lao-Regular', color: '#666', fontSize: 12 },
+    activeTabText: { color: 'white', fontFamily: 'Lao-Bold' },
+    navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 30 },
     dateLabel: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
-    customDateDisplay: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, padding: 10, backgroundColor: '#f9f9f9', marginHorizontal: 20, borderRadius: 10 },
-    
-    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 15, gap: 10, justifyContent: 'space-between' },
-    statCard: { width: (width - 40) / 2, padding: 15, borderRadius: 16, marginBottom: 5, elevation: 2, flexDirection: 'column', gap: 10 },
-    iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-    iconCircleWhite: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-    statLabel: { fontSize: 12, fontFamily: 'Lao-Regular', color: COLORS.textLight },
-    statValue: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
-    statLabelWhite: { fontSize: 12, fontFamily: 'Lao-Regular', color: 'rgba(255,255,255,0.9)' },
-    statValueWhite: { fontSize: 18, fontFamily: 'Lao-Bold', color: 'white' },
-
-    sectionContainer: { marginTop: 10, paddingHorizontal: 15, marginBottom: 20 },
-    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
-    sectionTitle: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
-    lowStockCard: { backgroundColor: '#FFEBEE', padding: 10, borderRadius: 10, marginRight: 10, minWidth: 120, borderWidth: 1, borderColor: '#FFCDD2' },
-    lowStockName: { fontFamily: 'Lao-Bold', color: '#C62828', fontSize: 12, marginBottom: 4 },
-    lowStockValue: { fontFamily: 'Lao-Regular', color: '#C62828', fontSize: 10 },
-
-    chartContainer: { backgroundColor: 'white', marginHorizontal: 15, marginBottom: 15, padding: 15, borderRadius: 16, elevation: 2 },
-    chartTitle: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text, marginBottom: 15 },
-    chartRow: { marginBottom: 15 },
-    chartLabel: { fontFamily: 'Lao-Regular', fontSize: 14, color: COLORS.text },
-    chartValue: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.primary },
-    progressBarBg: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-    progressBarFill: { height: '100%', borderRadius: 4 },
-    noDataText: { textAlign: 'center', color: '#ccc', fontFamily: 'Lao-Regular', padding: 20 },
-
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    pickerContainer: { width: '85%', backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 5 },
-    pickerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, textAlign: 'center', marginBottom: 20 },
-    pickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    dateInput: { flex: 1, alignItems: 'center', padding: 10, backgroundColor: '#f0f0f0', borderRadius: 10 },
-    pickerLabel: { fontSize: 12, color: '#888' },
-    pickerValue: { fontFamily: 'Lao-Bold', color: COLORS.primary, marginTop: 5 },
-    confirmBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 10, alignItems: 'center' },
-    confirmText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 }
+    card: { backgroundColor: 'white', borderRadius: 15, marginBottom: 10, overflow: 'hidden', marginHorizontal: 1, elevation: 2 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    iconCircle: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
+    billId: { fontFamily: 'Lao-Bold', fontSize: 14 },
+    billTime: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#999' },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    billTotal: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
+    details: { padding: 15, backgroundColor: '#fcfcfc', borderTopWidth: 1, borderTopColor: '#f0f0f0' },
+    infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+    infoText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
+    itemList: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10 },
+    prodLine: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+    prodName: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
+    prodPrice: { fontFamily: 'Lao-Bold', fontSize: 13 },
+    delBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginTop: 10, gap: 5 },
+    delBtnText: { color: COLORS.danger, fontFamily: 'Lao-Bold', fontSize: 12 }
 });

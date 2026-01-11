@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-// 🟢 1. Import ແບບມາດຕະຖານ (Standard)
+// 🟢 1. Import ແບບ * as FileSystem
 import * as FileSystem from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
@@ -146,7 +146,7 @@ export default function ReportDashboard() {
     setCurrentDate(newDate);
   };
 
-  // 🟢 Generate Excel
+  // 🟢 Export Excel (CSV) - ແກ້ໄຂ Error ບ່ອນນີ້
   const generateExcel = async () => {
       let csvContent = "Date,Type,Description,Amount\n";
       
@@ -157,10 +157,11 @@ export default function ReportDashboard() {
           csvContent += `${new Date(e.date).toLocaleDateString()},Expense,${e.category},-${parseCurrency(e.amount)}\n`;
       });
 
-      // 🟢 2. ໃຊ້ FileSystem.documentDirectory ແທນ
-      const fileName = `${FileSystem.documentDirectory}report_${new Date().getTime()}.csv`;
+      // 🟢 2. ໃຊ້ (FileSystem as any) ເພື່ອບັງຄັບໃຫ້ TS ຜ່ານ
+      const docDir = (FileSystem as any).documentDirectory;
+      const fileName = `${docDir}report_${new Date().getTime()}.csv`;
       
-      // 🟢 3. ໃຊ້ string 'utf8' ແທນ Enum ເພື່ອປ້ອງກັນ Error
+      // 🟢 3. ໃຊ້ string 'utf8' ແທນ EncodingType.UTF8
       await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
       await shareAsync(fileName);
   };

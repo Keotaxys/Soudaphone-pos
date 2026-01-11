@@ -3,24 +3,28 @@ import * as ImagePicker from 'expo-image-picker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS } from '../../types';
 
-// Interface ສຳລັບຂໍ້ມູນລູກຄ້າ
+const { width } = Dimensions.get('window');
+const CARD_GAP = 10;
+const CARD_WIDTH = (width - 30 - CARD_GAP) / 2; // ຄິດໄລ່ຄວາມກວ້າງໃຫ້ພໍດີ 2 ບັດ (ລົບ Padding)
+
 interface Customer {
   id: string;
   name: string;
@@ -44,7 +48,7 @@ export default function CustomerScreen() {
   const [address, setAddress] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
-  // 1. ດຶງຂໍ້ມູນລູກຄ້າຈາກ Firebase
+  // 1. ດຶງຂໍ້ມູນລູກຄ້າ
   useEffect(() => {
     const customerRef = ref(db, 'customers');
     const unsubscribe = onValue(customerRef, (snapshot) => {
@@ -64,7 +68,7 @@ export default function CustomerScreen() {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [1, 1],
+      aspect: [4, 3],
       quality: 0.5,
       base64: true,
     });
@@ -74,7 +78,7 @@ export default function CustomerScreen() {
     }
   };
 
-  // 3. ບັນທຶກຂໍ້ມູນ (ເພີ່ມ ຫຼື ແກ້ໄຂ)
+  // 3. ບັນທຶກຂໍ້ມູນ
   const handleSave = async () => {
     if (!name || !phone) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ເບີໂທ');
@@ -94,7 +98,7 @@ export default function CustomerScreen() {
       setModalVisible(false);
       resetForm();
     } catch (error) {
-      Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ');
+      Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ');
     }
   };
 
@@ -106,7 +110,6 @@ export default function CustomerScreen() {
     ]);
   };
 
-  // ເປີດ Modal ແກ້ໄຂ
   const openEditModal = (customer: Customer) => {
     setCurrentId(customer.id);
     setName(customer.name);
@@ -128,54 +131,62 @@ export default function CustomerScreen() {
     setIsEditing(false);
   };
 
-  // ເປີດ Facebook Link
   const openLink = (url?: string) => {
     if (url) {
       Linking.openURL(url).catch(() => Alert.alert('Error', 'ບໍ່ສາມາດເປີດລິ້ງໄດ້'));
     }
   };
 
-  // ກັ່ນຕອງຂໍ້ມູນ
   const filteredCustomers = customers.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     c.phone.includes(searchQuery)
   );
 
   const renderItem = ({ item }: { item: Customer }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Image 
-          source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://via.placeholder.com/100' }} 
-          style={styles.avatar} 
-        />
-        <View style={styles.headerInfo}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          <View style={styles.phoneRow}>
-            <Ionicons name="call" size={14} color={COLORS.primary} />
-            <Text style={styles.phone}>{item.phone}</Text>
-          </View>
+    <View style={styles.businessCard}>
+      
+      {/* ຮູບພາບ */}
+      <View style={styles.imageContainer}>
+        {item.imageUrl ? (
+            <Image source={{ uri: item.imageUrl }} style={styles.coverImage} />
+        ) : (
+            <View style={styles.placeholderCover}>
+                <Ionicons name="person" size={40} color="#ccc" />
+            </View>
+        )}
+        
+        {/* ປຸ່ມຈັດການ (ລອຍ) */}
+        <View style={styles.floatingActions}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModal(item)}>
+                <Ionicons name="pencil" size={14} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionBtn, {marginTop: 5}]} onPress={() => handleDelete(item.id)}>
+                <Ionicons name="trash" size={14} color={COLORS.danger} />
+            </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => openEditModal(item)}>
-            <Ionicons name="pencil" size={18} color="#666" />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuBtn, {marginLeft: 8}]} onPress={() => handleDelete(item.id)}>
-            <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
-        </TouchableOpacity>
       </View>
 
-      <View style={styles.cardBody}>
-        {item.facebookUrl ? (
-            <TouchableOpacity style={styles.linkRow} onPress={() => openLink(item.facebookUrl)}>
-                <Ionicons name="logo-facebook" size={18} color="#1877F2" />
-                <Text style={styles.linkText} numberOfLines={1}>Facebook Profile</Text>
-            </TouchableOpacity>
-        ) : null}
+      {/* ຂໍ້ມູນ */}
+      <View style={styles.infoContainer}>
+        <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
         
+        <View style={styles.detailRow}>
+            <Ionicons name="call" size={14} color={COLORS.textLight} />
+            <Text style={styles.detailText} numberOfLines={1}>{item.phone}</Text>
+        </View>
+
         {item.address ? (
-            <View style={styles.linkRow}>
-                <Ionicons name="location-outline" size={18} color="#666" />
-                <Text style={styles.addressText} numberOfLines={1}>{item.address}</Text>
+            <View style={styles.detailRow}>
+                <Ionicons name="location" size={14} color={COLORS.textLight} />
+                <Text style={styles.detailText} numberOfLines={1}>{item.address}</Text>
             </View>
+        ) : null}
+
+        {item.facebookUrl ? (
+            <TouchableOpacity style={styles.fbButton} onPress={() => openLink(item.facebookUrl)}>
+                <Ionicons name="logo-facebook" size={16} color="#1877F2" />
+                <Text style={styles.fbText}>Facebook</Text>
+            </TouchableOpacity>
         ) : null}
       </View>
     </View>
@@ -183,29 +194,28 @@ export default function CustomerScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header & Search */}
       <View style={styles.headerContainer}>
         <Text style={styles.title}>ຂໍ້ມູນລູກຄ້າ</Text>
-        <Text style={styles.subtitle}>ຈັດການຖານຂໍ້ມູນລູກຄ້າຂອງທ່ານ ({customers.length})</Text>
-        
+        <Text style={styles.subtitle}>ທັງໝົດ ({customers.length}) ທ່ານ</Text>
         <View style={styles.searchBar}>
             <Ionicons name="search" size={20} color="#999" />
             <TextInput 
                 style={styles.searchInput} 
-                placeholder="ຄົ້ນຫາຊື່ ຫຼື ເບີໂທ..." 
+                placeholder="ຄົ້ນຫາ..." 
                 value={searchQuery}
                 onChangeText={setSearchQuery}
             />
         </View>
       </View>
 
-      {/* Customer List */}
       <FlatList 
         data={filteredCustomers}
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
-        numColumns={1}
+        // 🟢 ຕັ້ງຄ່າ Grid 2 ຄໍລຳ
+        numColumns={2}
+        columnWrapperStyle={{ justifyContent: 'space-between' }} 
         ListEmptyComponent={
             <View style={styles.emptyContainer}>
                 <Ionicons name="people-outline" size={60} color="#ddd" />
@@ -214,13 +224,11 @@ export default function CustomerScreen() {
         }
       />
 
-      {/* Add Button (FAB) */}
       <TouchableOpacity style={styles.fab} onPress={() => { resetForm(); setModalVisible(true); }}>
         <Ionicons name="add" size={30} color="white" />
-        <Text style={styles.fabText}>ເພີ່ມລູກຄ້າໃໝ່</Text>
+        <Text style={styles.fabText}>ເພີ່ມ</Text>
       </TouchableOpacity>
 
-      {/* Modal Form */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -231,7 +239,6 @@ export default function CustomerScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Image Picker */}
                 <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
                     {imageUrl ? (
                         <Image source={{ uri: imageUrl }} style={styles.previewImage} />
@@ -245,7 +252,7 @@ export default function CustomerScreen() {
 
                 <TextInput style={styles.input} placeholder="ຊື່ລູກຄ້າ *" value={name} onChangeText={setName} />
                 <TextInput style={styles.input} placeholder="ເບີໂທ *" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
-                <TextInput style={styles.input} placeholder="Facebook URL (https://...)" value={facebookUrl} onChangeText={setFacebookUrl} autoCapitalize="none" />
+                <TextInput style={styles.input} placeholder="Facebook URL" value={facebookUrl} onChangeText={setFacebookUrl} autoCapitalize="none" />
                 <TextInput style={styles.input} placeholder="ທີ່ຢູ່" value={address} onChangeText={setAddress} />
 
                 <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
@@ -254,7 +261,6 @@ export default function CustomerScreen() {
             </View>
         </KeyboardAvoidingView>
       </Modal>
-
     </SafeAreaView>
   );
 }
@@ -263,28 +269,40 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   
   headerContainer: { backgroundColor: 'white', padding: 20, paddingBottom: 15, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 4 },
-  title: { fontSize: 22, fontFamily: 'Lao-Bold', color: COLORS.primary },
+  title: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.primary },
   subtitle: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666', marginBottom: 15 },
   
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 10 },
-  searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 16 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 8 },
+  searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 14 },
 
-  card: { backgroundColor: 'white', borderRadius: 15, marginBottom: 12, elevation: 2, overflow: 'hidden' },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#f9f9f9' },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eee' },
-  headerInfo: { flex: 1, marginLeft: 15 },
-  name: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
-  phoneRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 5 },
-  phone: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#666' },
-  menuBtn: { padding: 5, backgroundColor: '#f5f5f5', borderRadius: 8 },
+  // 🟢 Styles ສຳລັບ Card 2 ຄໍລຳ
+  businessCard: { 
+    width: CARD_WIDTH, 
+    backgroundColor: 'white', 
+    borderRadius: 12, 
+    marginBottom: 15, 
+    elevation: 3, 
+    overflow: 'hidden', 
+    borderWidth: 1, 
+    borderColor: '#eee' 
+  },
+  imageContainer: { width: '100%', height: 120, backgroundColor: '#f0f0f0', position: 'relative' },
+  coverImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  placeholderCover: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e0e0e0' },
+  
+  floatingActions: { position: 'absolute', top: 5, right: 5 },
+  actionBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.9)', justifyContent: 'center', alignItems: 'center', elevation: 2 },
 
-  cardBody: { padding: 15, backgroundColor: '#FAFAFA' },
-  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  linkText: { fontFamily: 'Lao-Bold', color: '#1877F2', fontSize: 13 },
-  addressText: { fontFamily: 'Lao-Regular', color: '#555', fontSize: 13, flex: 1 },
+  infoContainer: { padding: 10 },
+  cardName: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text, marginBottom: 5 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
+  detailText: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#555' },
+  
+  fbButton: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: '#E3F2FD', padding: 5, borderRadius: 6, justifyContent: 'center' },
+  fbText: { fontFamily: 'Lao-Bold', color: '#1877F2', fontSize: 11 },
 
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.secondary, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, elevation: 5 },
-  fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 8 },
+  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.success, flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 30, elevation: 5 },
+  fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 14, marginLeft: 5 },
 
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
@@ -296,12 +314,11 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
   
   imagePicker: { alignSelf: 'center', marginBottom: 20 },
-  placeholderImage: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
-  previewImage: { width: 100, height: 100, borderRadius: 50 },
+  placeholderImage: { width: 100, height: 100, borderRadius: 10, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
+  previewImage: { width: 100, height: 100, borderRadius: 10 },
   uploadText: { fontSize: 12, color: '#999', marginTop: 5, fontFamily: 'Lao-Regular' },
 
   input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, marginBottom: 10, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Regular' },
-  
   saveBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 10 },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 }
 });

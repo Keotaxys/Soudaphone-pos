@@ -20,7 +20,8 @@ import { db } from '../../src/firebase';
 import { CartItem, COLORS, formatNumber, Product, SaleRecord, SIDEBAR_WIDTH } from '../../src/types';
 
 // Import Screens
-import CustomerScreen from '../../src/components/screens/CustomerScreen'; // 🟢 Import ໜ້າລູກຄ້າ
+import CustomerScreen from '../../src/components/screens/CustomerScreen';
+import DebtScreen from '../../src/components/screens/DebtScreen'; // 🟢 Import ໜ້າໜີ້ສິນ
 import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
 import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
@@ -244,9 +245,10 @@ export default function App() {
         case 'orders': return <OrderTrackingScreen />; 
         case 'shifts':
         case 'shift': return <ShiftScreen />; 
-        
-        // 🟢 Case ສຳລັບໜ້າລູກຄ້າ
         case 'customers': return <CustomerScreen />;
+        
+        // 🟢 Case ສຳລັບໜ້າໜີ້ສິນ (Loans/Debts)
+        case 'debts': return <DebtScreen />;
 
         default: return (
             <View style={styles.center}>

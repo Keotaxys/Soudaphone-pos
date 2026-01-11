@@ -3,27 +3,27 @@ import * as ImagePicker from 'expo-image-picker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Dimensions,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS } from '../../types';
 
 const { width } = Dimensions.get('window');
 const CARD_GAP = 10;
-const CARD_WIDTH = (width - 30 - CARD_GAP) / 2; // ຄິດໄລ່ຄວາມກວ້າງໃຫ້ພໍດີ 2 ບັດ (ລົບ Padding)
+const CARD_WIDTH = (width - 30 - CARD_GAP) / 2;
 
 interface Customer {
   id: string;
@@ -55,6 +55,7 @@ export default function CustomerScreen() {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        console.log("Customers Loaded:", list.length); // Debug
         setCustomers(list.reverse() as Customer[]);
       } else {
         setCustomers([]);
@@ -63,18 +64,26 @@ export default function CustomerScreen() {
     return () => unsubscribe();
   }, []);
 
-  // 2. ຈັດການຮູບພາບ
+  // 2. ຈັດການຮູບພາບ (ພ້ອມຂໍ Permission)
   const pickImage = async () => {
+    // ຂໍ Permission ກ່ອນ
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('ຕ້ອງການການອະນຸຍາດ', 'ກະລຸນາອະນຸຍາດໃຫ້ເຂົ້າເຖິງຄັງຮູບພາບ');
+      return;
+    }
+
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.5,
+      quality: 0.4, // 🟢 ຫຼຸດຄຸນນະພາບລົງເລັກນ້ອຍເພື່ອໃຫ້ string ບໍ່ຍາວເກີນໄປສຳລັບ Realtime DB
       base64: true,
     });
 
     if (!result.canceled && result.assets[0].base64) {
-      setImageUrl(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      setImageUrl(base64Img);
     }
   };
 
@@ -213,7 +222,6 @@ export default function CustomerScreen() {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
-        // 🟢 ຕັ້ງຄ່າ Grid 2 ຄໍລຳ
         numColumns={2}
         columnWrapperStyle={{ justifyContent: 'space-between' }} 
         ListEmptyComponent={
@@ -275,7 +283,6 @@ const styles = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 8 },
   searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 14 },
 
-  // 🟢 Styles ສຳລັບ Card 2 ຄໍລຳ
   businessCard: { 
     width: CARD_WIDTH, 
     backgroundColor: 'white', 
@@ -307,7 +314,6 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
 
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 5 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

@@ -1,140 +1,102 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Animated,
-  Modal,
+  Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
   TouchableWithoutFeedback,
+  View
 } from 'react-native';
-import { COLORS, SIDEBAR_WIDTH } from '../../types';
+import { COLORS } from '../../types';
+import BillSettingsModal from '../modals/BillSettingsModal'; // 🟢 Import Modal
+
+const { width, height } = Dimensions.get('window');
 
 interface SidebarProps {
   visible: boolean;
-  slideAnim: Animated.Value;
   onClose: () => void;
+  slideAnim: Animated.Value;
   currentTab: string;
   onNavigate: (tab: string) => void;
 }
 
-export default function Sidebar({ visible, slideAnim, onClose, currentTab, onNavigate }: SidebarProps) {
+const MENU_ITEMS = [
+  { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' },
+  { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart-outline' },
+  { id: 'products', label: 'ຈັດການສິນຄ້າ', icon: 'cube-outline' },
+  { id: 'expense', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet-outline' },
+  { id: 'orders', label: 'ຕິດຕາມຄຳສັ່ງຊື້', icon: 'cube-outline' },
+  { id: 'customers', label: 'ຂໍ້ມູນລູກຄ້າ', icon: 'people-outline' },
+  { id: 'debts', label: 'ຕິດໜີ້', icon: 'document-text-outline' },
+  { id: 'report', label: 'ລາຍງານ', icon: 'bar-chart-outline' },
+  { id: 'shifts', label: 'ປິດກະລາຍວັນ', icon: 'time-outline' },
+];
+
+export default function Sidebar({ visible, onClose, slideAnim, currentTab, onNavigate }: SidebarProps) {
   
-  // 🟢 ກຳນົດລາຍການເມນູໃຫ້ຖືກຕ້ອງ
-  const menuItems = [
-    { id: 'home', title: 'ໜ້າຫຼັກ', icon: 'grid-outline' },
-    { id: 'pos', title: 'ຂາຍສິນຄ້າ', icon: 'cart-outline' },
-    { id: 'orders', title: 'ຕິດຕາມຄຳສັ່ງຊື້', icon: 'list-outline' },
-    { id: 'history', title: 'ປະຫວັດການຂາຍ', icon: 'time-outline' },
-    // 🟢 ປ່ຽນຊື່ຈາກ "ຈັດການກະຈາຍ" ເປັນ "ຈັດການກະຂາຍ" ແລະ ໃຊ້ id: 'shift'
-    { id: 'shift', title: 'ຈັດການກະຂາຍ', icon: 'sync-outline' }, 
-    { id: 'products', title: 'ສິນຄ້າ', icon: 'cube-outline' },
-    { id: 'customers', title: 'ລູກຄ້າ', icon: 'people-outline' },
-    { id: 'expense', title: 'ລາຍຈ່າຍ', icon: 'wallet-outline' },
-    { id: 'debts', title: 'ໜີ້ສິນ', icon: 'journal-outline' },
-    { id: 'report', title: 'ລາຍງານ', icon: 'bar-chart-outline' },
-  ];
+  // 🟢 State ສຳລັບເປີດ Modal ຕັ້ງຄ່າ
+  const [showBillSettings, setShowBillSettings] = useState(false);
+
+  if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="none">
-      <View style={styles.overlay}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={styles.backdrop} />
-        </TouchableWithoutFeedback>
+    <>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.overlay} />
+      </TouchableWithoutFeedback>
+      
+      <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
+        <View style={styles.header}>
+          <Text style={styles.title}>ເມນູຫຼັກ</Text>
+          <TouchableOpacity onPress={onClose}>
+            <Ionicons name="close" size={30} color="#fff" />
+          </TouchableOpacity>
+        </View>
 
-        <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
-          <View style={styles.header}>
-            <View style={styles.profileCircle}>
-                <Text style={styles.profileInitial}>S</Text>
-            </View>
-            <View style={{marginLeft: 15}}>
-                <Text style={styles.shopName}>Soudaphone POS</Text>
-                <Text style={styles.shopType}>ເສື້ອຜ້າເດັກ</Text>
-            </View>
-          </View>
+        <View style={styles.menuContainer}>
+          {MENU_ITEMS.map((item) => (
+            <TouchableOpacity 
+              key={item.id} 
+              style={[styles.menuItem, currentTab === item.id && styles.activeItem]}
+              onPress={() => onNavigate(item.id)}
+            >
+              <Ionicons name={item.icon as any} size={24} color={currentTab === item.id ? COLORS.primary : '#333'} />
+              <Text style={[styles.menuText, currentTab === item.id && styles.activeText]}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
 
-          <View style={styles.menuList}>
-            {menuItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[
-                  styles.menuItem,
-                  (currentTab === item.id || (item.id === 'history' && currentTab === 'report')) && styles.activeMenuItem
-                ]}
-                onPress={() => onNavigate(item.id)}
-              >
-                <Ionicons 
-                    name={item.icon as any} 
-                    size={22} 
-                    color={currentTab === item.id ? COLORS.primary : '#555'} 
-                />
-                <Text style={[
-                    styles.menuText, 
-                    currentTab === item.id && styles.activeMenuText
-                ]}>
-                    {item.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <View style={styles.divider} />
 
-          <View style={styles.footer}>
-            <Text style={styles.versionText}>Version 1.0.0</Text>
-          </View>
-        </Animated.View>
-      </View>
-    </Modal>
+          {/* 🟢 ເພີ່ມປຸ່ມຕັ້ງຄ່າໃບບິນ */}
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => setShowBillSettings(true)}
+          >
+            <Ionicons name="settings-outline" size={24} color="#333" />
+            <Text style={styles.menuText}>ຕັ້ງຄ່າໃບບິນ</Text>
+          </TouchableOpacity>
+
+        </View>
+        
+        {/* 🟢 ໃສ່ Modal ໄວ້ບ່ອນນີ້ */}
+        <BillSettingsModal visible={showBillSettings} onClose={() => setShowBillSettings(false)} />
+
+      </Animated.View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, flexDirection: 'row' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
-  sidebar: {
-    width: SIDEBAR_WIDTH,
-    backgroundColor: 'white',
-    height: '100%',
-    paddingTop: 50,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    marginBottom: 10,
-  },
-  profileCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileInitial: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 20 },
-  shopName: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
-  shopType: { fontFamily: 'Lao-Regular', fontSize: 12, color: COLORS.textLight },
-  
-  menuList: { flex: 1, paddingHorizontal: 10 },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 10,
-    marginBottom: 5,
-  },
-  activeMenuItem: { backgroundColor: '#f0f9f9' },
-  menuText: {
-    fontFamily: 'Lao-Regular',
-    fontSize: 15,
-    color: '#444',
-    marginLeft: 15,
-  },
-  activeMenuText: { fontFamily: 'Lao-Bold', color: COLORS.primary },
-  
-  footer: { padding: 20, borderTopWidth: 1, borderTopColor: '#f0f0f0', alignItems: 'center' },
-  versionText: { color: '#ccc', fontSize: 12, fontFamily: 'Lao-Regular' },
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99 },
+  sidebar: { position: 'absolute', top: 0, left: 0, bottom: 0, width: width * 0.75, backgroundColor: 'white', zIndex: 100, elevation: 5 },
+  header: { height: 120, backgroundColor: COLORS.primary, padding: 20, paddingTop: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  title: { fontSize: 24, fontFamily: 'Lao-Bold', color: 'white' },
+  menuContainer: { padding: 15 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 10, borderRadius: 10, marginBottom: 5 },
+  activeItem: { backgroundColor: '#E0F2F1' },
+  menuText: { fontSize: 16, fontFamily: 'Lao-Regular', marginLeft: 15, color: '#333' },
+  activeText: { color: COLORS.primary, fontFamily: 'Lao-Bold' },
+  divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 }
 });

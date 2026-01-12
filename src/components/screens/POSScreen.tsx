@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { printAsync } from 'expo-print'; // 🟢 Import Print
+import { printAsync } from 'expo-print';
+import { onValue, ref } from 'firebase/database'; // 🟢 Import onValue, ref
 import React, { useEffect, useState } from 'react';
 import {
     FlatList,
@@ -16,8 +17,10 @@ import {
     View
 } from 'react-native';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
+import { db } from '../../firebase'; // 🟢 Import db
 import { CartItem, COLORS, Product } from '../../types';
 
+// ... (Interface POSScreenProps ຄືເກົ່າ) ...
 interface POSScreenProps {
   products: Product[];
   cart: CartItem[];
@@ -57,9 +60,30 @@ export default function POSScreen({
   const [customTotal, setCustomTotal] = useState<string>('');
   const [isEditingTotal, setIsEditingTotal] = useState(false);
 
-  // 🟢 Success & Print States
+  // Success & Print States
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastOrder, setLastOrder] = useState<any>(null);
+  
+  // 🟢 Bill Settings State
+  const [billSettings, setBillSettings] = useState({
+      shopName: 'Soudaphone POS',
+      address: 'ນະຄອນຫຼວງວຽງຈັນ',
+      phone: '',
+      footerText: 'ຂອບໃຈທີ່ອຸດໜູນ',
+      logo: ''
+  });
+
+  // 🟢 ດຶງຂໍ້ມູນການຕັ້ງຄ່າບິນ
+  useEffect(() => {
+      const settingsRef = ref(db, 'billSettings');
+      const unsubscribe = onValue(settingsRef, (snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+              setBillSettings(data);
+          }
+      });
+      return () => unsubscribe();
+  }, []);
 
   const categories = ['ທັງໝົດ', ...Array.from(new Set(products.map(p => p.category || 'ອື່ນໆ')))];
 
@@ -104,7 +128,7 @@ export default function POSScreen({
       const finalAmountLAK = paymentCurrency === 'LAK' ? finalTotal : Math.ceil(finalTotal * currentRate);
       
       const orderDetails = {
-          items: [...cart], // Copy cart
+          items: [...cart], 
           paymentMethod,
           amountReceived: finalAmountLAK, 
           change: 0,
@@ -116,15 +140,13 @@ export default function POSScreen({
       };
 
       onCheckout(orderDetails);
-
       setLastOrder(orderDetails);
       setCartModalVisible(false);
       setCustomTotal('');
-      
       setTimeout(() => setShowSuccessModal(true), 500); 
   };
 
-  // 🟢 ຟັງຊັນສ້າງ HTML ສຳລັບພິມໃບບິນ (ອັບເດດເປັນ 5 ຄໍລ້ຳ)
+  // 🟢 ຟັງຊັນສ້າງ HTML ທີ່ດຶງຂໍ້ມູນຈາກ billSettings ມາໃຊ້
   const printReceipt = async () => {
     if (!lastOrder) return;
 
@@ -134,19 +156,19 @@ export default function POSScreen({
           <style>
             body { font-family: 'Helvetica', sans-serif; font-size: 12px; padding: 5px; }
             .header { text-align: center; margin-bottom: 10px; }
-            .title { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+            .logo { width: 60px; height: 60px; border-radius: 50%; margin-bottom: 5px; }
+            .title { font-size: 20px; font-weight: bold; margin-bottom: 2px; }
+            .subtitle { font-size: 12px; color: #555; }
             .line { border-bottom: 1px dashed #000; margin: 5px 0; }
             
-            /* Table Styles using Flexbox */
             .row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; font-size: 11px; }
             .header-row { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 5px; }
             
-            /* Columns Configuration */
-            .col-1 { width: 8%; text-align: center; } /* ລ/ດ */
-            .col-2 { width: 37%; } /* ລາຍການ */
-            .col-3 { width: 20%; text-align: right; } /* ລາຄາ */
-            .col-4 { width: 10%; text-align: center; } /* ຈຳນວນ */
-            .col-5 { width: 25%; text-align: right; } /* ລວມເງິນ */
+            .col-1 { width: 8%; text-align: center; } 
+            .col-2 { width: 37%; } 
+            .col-3 { width: 20%; text-align: right; } 
+            .col-4 { width: 10%; text-align: center; } 
+            .col-5 { width: 25%; text-align: right; } 
 
             .total-section { margin-top: 10px; text-align: right; }
             .total-row { font-size: 16px; font-weight: bold; margin-top: 5px; }
@@ -155,9 +177,10 @@ export default function POSScreen({
         </head>
         <body>
           <div class="header">
-            <div class="title">ຮ້ານ ສຸດາພອນ</div>
-            <div>ຈຳໜ່າຍເສື້ອຜ້າເດັກນ້ອຍ</div>
-            <div>ໂທ: 020 9999 8888</div>
+            ${billSettings.logo ? `<img src="${billSettings.logo}" class="logo" />` : ''}
+            <div class="title">${billSettings.shopName}</div>
+            <div class="subtitle">${billSettings.address}</div>
+            <div class="subtitle">ໂທ: ${billSettings.phone}</div>
             <div style="margin-top: 5px;">ວັນທີ: ${new Date(lastOrder.date).toLocaleString('lo-LA')}</div>
             <div>No: #${new Date(lastOrder.date).getTime().toString().slice(-6)}</div>
           </div>
@@ -193,7 +216,8 @@ export default function POSScreen({
           
           <div class="footer">
             <div class="line"></div>
-            ຂອບໃຈທີ່ອຸດໜູນ<br/>Thank You
+            ${billSettings.footerText}<br/>
+            Thank You
           </div>
         </body>
       </html>
@@ -201,10 +225,8 @@ export default function POSScreen({
 
     try {
         await printAsync({ html });
-        setShowSuccessModal(false); // ປິດ Modal ຫຼັງຈາກກົດພິມ
-    } catch (error) {
-        // Handle error if needed
-    }
+        setShowSuccessModal(false); 
+    } catch (error) { }
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
@@ -213,10 +235,9 @@ export default function POSScreen({
       setCheckoutDate(currentDate);
   };
 
-  // Header Component (Search + Actions + Filter)
+  // Header Component
   const ListHeader = () => (
     <View style={styles.headerContainer}>
-        {/* Search Bar */}
         <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#999" />
             <TextInput
@@ -232,7 +253,6 @@ export default function POSScreen({
             )}
         </View>
 
-        {/* Action Buttons */}
         <View style={styles.actionRow}>
             <TouchableOpacity style={styles.scanBtn} onPress={openScanner}>
                 <Ionicons name="barcode-outline" size={24} color="white" />
@@ -244,7 +264,6 @@ export default function POSScreen({
             </TouchableOpacity>
         </View>
 
-        {/* Category Filter Chips */}
         <View style={styles.categoryContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal: 10}}>
                 {categories.map((cat, index) => (
@@ -271,8 +290,6 @@ export default function POSScreen({
 
   return (
     <View style={styles.container}>
-      
-      {/* FlatList with Header */}
       <FlatList
         data={filteredProducts}
         keyExtractor={item => item.id!}
@@ -480,7 +497,7 @@ export default function POSScreen({
           )}
       </Modal>
 
-      {/* 🟢 Success & Print Modal */}
+      {/* Success & Print Modal */}
       <Modal visible={showSuccessModal} transparent={true} animationType="fade">
         <View style={styles.modalOverlay}>
             <View style={styles.successCard}>
@@ -589,7 +606,6 @@ const styles = StyleSheet.create({
   iosDateDoneBtn: { padding: 15, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
   iosDateDoneText: { color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 18 },
 
-  // Success Modal Styles
   successCard: { backgroundColor: 'white', width: '80%', padding: 20, borderRadius: 20, alignItems: 'center', elevation: 5 },
   successIcon: { marginBottom: 10 },
   successTitle: { fontSize: 22, fontFamily: 'Lao-Bold', color: COLORS.success, marginBottom: 5 },

@@ -1,36 +1,34 @@
-[debug] [2026-01-12T08:51:40.837Z] ----------------------------------------------------------------------
-[debug] [2026-01-12T08:51:40.839Z] Command:       /nix/store/6ljnnmh7di4dyalyhb08jk6zvh05pk79-nodejs-20.19.5/bin/node /home/user/.global_modules/bin/firebase login
-[debug] [2026-01-12T08:51:40.840Z] CLI Version:   15.2.1
-[debug] [2026-01-12T08:51:40.840Z] Platform:      linux
-[debug] [2026-01-12T08:51:40.840Z] Node Version:  v20.19.5
-[debug] [2026-01-12T08:51:40.840Z] Time:          Mon Jan 12 2026 08:51:40 GMT+0000 (Coordinated Universal Time)
-[debug] [2026-01-12T08:51:40.840Z] ----------------------------------------------------------------------
+[debug] [2026-01-12T08:58:59.875Z] ----------------------------------------------------------------------
+[debug] [2026-01-12T08:58:59.878Z] Command:       /nix/store/6ljnnmh7di4dyalyhb08jk6zvh05pk79-nodejs-20.19.5/bin/node /home/user/.global_modules/bin/firebase init functions
+[debug] [2026-01-12T08:58:59.878Z] CLI Version:   15.2.1
+[debug] [2026-01-12T08:58:59.879Z] Platform:      linux
+[debug] [2026-01-12T08:58:59.879Z] Node Version:  v20.19.5
+[debug] [2026-01-12T08:58:59.879Z] Time:          Mon Jan 12 2026 08:58:59 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-01-12T08:58:59.879Z] ----------------------------------------------------------------------
 [debug] 
-[debug] [2026-01-12T08:51:40.843Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
-[debug] [2026-01-12T08:51:41.147Z] No OAuth tokens found
-[debug] [2026-01-12T08:51:41.147Z] No OAuth tokens found
-[error] Failed to fetch Firebase Project from current Studio Workspace: Unable to refresh auth: not yet authenticated.
-[info] i  The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data 
-[debug] [2026-01-12T08:51:42.238Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
-[debug] [2026-01-12T08:51:42.239Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-01-12T08:59:00.957Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T08:59:00.957Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T08:59:00.960Z] >>> [apiv2][query] GET https://monospace-pa.googleapis.com/v1/workspaces/pos-app-91717833 [none]
+[debug] [2026-01-12T08:59:01.919Z] <<< [apiv2][status] GET https://monospace-pa.googleapis.com/v1/workspaces/pos-app-91717833 200
+[debug] [2026-01-12T08:59:01.919Z] <<< [apiv2][body] GET https://monospace-pa.googleapis.com/v1/workspaces/pos-app-91717833 {"workspaceId":"pos-app-91717833","name":"POS App","workspaceRedirectUrl":"firebase-pos-app-1767708895237.cluster-bg6uurscprhn6qxr6xwtrhvkf6.cloudworkstations.dev","status":"WORKSPACE_STATUS_RUNNING","lastAccessDatetime":"2026-01-12T06:30:14.637594Z","workspaceTemplate":"WORKSPACE_TEMPLATE_FLUTTER","owner":"SELF","serviceAccountEmail":"msp-1093350999001435185@monospace-per-ws-sa-9.iam.gserviceaccount.com","enableNix":true,"ownerEmail":"Keota.mar@gmail.com","workspaceImageUrl":"https://www.gstatic.com/monospace/231115/logo_react.svg","templateArgs":"{\"openIn\":\"go\"}","templateRepoUrl":"github:monogramdesign/idx-react-native","workstationAccessToken":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2Nsb3VkLmdvb2dsZS5jb20vd29ya3N0YXRpb25zIiwiYXVkIjoiZmlyZWJhc2UtcG9zLWFwcC0xNzY3NzA4ODk1MjM3LmNsdXN0ZXItYmc2dXVyc2NwcmhuNnF4cjZ4d3RyaHZrZjYuY2xvdWR3b3Jrc3RhdGlvbnMuZGV2IiwiaWF0IjoxNzY4MjA4MzQxLCJleHAiOjE3NjgyOTQ3NDF9.IyNk75TPHXOzBoiHhqSgmqtjT4Ls0JFPi_He3dNx7R1UrXXlEun1XOyqh0VahNz3LtKm4afFd8bfmIIKD70ISk_pW8r9ENdKqTRjKR7q8jtPn9QQT_UiSuVCD6b6nDfZnkdIIiDOwk__B3C6NMDJvzXO4FyRduBGTCmYft4J0_1GtzDClO3usRbO_qzXE8tc9SatSe6gPKuxt5G4_JodynDpN4B1g9CrzeGoQJsp1Y_zHcV5Z9lqNfcOq126Jq_sO54lC86fhy2EilIq1vU2Ze2W8Q5OO0ZqFK9AOwM-UvAmAYgpCjSlr-BqqQUjsYvwNmkJ4STnjX_bNFQdotEolw"}
 [info] 
-[info] i  Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you. 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /home/user/pos-app
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+
 [info] 
-[info] i  To change your preferences at any time, run `firebase logout` and `firebase login` again. 
-[debug] [2026-01-12T08:52:45.593Z] >>> [apiv2][query] POST https://auth.firebase.tools/attest [none]
-[debug] [2026-01-12T08:52:45.593Z] >>> [apiv2][body] POST https://auth.firebase.tools/attest {"session_id":"b78e39f1-6889-450d-a13f-052e1d4d73d5"}
-[debug] [2026-01-12T08:52:45.956Z] <<< [apiv2][status] POST https://auth.firebase.tools/attest 200
-[debug] [2026-01-12T08:52:45.956Z] <<< [apiv2][body] POST https://auth.firebase.tools/attest {"token":"gID6ot0oXD8HYu76vWsafhQKwY0hAiNHsGug7iojiuE"}
+=== Project Setup
 [info] 
-[info] To sign in to the Firebase CLI:
-[info] 
-[info] 1. Take note of your session ID:
-[info] 
-[info]    B78E3
-[info] 
-[info] 2. Visit the URL below on any device and follow the instructions to get your code:
-[info] 
-[info]    https://auth.firebase.tools/login?code_challenge=1YKbikuQtGZq9EKnpW-RojAdtHnOcDFx-x_FhjK7Sds&session=b78e39f1-6889-450d-a13f-052e1d4d73d5&attest=gID6ot0oXD8HYu76vWsafhQKwY0hAiNHsGug7iojiuE
-[info] 
-[info] 3. Paste or enter the authorization code below once you have it:
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
 [info] 

@@ -19,6 +19,8 @@ import {
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
 import { db } from '../../firebase';
 import { CartItem, COLORS, Product } from '../../types';
+// 🟢 Import Component ໃໝ່
+import CurrencyInput from '../ui/CurrencyInput';
 
 interface POSScreenProps {
   products: Product[];
@@ -322,8 +324,7 @@ export default function POSScreen({
                     {formatNumber(item.price)} {item.priceCurrency === 'LAK' ? '₭' : '฿'}
                 </Text>
             </View>
-            
-            {/* 🟢 ປ່ຽນເປັນສີ Teal (COLORS.primary) ທັງໝົດ */}
+            {/* 🟢 ປຸ່ມບວກເປັນສີ Teal ທັງໝົດ */}
             <TouchableOpacity style={[styles.addIcon, { backgroundColor: COLORS.primary }]} onPress={() => addToCart(item)}>
                 <Ionicons name="add" size={20} color="white" />
             </TouchableOpacity>
@@ -421,14 +422,14 @@ export default function POSScreen({
                           <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
                           <View style={{flexDirection: 'row', alignItems: 'center'}}>
                               {isEditingTotal ? (
-                                  <TextInput 
+                                  // 🟢 ໃຊ້ CurrencyInput ແທນ TextInput
+                                  <CurrencyInput 
                                       style={[styles.totalInput, { color: paymentCurrency === 'LAK' ? COLORS.primary : COLORS.secondary }]}
                                       value={customTotal}
-                                      onChangeText={setCustomTotal}
-                                      keyboardType="numeric"
+                                      onChangeValue={setCustomTotal}
                                       autoFocus
                                       onBlur={() => setIsEditingTotal(false)}
-                                      placeholder={formatNumber(Math.ceil(finalTotal))}
+                                      placeholder={Math.ceil(finalTotal).toString()}
                                   />
                               ) : (
                                   <TouchableOpacity onPress={() => { setIsEditingTotal(true); setCustomTotal(Math.ceil(finalTotal).toString()); }}>
@@ -444,11 +445,11 @@ export default function POSScreen({
                       <View style={styles.receivedRow}>
                           <View style={{flex: 1}}>
                             <Text style={styles.receivedLabel}>ຮັບເງິນ:</Text>
-                            <TextInput 
+                            {/* 🟢 ໃຊ້ CurrencyInput ແທນ TextInput */}
+                            <CurrencyInput 
                                 style={styles.receivedInput} 
                                 value={receivedAmount} 
-                                onChangeText={(t) => setReceivedAmount(formatNumber(t.replace(/,/g, '')))} 
-                                keyboardType="numeric" 
+                                onChangeValue={setReceivedAmount} 
                                 placeholder="0" 
                             />
                           </View>
@@ -611,7 +612,7 @@ const styles = StyleSheet.create({
   totalValue: { fontFamily: 'Lao-Bold', fontSize: 24 },
   totalInput: { fontFamily: 'Lao-Bold', fontSize: 24, borderBottomWidth: 1, borderBottomColor: '#ccc', minWidth: 100, textAlign: 'right' },
 
-  // 🟢 Received & Change Styles
+  // Received & Change Styles
   receivedRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 15 },
   receivedLabel: { fontSize: 14, color: '#666', fontFamily: 'Lao-Bold', marginBottom: 5 },
   receivedInput: { backgroundColor: 'white', borderRadius: 10, borderWidth: 1, borderColor: '#ccc', padding: 10, fontSize: 18, fontFamily: 'Lao-Bold', textAlign: 'right' },

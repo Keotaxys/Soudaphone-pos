@@ -43,7 +43,7 @@ export default function Header({
             <Ionicons name="notifications-outline" size={24} color="white" />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={onLogout}>
+          <TouchableOpacity onPress={onLogout} style={{marginLeft: 5}}>
             <Ionicons name="log-out-outline" size={24} color="white" />
           </TouchableOpacity>
         </View>
@@ -57,7 +57,7 @@ export default function Header({
             <Image source={{ uri: shopLogo }} style={styles.shopLogo} />
           ) : (
             <View style={styles.shopLogoPlaceholder}>
-              <Text style={styles.shopLogoText}>{shopName.charAt(0)}</Text>
+              <Text style={styles.shopLogoText}>{shopName ? shopName.charAt(0) : 'S'}</Text>
             </View>
           )}
           
@@ -77,27 +77,17 @@ export default function Header({
 
 const styles = StyleSheet.create({
   container: { backgroundColor: COLORS.primary, paddingBottom: 20, paddingTop: StatusBar.currentHeight || 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  
-  // 🟢 Top Bar Layout: ຈັດໃຫ້ມີຊ້າຍ-ຂວາ
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
-  
-  // 🟢 Left Container: ຈັດເມນູຄູ່ກັບຊື່
   leftContainer: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },
-  
-  // 🟢 Right Icons: ຈັດແຈ້ງເຕືອນຄູ່ກັບ Logout
   rightIcons: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  
   shopCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', marginHorizontal: 20, padding: 15, borderRadius: 15, elevation: 3 },
   shopInfo: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  
   shopLogo: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eee' },
   shopLogoPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E0F2F1', justifyContent: 'center', alignItems: 'center' },
   shopLogoText: { fontSize: 24, fontFamily: 'Lao-Bold', color: COLORS.primary },
-  
   shopName: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text },
   shopId: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
-  
   editBtn: { backgroundColor: '#f0f0f0', paddingVertical: 5, paddingHorizontal: 15, borderRadius: 20 },
   editBtnText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
 });

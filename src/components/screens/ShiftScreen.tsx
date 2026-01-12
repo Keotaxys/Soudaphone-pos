@@ -2,10 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    SafeAreaView,
-    ScrollView, StyleSheet, Text,
-    TextInput, TouchableOpacity, View
+  Alert,
+  SafeAreaView,
+  ScrollView, StyleSheet, Text,
+  TextInput, TouchableOpacity, View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatNumber, ShiftRecord } from '../../types';
@@ -47,8 +47,8 @@ export default function ShiftScreen() {
     const totalTHB = calculateTotal(THB_DENOMS, openThbCounts);
 
     if (totalLAK === 0 && totalTHB === 0) {
-        Alert.alert('ຄຳເຕືອນ', 'ກະລຸນານັບໃບບິນເງິນຕັ້ງຕົ້ນກ່ອນເປີດກະ');
-        return;
+      Alert.alert('ຄຳເຕືອນ', 'ກະລຸນານັບໃບບິນເງິນຕັ້ງຕົ້ນກ່ອນເປີດກະ');
+      return;
     }
 
     const newShift = {
@@ -89,7 +89,8 @@ export default function ShiftScreen() {
     ]);
   };
 
-  const renderDenomRow = (val: number, counts: any, setCounts: any, symbol: string) => (
+  // 🟢 ປັບຟັງຊັນ renderDenomRow ໃຫ້ຮັບຄ່າສີ (totalColor)
+  const renderDenomRow = (val: number, counts: any, setCounts: any, symbol: string, totalColor: string) => (
     <View key={val} style={styles.denomRow}>
       <View style={styles.denomInfo}>
         <Text style={styles.denomLabel}>{formatNumber(val)} {symbol}</Text>
@@ -101,7 +102,8 @@ export default function ShiftScreen() {
         value={counts[val] || ''}
         onChangeText={(t) => setCounts({ ...counts, [val]: t })}
       />
-      <Text style={styles.denomSum}>{formatNumber(val * (parseInt(counts[val]) || 0))}</Text>
+      {/* 🟢 ໃຊ້ສີທີ່ສົ່ງເຂົ້າມາ */}
+      <Text style={[styles.denomSum, { color: totalColor }]}>{formatNumber(val * (parseInt(counts[val]) || 0))}</Text>
     </View>
   );
 
@@ -120,19 +122,21 @@ export default function ShiftScreen() {
 
             <Text style={styles.sectionTitle}>💵 ໃບເງິນກີບ (LAK)</Text>
             <View style={styles.denomCard}>
-                {LAK_DENOMS.map(v => renderDenomRow(v, openLakCounts, setOpenLakCounts, '₭'))}
+                {/* 🟢 ສົ່ງສີ Teal (COLORS.primary) ໃຫ້ເງິນກີບ */}
+                {LAK_DENOMS.map(v => renderDenomRow(v, openLakCounts, setOpenLakCounts, '₭', COLORS.primary))}
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>ລວມເງິນກີບຕັ້ງຕົ້ນ:</Text>
-                    <Text style={styles.summaryValue}>{formatNumber(calculateTotal(LAK_DENOMS, openLakCounts))} ₭</Text>
+                    <Text style={[styles.summaryValue, { color: COLORS.primary }]}>{formatNumber(calculateTotal(LAK_DENOMS, openLakCounts))} ₭</Text>
                 </View>
             </View>
 
             <Text style={styles.sectionTitle}>฿ ໃບເງິນບາດ (THB)</Text>
             <View style={styles.denomCard}>
-                {THB_DENOMS.map(v => renderDenomRow(v, openThbCounts, setOpenThbCounts, '฿'))}
+                {/* 🟢 ສົ່ງສີສົ້ມ (#F57C00) ໃຫ້ເງິນບາດ */}
+                {THB_DENOMS.map(v => renderDenomRow(v, openThbCounts, setOpenThbCounts, '฿', '#F57C00'))}
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>ລວມເງິນບາດຕັ້ງຕົ້ນ:</Text>
-                    <Text style={[styles.summaryValue, {color: '#2ecc71'}]}>{formatNumber(calculateTotal(THB_DENOMS, openThbCounts))} ฿</Text>
+                    <Text style={[styles.summaryValue, {color: '#F57C00'}]}>{formatNumber(calculateTotal(THB_DENOMS, openThbCounts))} ฿</Text>
                 </View>
             </View>
 
@@ -142,7 +146,7 @@ export default function ShiftScreen() {
           </View>
         ) : (
           <View>
-            {/* ສ່ວນການສະແດງຜົນຕອນກຳລັງເປີດກະ ແລະ ປຸ່ມປິດກະ (ຄືເກົ່າ) */}
+            {/* ສ່ວນການສະແດງຜົນຕອນກຳລັງເປີດກະ ແລະ ປຸ່ມປິດກະ */}
             <View style={styles.activeHeader}>
                 <View>
                     <Text style={styles.activeStatus}>🟢 ກຳລັງເປີດກະຂາຍ</Text>
@@ -155,9 +159,23 @@ export default function ShiftScreen() {
 
             <Text style={styles.sectionTitle}>🧾 ນັບເງິນສົດກ່ອນປິດກະ (ກີບ)</Text>
             <View style={styles.denomCard}>
-                {LAK_DENOMS.map(v => renderDenomRow(v, closeLakCounts, setCloseLakCounts, '₭'))}
+                {/* 🟢 ສົ່ງສີ Teal ໃຫ້ເງິນກີບຕອນປິດກະ */}
+                {LAK_DENOMS.map(v => renderDenomRow(v, closeLakCounts, setCloseLakCounts, '₭', COLORS.primary))}
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>ລວມເງິນກີບ:</Text>
+                    <Text style={[styles.summaryValue, { color: COLORS.primary }]}>{formatNumber(calculateTotal(LAK_DENOMS, closeLakCounts))} ₭</Text>
+                </View>
             </View>
-            {/* ... ເພີ່ມສ່ວນນັບເງິນບາດຕອນປິດກະແບບດຽວກັນ ... */}
+
+            <Text style={styles.sectionTitle}>💰 ນັບເງິນສົດກ່ອນປິດກະ (ບາດ)</Text>
+            <View style={styles.denomCard}>
+                {/* 🟢 ສົ່ງສີສົ້ມ ໃຫ້ເງິນບາດຕອນປິດກະ */}
+                {THB_DENOMS.map(v => renderDenomRow(v, closeThbCounts, setCloseThbCounts, '฿', '#F57C00'))}
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>ລວມເງິນບາດ:</Text>
+                    <Text style={[styles.summaryValue, { color: '#F57C00' }]}>{formatNumber(calculateTotal(THB_DENOMS, closeThbCounts))} ฿</Text>
+                </View>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -178,11 +196,11 @@ const styles = StyleSheet.create({
   denomInfo: { flex: 1.5 },
   denomLabel: { fontFamily: 'Lao-Bold', fontSize: 15, color: COLORS.text },
   denomInput: { flex: 1, backgroundColor: '#f9f9f9', borderRadius: 8, padding: 8, textAlign: 'center', fontFamily: 'Lao-Bold', borderWidth: 1, borderColor: '#eee' },
-  denomSum: { flex: 2, textAlign: 'right', fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 15 },
+  denomSum: { flex: 2, textAlign: 'right', fontFamily: 'Lao-Bold', fontSize: 15 },
   
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 15, paddingTop: 15, borderTopWidth: 2, borderTopColor: '#f0f0f0' },
   summaryLabel: { fontFamily: 'Lao-Bold', fontSize: 15 },
-  summaryValue: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.secondaryDark },
+  summaryValue: { fontFamily: 'Lao-Bold', fontSize: 18 },
   
   openBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center', elevation: 3 },
   openBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },

@@ -23,11 +23,10 @@ import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
 
 const { width } = Dimensions.get('window');
-const ORANGE_COLOR = '#F57C00';
+const ORANGE_COLOR = '#F57C00'; // 🟢 ສີສົ້ມເຂັ້ມ
 
 type FilterType = 'day' | 'week' | 'month' | 'year';
 
-// 🟢 ບໍ່ຈຳເປັນຕ້ອງມີ Props initialTab ແລ້ວ ເພາະມີໜ້າດຽວ
 export default function ReportDashboard() {
   const [sales, setSales] = useState<any[]>([]);
   
@@ -82,7 +81,6 @@ export default function ReportDashboard() {
         const d = new Date(item.date);
         return d >= start && d <= end;
     });
-    // ລຽງລຳດັບຈາກໃໝ່ໄປເກົ່າ
     setFilteredSales(fSales.reverse());
     setTotalRevenue(fSales.reduce((sum, s) => sum + parseCurrency(s.total || s.amountReceived), 0));
     setTotalOrders(fSales.length);
@@ -166,7 +164,6 @@ export default function ReportDashboard() {
     await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
   };
 
-  // 🟢 Header Component (Filters & Summary)
   const HeaderComponent = () => (
     <View>
         <View style={styles.header}>
@@ -204,7 +201,6 @@ export default function ReportDashboard() {
             </View>
         </View>
 
-        {/* 🟢 Summary Box (ແທນທີ່ Overview Tab) */}
         <View style={{flexDirection: 'row', padding: 15, gap: 10, paddingBottom: 5}}>
             <View style={styles.summaryCard}>
                 <Text style={styles.summaryLabel}>ຍອດຂາຍລວມ</Text>
@@ -229,7 +225,7 @@ export default function ReportDashboard() {
             const isExpanded = expandedId === item.id;
             return (
                 <View style={[styles.listItem, { marginHorizontal: 15 }]}>
-                    {/* 🟢 Header Item */}
+                    {/* Header Item */}
                     <TouchableOpacity style={styles.itemHeader} onPress={() => setExpandedId(isExpanded ? null : item.id)}>
                         <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
                             <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
@@ -244,17 +240,14 @@ export default function ReportDashboard() {
                             <View style={{alignItems: 'flex-end'}}>
                                 <Text style={styles.listAmount}>{formatNumber(parseCurrency(item.total))}</Text>
                                 <View style={styles.badge}>
-                                    {/* 🟢 ສະແດງແຫຼ່ງຂາຍ */}
                                     <Text style={styles.badgeText}>{item.source || 'ໜ້າຮ້ານ'}</Text>
                                 </View>
                             </View>
                         </View>
                     </TouchableOpacity>
 
-                    {/* 🟢 ລາຍລະອຽດ (ສະແດງເມື່ອກົດ) */}
                     {isExpanded && (
                         <View style={styles.itemDetails}>
-                            {/* 🟢 ສະແດງແຫຼ່ງ ແລະ ວິທີຊຳລະ */}
                             <View style={styles.infoRow}>
                                 <View style={styles.infoChip}>
                                     <Ionicons name="storefront-outline" size={14} color="#666" />
@@ -277,7 +270,7 @@ export default function ReportDashboard() {
                             
                             <View style={styles.divider} />
                             
-                            {/* 🟢 ປຸ່ມລຶບສີສົ້ມເຂັ້ມ */}
+                            {/* 🟢 ປຸ່ມລຶບສີສົ້ມເຂັ້ມ (ຕາມທີ່ຕ້ອງການ) */}
                             <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
                                 <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
                                 <Text style={[styles.deleteText, {color: ORANGE_COLOR}]}>ລຶບບິນນີ້</Text>

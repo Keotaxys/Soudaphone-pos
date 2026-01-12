@@ -3,22 +3,22 @@ import * as ImagePicker from 'expo-image-picker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { db } from '../../firebase'; // 🟢 ບໍ່ຕ້ອງ Import storage ແລ້ວ
+import { db } from '../../firebase';
 import { COLORS } from '../../types';
 
 const { width } = Dimensions.get('window');
@@ -63,9 +63,8 @@ export default function CustomerScreen() {
     return () => unsubscribe();
   }, []);
 
-  // 2. ຈັດການຮູບພາບ (ແບບ Base64 ລົງ Database)
+  // 2. ຈັດການຮູບພາບ
   const pickImage = async () => {
-    // ຂໍ Permission
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('ຕ້ອງການສິດ', 'ກະລຸນາອະນຸຍາດໃຫ້ເຂົ້າເຖິງຮູບພາບ');
@@ -76,19 +75,17 @@ export default function CustomerScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      // 🟢 ສຳຄັນຫຼາຍ: ຕ້ອງຫຼຸດ quality ລົງຕໍ່າໆ ເພື່ອບໍ່ໃຫ້ string ຍາວເກີນໄປ
       quality: 0.3, 
-      base64: true, // 🟢 ບັງຄັບໃຫ້ສົ່ງຄ່າ base64 ກັບມາ
+      base64: true, 
     });
 
     if (!result.canceled && result.assets[0].base64) {
-      // ສ້າງ string ຮູບພາບ
       const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
-      setImageUrl(base64Img); // ເກັບຄ່າ Base64 ໄວ້ໃນ State ເພື່ອລໍຖ້າບັນທຶກ
+      setImageUrl(base64Img); 
     }
   };
 
-  // 3. ບັນທຶກຂໍ້ມູນ (ບັນທຶກ Base64 ລົງ Database ເລີຍ)
+  // 3. ບັນທຶກຂໍ້ມູນ
   const handleSave = async () => {
     if (!name || !phone) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ເບີໂທ');
@@ -194,9 +191,9 @@ export default function CustomerScreen() {
     </View>
   );
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerContainer}>
+  // 🟢 ListHeader: ຍ້າຍ Header ເຂົ້າມາໄວ້ໃນນີ້ເພື່ອໃຫ້ Scroll ໄດ້
+  const ListHeader = () => (
+    <View style={styles.headerContainer}>
         <Text style={styles.title}>ຂໍ້ມູນລູກຄ້າ</Text>
         <Text style={styles.subtitle}>ທັງໝົດ ({customers.length}) ທ່ານ</Text>
         <View style={styles.searchBar}>
@@ -208,11 +205,17 @@ export default function CustomerScreen() {
                 onChangeText={setSearchQuery}
             />
         </View>
-      </View>
+    </View>
+  );
 
+  return (
+    <SafeAreaView style={styles.container}>
+      
+      {/* 🟢 FlatList ກວມເອົາທັງໝົດ */}
       <FlatList 
         data={filteredCustomers}
         keyExtractor={item => item.id}
+        ListHeaderComponent={ListHeader} // 🟢 ເອົາ Header ມາໃສ່ບ່ອນນີ້
         renderItem={renderItem}
         contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
         numColumns={2}
@@ -268,11 +271,12 @@ export default function CustomerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerContainer: { backgroundColor: 'white', padding: 20, paddingBottom: 15, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 4 },
+  headerContainer: { paddingBottom: 15, backgroundColor: COLORS.background }, // 🟢 ປັບພື້ນຫຼັງ Header
   title: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.primary },
   subtitle: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666', marginBottom: 15 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 8 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 10, borderWidth: 1, borderColor: '#eee' }, // 🟢 ປັບ Search Bar ໃຫ້ງາມຂຶ້ນໜ້ອຍໜຶ່ງ
   searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 14 },
+  
   businessCard: { width: CARD_WIDTH, backgroundColor: 'white', borderRadius: 12, marginBottom: 15, elevation: 3, overflow: 'hidden', borderWidth: 1, borderColor: '#eee' },
   imageContainer: { width: '100%', height: 120, backgroundColor: '#f0f0f0', position: 'relative' },
   coverImage: { width: '100%', height: '100%', resizeMode: 'cover' },
@@ -285,8 +289,11 @@ const styles = StyleSheet.create({
   detailText: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#555' },
   fbButton: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: '#E3F2FD', padding: 5, borderRadius: 6, justifyContent: 'center' },
   fbText: { fontFamily: 'Lao-Bold', color: '#1877F2', fontSize: 11 },
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.success, flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 30, elevation: 5 },
+  
+  // 🟢 ແກ້ໄຂສີ FAB ໃຫ້ເປັນ COLORS.primary (Teal)
+  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 30, elevation: 5 },
   fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 14, marginLeft: 5 },
+  
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },

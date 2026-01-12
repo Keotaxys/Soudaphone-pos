@@ -15,7 +15,6 @@ import {
   View
 } from 'react-native';
 
-// 🟢 ກວດສອບ Path ໃຫ້ຖືກຕ້ອງ (ຖ້າ Error ໃຫ້ລອງປ່ຽນເປັນ ../src/firebase)
 import { auth, db } from '../../src/firebase';
 
 // Import Types & Helpers
@@ -30,7 +29,9 @@ import LoginScreen from '../../src/components/screens/LoginScreen';
 import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
 import ProductsScreen from '../../src/components/screens/ProductsScreen';
-import ReportDashboard from '../../src/components/screens/ReportDashboard';
+// 🟢 Import 2 ໄຟລ໌ລາຍງານທີ່ເຮົາແຍກກັນ
+import ReportDashboard from '../../src/components/screens/ReportDashboard'; // ສຳລັບປະຫວັດການຂາຍ
+import ReportScreen from '../../src/components/screens/ReportScreen'; // ສຳລັບ Dashboard ພາບລວມ
 import ShiftScreen from '../../src/components/screens/ShiftScreen';
 
 // Import UI Components
@@ -247,6 +248,7 @@ export default function App() {
       return <LoginScreen />;
   }
 
+  // 🟢 ສ່ວນຈັດການ Router (Render Content)
   const renderContent = () => {
     switch (currentTab) {
         case 'home': return <HomeScreen salesHistory={salesHistory} products={products} />;
@@ -272,11 +274,11 @@ export default function App() {
         );
         case 'expense': return <ExpenseScreen />;
         
-        // 🟢 ຖ້າກົດ "ລາຍງານ" -> ເປີດ Overview
-        case 'report': return <ReportDashboard initialTab="overview" />;
+        // 🟢 ແກ້ໄຂເສັ້ນທາງ: ລາຍງານ ເປີດ ReportScreen
+        case 'report': return <ReportScreen />; 
         
-        // 🟢 ຖ້າກົດ "ປະຫວັດການຂາຍ" -> ເປີດ Sales
-        case 'history': return <ReportDashboard initialTab="sales" />;
+        // 🟢 ແກ້ໄຂເສັ້ນທາງ: ປະຫວັດການຂາຍ ເປີດ ReportDashboard
+        case 'history': return <ReportDashboard />;
         
         case 'orders': return <OrderTrackingScreen />; 
         case 'shifts': case 'shift': return <ShiftScreen />; 

@@ -3,26 +3,24 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
 
 const DEBT_CATEGORIES = ['ເງິນກູ້', 'ບັດເຄດິດ', 'ຢືມເພື່ອນ', 'ຜ່ອນສິນຄ້າ', 'ອື່ນໆ'];
-
-// 🟢 ກຳນົດສີສົ້ມເຂັ້ມ
 const ORANGE_COLOR = '#F57C00';
 
 interface DebtItem {
@@ -42,10 +40,10 @@ export default function DebtScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   
-  // 🟢 ເພີ່ມ State ສຳລັບ Modal ປະຫວັດ
+  // History Modal
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [historyList, setHistoryList] = useState<any[]>([]);
-  
+
   // Form States
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -69,6 +67,7 @@ export default function DebtScreen() {
       return isNaN(num) ? 0 : num;
   };
 
+  // 1. ດຶງຂໍ້ມູນຈາກ Firebase
   useEffect(() => {
     const debtRef = ref(db, 'debts');
     const unsubscribe = onValue(debtRef, (snapshot) => {
@@ -87,7 +86,7 @@ export default function DebtScreen() {
 
             return { 
                 id: key, 
-                ...item,
+                ...item, // ດຶງ history ມາພ້ອມກັນ
                 title: item.name || item.title || 'ບໍ່ລະບຸຊື່',
                 category: item.category || 'ອື່ນໆ',
                 totalAmount: total,
@@ -104,6 +103,23 @@ export default function DebtScreen() {
     });
     return () => unsubscribe();
   }, []);
+
+  // 🟢 2. ອັບເດດປະຫວັດເມື່ອມີການປ່ຽນແປງ
+  useEffect(() => {
+    if (selectedDebt && historyModalVisible) {
+        const currentDebt = debts.find(d => d.id === selectedDebt.id);
+        if (currentDebt && currentDebt.history) {
+            const list = Object.keys(currentDebt.history).map(key => ({
+                id: key,
+                ...currentDebt.history![key]
+            }));
+            list.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setHistoryList(list);
+        } else {
+            setHistoryList([]);
+        }
+    }
+  }, [debts, selectedDebt, historyModalVisible]);
 
   const handleSaveDebt = async () => {
     if (!title || !totalAmount) {
@@ -185,7 +201,9 @@ export default function DebtScreen() {
             paidAmount: newPaidAmount,
             remainingBalance: newRemaining
         });
+        // 🟢 Push ລົງ history
         await push(ref(db, `debts/${currentDebt.id}/history`), paymentRecord);
+        
         setPaymentModalVisible(false);
         setPayAmount('');
         setPaymentDate(new Date());
@@ -264,7 +282,6 @@ export default function DebtScreen() {
                     <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
                         <Ionicons name="pencil" size={18} color={COLORS.primary} />
                     </TouchableOpacity>
-                    {/* 🟢 ປ່ຽນສີປຸ່ມລືບເປັນສີສົ້ມ */}
                     <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.iconBtn}>
                         <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
                     </TouchableOpacity>
@@ -381,20 +398,6 @@ export default function DebtScreen() {
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(dueDate)}</Text>
                     </TouchableOpacity>
 
-                    {showDatePicker && dateMode === 'due' && (
-                        <View style={Platform.OS === 'ios' ? styles.iosPickerContainer : null}>
-                            <DateTimePicker 
-                                value={dueDate} 
-                                mode="date" 
-                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                onChange={onDateChange}
-                                style={{ height: 120, width: '100%' }}
-                                textColor="black"
-                                themeVariant="light"
-                            />
-                        </View>
-                    )}
-
                     <View style={styles.modalActions}>
                         <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                             <Text style={styles.cancelBtnText}>ຍົກເລີກ</Text>
@@ -439,20 +442,6 @@ export default function DebtScreen() {
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(paymentDate)}</Text>
                     </TouchableOpacity>
 
-                    {showDatePicker && dateMode === 'payment' && (
-                        <View style={Platform.OS === 'ios' ? styles.iosPickerContainer : null}>
-                            <DateTimePicker 
-                                value={paymentDate} 
-                                mode="date" 
-                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                onChange={onDateChange}
-                                style={{ height: 120, width: '100%' }}
-                                textColor="black"
-                                themeVariant="light"
-                            />
-                        </View>
-                    )}
-
                     <Text style={styles.inputLabel}>ຈຳນວນເງິນຊຳລະ (ເງິນຕົ້ນ) *</Text>
                     <TextInput 
                         style={[styles.inputLarge, { color: COLORS.primary }]} 
@@ -480,7 +469,7 @@ export default function DebtScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* History Modal */}
+      {/* 🟢 History Modal */}
       <Modal visible={historyModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -511,9 +500,15 @@ export default function DebtScreen() {
                         <View style={styles.historyItem}>
                             <View>
                                 <Text style={styles.historyDate}>{formatDate(new Date(item.date))}</Text>
-                                <Text style={{fontSize: 10, color: '#999'}}>ຊຳລະເງິນຕົ້ນ</Text>
+                                {/* 🟢 ສະແດງຂໍ້ຄວາມໃຫ້ຄົບຖ້ວນ ບໍ່ວ່າຈະເປັນ amount, total ຫຼື principal */}
+                                <Text style={{fontSize: 10, color: '#999'}}>
+                                    {item.interest > 0 ? `ດອກເບ້ຍ: ${formatNumber(item.interest)}` : 'ຊຳລະເງິນຕົ້ນ'}
+                                </Text>
                             </View>
-                            <Text style={styles.historyAmount}>+ {formatNumber(item.amount)}</Text>
+                            {/* 🟢 ສະແດງຍອດເງິນ */}
+                            <Text style={styles.historyAmount}>
+                                + {formatNumber(item.amount || item.total || item.principal)}
+                            </Text>
                         </View>
                     )}
                 />
@@ -521,9 +516,9 @@ export default function DebtScreen() {
         </View>
       </Modal>
 
-      {/* iOS Date Picker Modal (Overlay) */}
+      {/* Date Picker Modal (Fix Dark Mode + Overlay) */}
       {showDatePicker && (
-        Platform.OS === 'ios' && (
+        Platform.OS === 'ios' ? (
             <Modal visible={true} transparent={true} animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.iosDatePickerContainer}>
@@ -542,6 +537,13 @@ export default function DebtScreen() {
                     </View>
                 </View>
             </Modal>
+        ) : (
+            <DateTimePicker 
+              value={dateMode === 'due' ? dueDate : paymentDate} 
+              mode="date" 
+              display="default" 
+              onChange={onDateChange} 
+            />
         )
       )}
     </SafeAreaView>
@@ -566,7 +568,7 @@ const styles = StyleSheet.create({
   progressBar: { height: '100%', backgroundColor: COLORS.primary }, 
   progressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   progressText: { fontSize: 11, color: COLORS.primary, fontFamily: 'Lao-Bold' },
-  remainingText: { fontSize: 12, color: '#F57C00', fontFamily: 'Lao-Bold' },
+  remainingText: { fontSize: 12, color: ORANGE_COLOR, fontFamily: 'Lao-Bold' },
   divider: { height: 1, backgroundColor: '#f5f5f5', marginBottom: 10 },
   detailsGrid: { backgroundColor: '#F9FAFB', padding: 12, borderRadius: 6, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   detailItem: { flex: 1 },
@@ -601,10 +603,13 @@ const styles = StyleSheet.create({
   cancelBtnText: { color: '#666', fontFamily: 'Lao-Bold' },
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
-  iosPickerContainer: { backgroundColor: '#fff', borderRadius: 10, marginTop: 5, overflow: 'hidden', padding: 0 },
+  
+  // iOS Date Picker Styles
   iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
   iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
   iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 },
+
+  // History Styles
   historyItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   historyDate: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
   historyAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.success }

@@ -25,9 +25,9 @@ export const generateOnePayQR = onCall(async (request) => {
 
         // ກຽມ Payload ສົ່ງໃຫ້ BCEL
         const payload = {
-            mcid: ONEPAY_CONFIG.mcid,
-            shop_code: ONEPAY_CONFIG.shopCode,
-            terminal_id: ONEPAY_CONFIG.terminalId,
+            mcid: mch6824249c116e4
+            shop_code: JtS0SNSGbevz
+            terminal_id: 88886666
             amount: amount,
             invoice_id: invoiceId,
             currency: "LAK",

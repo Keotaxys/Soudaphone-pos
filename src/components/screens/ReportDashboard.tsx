@@ -24,17 +24,9 @@ import { COLORS, formatDate, formatNumber } from '../../types';
 const { width } = Dimensions.get('window');
 
 type FilterType = 'day' | 'week' | 'month' | 'year';
+type ReportTab = 'overview' | 'sales' | 'expenses' | 'debts';
 
-// 🟢 1. Export Type ນີ້ເພື່ອໃຫ້ App.tsx ເອີ້ນໃຊ້ໄດ້
-export type ReportTab = 'overview' | 'sales' | 'expenses' | 'debts';
-
-// 🟢 2. ກຳນົດ Interface ສຳລັບຮັບຄ່າ Props
-interface ReportDashboardProps {
-  initialTab?: ReportTab;
-}
-
-// 🟢 3. ຮັບຄ່າ initialTab ເຂົ້າມາ (ຄ່າເລີ່ມຕົ້ນແມ່ນ 'overview')
-export default function ReportDashboard({ initialTab = 'overview' }: ReportDashboardProps) {
+export default function ReportDashboard() {
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [debts, setDebts] = useState<any[]>([]);
@@ -42,14 +34,7 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  
-  // 🟢 4. ໃຊ້ initialTab ກຳນົດຄ່າເລີ່ມຕົ້ນ
-  const [activeTab, setActiveTab] = useState<ReportTab>(initialTab);
-
-  // 🟢 5. ດັກຈັບການປ່ຽນແປງຂອງ initialTab (ເພື່ອໃຫ້ມັນປ່ຽນແຖບເມື່ອມີການກົດເມນູໃໝ່)
-  useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
+  const [activeTab, setActiveTab] = useState<ReportTab>('overview');
 
   const [filteredSales, setFilteredSales] = useState<any[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<any[]>([]);
@@ -507,10 +492,9 @@ const styles = StyleSheet.create({
   chartRow: { marginBottom: 10 },
 
   debtCard: { backgroundColor: '#FFF3E0', padding: 15, borderRadius: 12, alignItems: 'center', borderLeftWidth: 5, borderLeftColor: COLORS.secondary },
-  debtTitle: { fontSize: 16, fontFamily: 'Lao-Bold', color: '#E65100', marginBottom: 5 },
-  debtAmount: { fontSize: 24, fontFamily: 'Lao-Bold', color: '#E65100', marginBottom: 5 },
-  debtSub: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#EF6C00' },
-
+  debtTitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#E65100' },
+  debtAmount: { fontSize: 24, fontFamily: 'Lao-Bold', color: '#E65100', marginVertical: 5 },
+  debtSub: { fontSize: 12, color: '#EF6C00' },
   listItem: { backgroundColor: 'white', padding: 15, borderRadius: 10, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   listTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
   listSub: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#999' },

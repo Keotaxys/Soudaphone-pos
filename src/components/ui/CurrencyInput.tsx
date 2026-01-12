@@ -1,5 +1,5 @@
 import React from 'react';
-import { TextInput, TextInputProps, StyleSheet } from 'react-native';
+import { StyleSheet, TextInput, TextInputProps } from 'react-native';
 import { COLORS } from '../../types';
 
 interface CurrencyInputProps extends TextInputProps {
@@ -11,23 +11,31 @@ export default function CurrencyInput({ value, onChangeValue, style, ...props }:
   
   // ຟັງຊັນຈັດ Format ຕົວເລກ (ໃສ່ຈຸດ)
   const formatNumber = (num: string) => {
-    return num.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (!num) return '';
+    // ລຶບທຸກຢ່າງທີ່ບໍ່ແມ່ນຕົວເລກອອກ
+    const cleanNum = num.replace(/\D/g, '');
+    // ໃສ່ຈຸດທຸກ 3 ຫຼັກ
+    return cleanNum.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 
   const handleChangeText = (text: string) => {
-    // ລຶບຈຸດອອກກ່ອນສົ່ງຄ່າກັບໄປ
+    // 1. ລຶບຈຸດອອກເພື່ອເອົາຄ່າທີ່ແທ້ຈິງ
     const rawValue = text.replace(/,/g, '');
-    onChangeValue(rawValue);
+    
+    // 2. ກວດສອບວ່າເປັນຕົວເລກລ້ວນບໍ່ (ປ້ອງກັນການພິມຕົວອັກສອນ)
+    if (/^\d*$/.test(rawValue)) {
+        onChangeValue(rawValue);
+    }
   };
 
   return (
     <TextInput
       {...props}
       style={[styles.input, style]}
-      value={formatNumber(value)}
+      value={formatNumber(value)} // ສະແດງຜົນແບບມີຈຸດ
       onChangeText={handleChangeText}
       keyboardType="numeric"
-      selectTextOnFocus={true} // 🟢 ກົດແລ້ວພິມທັບໄດ້ເລີຍ (iOS/Android)
+      selectTextOnFocus={true} // ກົດແລ້ວພິມທັບໄດ້ເລີຍ
     />
   );
 }
@@ -35,7 +43,7 @@ export default function CurrencyInput({ value, onChangeValue, style, ...props }:
 const styles = StyleSheet.create({
   input: {
     fontFamily: 'Lao-Bold',
-    fontSize: 16,
+    fontSize: 18,
     color: COLORS.text,
   },
 });

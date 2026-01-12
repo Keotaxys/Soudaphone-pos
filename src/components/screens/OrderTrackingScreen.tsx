@@ -4,10 +4,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert, FlatList, Image,
-    Modal,
-    SafeAreaView,
-    ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View
+  Alert, FlatList, Image,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, CustomerOrder, OrderItem, formatDate, formatNumber } from '../../types';
@@ -100,7 +101,13 @@ export default function OrderTrackingScreen() {
     return COLORS.primary;
   };
 
-  // 🟢 Header Component (ຈະເລື່ອນໄປພ້ອມກັບ List)
+  // 🟢 Date Change Handler (ແກ້ໄຂ Dark Mode)
+  const onDateChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (date) setSelectedDate(date);
+  };
+
+  // Header Component (ຈະເລື່ອນໄປພ້ອມກັບ List)
   const ListHeader = () => (
     <View style={styles.header}>
         <Text style={styles.headerTitle}>📦 ຕິດຕາມຄຳສັ່ງຊື້</Text>
@@ -114,12 +121,12 @@ export default function OrderTrackingScreen() {
   return (
     <View style={styles.container}>
       
-      {/* 🟢 FlatList ກວມເອົາທັງໝົດ */}
+      {/* FlatList ກວມເອົາທັງໝົດ */}
       <FlatList
         data={orders}
         keyExtractor={item => item.id!}
-        ListHeaderComponent={ListHeader} // 🟢 ເອົາ Header ມາໃສ່ບ່ອນນີ້
-        contentContainerStyle={{ paddingBottom: 100 }} // ເພີ່ມ padding ລຸ່ມໃຫ້ບໍ່ຕິດຂອບ
+        ListHeaderComponent={ListHeader} 
+        contentContainerStyle={{ paddingBottom: 100 }} 
         renderItem={({ item }) => (
           <View style={styles.orderGroupCard}>
             <View style={styles.groupHeader}>
@@ -162,6 +169,7 @@ export default function OrderTrackingScreen() {
             <TextInput style={styles.input} value={customerName} onChangeText={setCustomerName} placeholder="ປ້ອນຊື່ລູກຄ້າ..." />
 
             <Text style={styles.label}>ວັນທີ *</Text>
+            {/* 🟢 ກົດປຸ່ມແລ້ວເປີດ Date Picker ທັນທີ */}
             <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
               <Text style={styles.inputText}>{formatDate(selectedDate)}</Text>
               <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
@@ -240,8 +248,30 @@ export default function OrderTrackingScreen() {
           </ScrollView>
         </SafeAreaView>
 
+        {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
         {showDatePicker && (
-          <DateTimePicker value={selectedDate} mode="date" display="default" onChange={(e, d) => { setShowDatePicker(false); if(d) setSelectedDate(d); }} />
+            Platform.OS === 'ios' ? (
+                <Modal visible={true} transparent={true} animationType="fade">
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.iosDatePickerContainer}>
+                            <DateTimePicker 
+                                value={selectedDate} 
+                                mode="date" 
+                                display="inline" 
+                                onChange={onDateChange} 
+                                style={{ height: 320, width: '100%', backgroundColor: 'white' }} 
+                                textColor="black" 
+                                themeVariant="light"
+                            />
+                            <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
+                                <Text style={styles.iosDateDoneText}>ຕົກລົງ</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
+            ) : (
+                <DateTimePicker value={selectedDate} mode="date" display="default" onChange={onDateChange} />
+            )
         )}
       </Modal>
     </View>
@@ -251,7 +281,6 @@ export default function OrderTrackingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   
-  // 🟢 ປັບ Header ໃຫ້ເປັນສ່ວນໜຶ່ງຂອງ List
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, backgroundColor: 'white', marginBottom: 10, borderBottomWidth: 1, borderBottomColor: '#eee', elevation: 2 },
   
   headerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primary },
@@ -301,5 +330,11 @@ const styles = StyleSheet.create({
   addItemBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 15, borderStyle: 'dashed', borderWidth: 1, borderColor: COLORS.primary, borderRadius: 15, marginTop: 10 },
   addItemBtnText: { marginLeft: 10, fontFamily: 'Lao-Bold', color: COLORS.primary },
   saveBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 30 },
-  saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 }
+  saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },
+
+  // 🟢 iOS Date Picker Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
+  iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
+  iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 }
 });

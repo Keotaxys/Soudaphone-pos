@@ -6,14 +6,14 @@ import { shareAsync } from 'expo-sharing';
 import { push, ref } from 'firebase/database';
 import React, { useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatNumber, Product } from '../../types';
@@ -40,7 +40,7 @@ export default function ProductsScreen({
     (p.barcode && p.barcode.includes(searchQuery))
   );
 
-  // 🟢 1. ຟັງຊັນ Download Template
+  // 1. ຟັງຊັນ Download Template
   const handleDownloadTemplate = async () => {
       const csvContent = "Name,Price,Stock,Currency(LAK/THB),Barcode,Category\nເສື້ອຢືດ,50000,10,LAK,88889999,ເສື້ອຜ້າ\n";
       const fileName = `${FileSystem.documentDirectory}product_template.csv`;
@@ -52,7 +52,7 @@ export default function ProductsScreen({
       }
   };
 
-  // 🟢 2. ຟັງຊັນ Export
+  // 2. ຟັງຊັນ Export
   const handleExport = async () => {
       let csvContent = "Name,Price,Stock,Currency,Barcode,Category\n";
       products.forEach(p => {
@@ -67,7 +67,7 @@ export default function ProductsScreen({
       }
   };
 
-  // 🟢 3. ຟັງຊັນ Import
+  // 3. ຟັງຊັນ Import
   const handleImport = async () => {
       try {
           const result = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'application/vnd.ms-excel', '*/*'] });
@@ -143,42 +143,46 @@ export default function ProductsScreen({
     </View>
   );
 
+  // 🟢 Header Component (Search + Actions) ທີ່ຈະເລື່ອນໄປພ້ອມ List
+  const ListHeader = () => (
+    <View style={styles.headerArea}>
+        <View style={styles.searchBar}>
+            <Ionicons name="search" size={20} color="#999" />
+            <TextInput 
+              style={styles.searchInput} 
+              placeholder="ຄົ້ນຫາຊື່ ຫຼື ບາໂຄດ..." 
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={20} color="#ccc" />
+                </TouchableOpacity>
+            )}
+        </View>
+        
+        <View style={styles.actionIcons}>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}>
+                <Ionicons name="download-outline" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleImport}>
+                <Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleExport}>
+                <Ionicons name="share-outline" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+        </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       
-      {/* 🟢 Header with Actions (Search + Import/Export) */}
-      <View style={styles.headerArea}>
-          <View style={styles.searchBar}>
-              <Ionicons name="search" size={20} color="#999" />
-              <TextInput 
-                style={styles.searchInput} 
-                placeholder="ຄົ້ນຫາຊື່ ຫຼື ບາໂຄດ..." 
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                      <Ionicons name="close-circle" size={20} color="#ccc" />
-                  </TouchableOpacity>
-              )}
-          </View>
-          
-          <View style={styles.actionIcons}>
-              <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}>
-                  <Ionicons name="download-outline" size={20} color={COLORS.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn} onPress={handleImport}>
-                  <Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn} onPress={handleExport}>
-                  <Ionicons name="share-outline" size={20} color={COLORS.primary} />
-              </TouchableOpacity>
-          </View>
-      </View>
-
+      {/* 🟢 FlatList ກວມເອົາທັງໝົດ */}
       <FlatList
         data={filteredProducts}
         keyExtractor={(item) => item.id!}
+        ListHeaderComponent={ListHeader} // 🟢 ຍ້າຍ Header ມາໃສ່ບ່ອນນີ້
         renderItem={renderProductItem}
         contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
         ListEmptyComponent={
@@ -200,8 +204,8 @@ export default function ProductsScreen({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   
-  // 🟢 Header Area (Search + Actions)
-  headerArea: { padding: 15, paddingBottom: 0 },
+  // Header Area
+  headerArea: { paddingBottom: 10 },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, elevation: 2, marginBottom: 10 },
   searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 16 },
   

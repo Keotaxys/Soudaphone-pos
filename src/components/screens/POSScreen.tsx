@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { printAsync } from 'expo-print';
-import { onValue, ref } from 'firebase/database'; // 🟢 Import onValue, ref
+import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
     FlatList,
@@ -17,10 +17,9 @@ import {
     View
 } from 'react-native';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
-import { db } from '../../firebase'; // 🟢 Import db
+import { db } from '../../firebase';
 import { CartItem, COLORS, Product } from '../../types';
 
-// ... (Interface POSScreenProps ຄືເກົ່າ) ...
 interface POSScreenProps {
   products: Product[];
   cart: CartItem[];
@@ -57,14 +56,17 @@ export default function POSScreen({
   const [source, setSource] = useState<'ໜ້າຮ້ານ' | 'Online'>('ໜ້າຮ້ານ');
   const [checkoutDate, setCheckoutDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [customTotal, setCustomTotal] = useState<string>('');
+  
+  // 🟢 Custom Total & Change Logic
+  const [receivedAmount, setReceivedAmount] = useState(''); // ເງິນທີ່ຮັບມາ
+  const [customTotal, setCustomTotal] = useState<string>(''); // ຍອດລວມທີ່ແກ້ໄຂໄດ້
   const [isEditingTotal, setIsEditingTotal] = useState(false);
 
   // Success & Print States
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastOrder, setLastOrder] = useState<any>(null);
   
-  // 🟢 Bill Settings State
+  // Bill Settings State
   const [billSettings, setBillSettings] = useState({
       shopName: 'Soudaphone POS',
       address: 'ນະຄອນຫຼວງວຽງຈັນ',
@@ -73,7 +75,6 @@ export default function POSScreen({
       logo: ''
   });
 
-  // 🟢 ດຶງຂໍ້ມູນການຕັ້ງຄ່າບິນ
   useEffect(() => {
       const settingsRef = ref(db, 'billSettings');
       const unsubscribe = onValue(settingsRef, (snapshot) => {
@@ -115,10 +116,12 @@ export default function POSScreen({
   };
 
   const finalTotal = getFinalTotal();
+  const changeAmount = (parseFloat(receivedAmount.replace(/,/g, '') || '0') - finalTotal);
 
   useEffect(() => {
       if (cart.length === 0) {
           setCustomTotal('');
+          setReceivedAmount('');
           setCartModalVisible(false);
           setCheckoutDate(new Date());
       }
@@ -130,8 +133,8 @@ export default function POSScreen({
       const orderDetails = {
           items: [...cart], 
           paymentMethod,
-          amountReceived: finalAmountLAK, 
-          change: 0,
+          amountReceived: parseFloat(receivedAmount.replace(/,/g, '') || '0'), 
+          change: changeAmount > 0 ? changeAmount : 0,
           date: checkoutDate.toISOString(),
           source,
           currency: paymentCurrency,
@@ -143,10 +146,10 @@ export default function POSScreen({
       setLastOrder(orderDetails);
       setCartModalVisible(false);
       setCustomTotal('');
+      setReceivedAmount('');
       setTimeout(() => setShowSuccessModal(true), 500); 
   };
 
-  // 🟢 ຟັງຊັນສ້າງ HTML ທີ່ດຶງຂໍ້ມູນຈາກ billSettings ມາໃຊ້
   const printReceipt = async () => {
     if (!lastOrder) return;
 
@@ -160,16 +163,13 @@ export default function POSScreen({
             .title { font-size: 20px; font-weight: bold; margin-bottom: 2px; }
             .subtitle { font-size: 12px; color: #555; }
             .line { border-bottom: 1px dashed #000; margin: 5px 0; }
-            
             .row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; font-size: 11px; }
             .header-row { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 5px; }
-            
             .col-1 { width: 8%; text-align: center; } 
             .col-2 { width: 37%; } 
             .col-3 { width: 20%; text-align: right; } 
             .col-4 { width: 10%; text-align: center; } 
             .col-5 { width: 25%; text-align: right; } 
-
             .total-section { margin-top: 10px; text-align: right; }
             .total-row { font-size: 16px; font-weight: bold; margin-top: 5px; }
             .footer { text-align: center; margin-top: 20px; font-size: 10px; }
@@ -184,9 +184,7 @@ export default function POSScreen({
             <div style="margin-top: 5px;">ວັນທີ: ${new Date(lastOrder.date).toLocaleString('lo-LA')}</div>
             <div>No: #${new Date(lastOrder.date).getTime().toString().slice(-6)}</div>
           </div>
-          
           <div class="line"></div>
-          
           <div class="row header-row">
             <div class="col-1">ລ/ດ</div>
             <div class="col-2">ລາຍການ</div>
@@ -194,7 +192,6 @@ export default function POSScreen({
             <div class="col-4">ຈນ</div>
             <div class="col-5">ລວມ</div>
           </div>
-          
           ${lastOrder.items.map((item: any, index: number) => `
             <div class="row">
               <div class="col-1">${index + 1}</div>
@@ -204,16 +201,15 @@ export default function POSScreen({
               <div class="col-5">${formatNumber(item.price * item.quantity)}</div>
             </div>
           `).join('')}
-          
           <div class="line"></div>
-          
           <div class="total-section">
             <div>ຊຳລະໂດຍ: ${lastOrder.paymentMethod}</div>
             <div class="total-row">
               ລວມທັງໝົດ: ${formatNumber(lastOrder.totalPaid)} ${lastOrder.currency === 'LAK' ? '₭' : '฿'}
             </div>
+            <div>ຮັບເງິນ: ${formatNumber(lastOrder.amountReceived)}</div>
+            <div>ເງິນທອນ: ${formatNumber(lastOrder.change)}</div>
           </div>
-          
           <div class="footer">
             <div class="line"></div>
             ${billSettings.footerText}<br/>
@@ -235,7 +231,6 @@ export default function POSScreen({
       setCheckoutDate(currentDate);
   };
 
-  // Header Component
   const ListHeader = () => (
     <View style={styles.headerContainer}>
         <View style={styles.searchContainer}>
@@ -408,13 +403,13 @@ export default function POSScreen({
                       <View style={styles.row}>
                           <TouchableOpacity 
                             style={[styles.currencyBtn, paymentCurrency === 'LAK' && {backgroundColor: COLORS.primary, borderColor: COLORS.primary}]} 
-                            onPress={() => { setPaymentCurrency('LAK'); setCustomTotal(''); }}
+                            onPress={() => { setPaymentCurrency('LAK'); setCustomTotal(''); setReceivedAmount(''); }}
                           >
                               <Text style={[styles.btnTextSmall, paymentCurrency === 'LAK' ? {color: 'white'} : {color: '#666'}]}>₭ ເງິນກີບ</Text>
                           </TouchableOpacity>
                           <TouchableOpacity 
                             style={[styles.currencyBtn, paymentCurrency === 'THB' && {backgroundColor: COLORS.secondary, borderColor: COLORS.secondary}]} 
-                            onPress={() => { setPaymentCurrency('THB'); setCustomTotal(''); }}
+                            onPress={() => { setPaymentCurrency('THB'); setCustomTotal(''); setReceivedAmount(''); }}
                           >
                               <Text style={[styles.btnTextSmall, paymentCurrency === 'THB' ? {color: 'white'} : {color: '#666'}]}>฿ ເງິນບາດ</Text>
                           </TouchableOpacity>
@@ -440,6 +435,26 @@ export default function POSScreen({
                                       </Text>
                                   </TouchableOpacity>
                               )}
+                          </View>
+                      </View>
+
+                      {/* 🟢 ສ່ວນຮັບເງິນ ແລະ ເງິນທອນ */}
+                      <View style={styles.receivedRow}>
+                          <View style={{flex: 1}}>
+                            <Text style={styles.receivedLabel}>ຮັບເງິນ:</Text>
+                            <TextInput 
+                                style={styles.receivedInput} 
+                                value={receivedAmount} 
+                                onChangeText={(t) => setReceivedAmount(formatNumber(t.replace(/,/g, '')))} 
+                                keyboardType="numeric" 
+                                placeholder="0" 
+                            />
+                          </View>
+                          <View style={{flex: 1, alignItems: 'flex-end'}}>
+                            <Text style={styles.receivedLabel}>ເງິນທອນ:</Text>
+                            <Text style={[styles.changeValue, { color: changeAmount < 0 ? COLORS.danger : COLORS.success }]}>
+                                {formatNumber(changeAmount > 0 ? changeAmount : 0)}
+                            </Text>
                           </View>
                       </View>
 
@@ -589,10 +604,16 @@ const styles = StyleSheet.create({
   currencyBtn: { flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#ddd', alignItems: 'center' },
   btnTextSmall: { fontFamily: 'Lao-Bold', fontSize: 14 },
   
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   totalLabel: { fontFamily: 'Lao-Regular', fontSize: 16, color: '#666' },
   totalValue: { fontFamily: 'Lao-Bold', fontSize: 24 },
   totalInput: { fontFamily: 'Lao-Bold', fontSize: 24, borderBottomWidth: 1, borderBottomColor: '#ccc', minWidth: 100, textAlign: 'right' },
+
+  // 🟢 Received & Change Styles
+  receivedRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 15 },
+  receivedLabel: { fontSize: 14, color: '#666', fontFamily: 'Lao-Bold', marginBottom: 5 },
+  receivedInput: { backgroundColor: 'white', borderRadius: 10, borderWidth: 1, borderColor: '#ccc', padding: 10, fontSize: 18, fontFamily: 'Lao-Bold', textAlign: 'right' },
+  changeValue: { fontSize: 20, fontFamily: 'Lao-Bold', marginTop: 5 },
 
   methodRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   methodBtn: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#eee', backgroundColor: 'white' },

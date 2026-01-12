@@ -3,19 +3,19 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
@@ -72,19 +72,15 @@ export default function DebtScreen() {
             const item = data[key];
             const total = parseCurrency(item.originalAmount || item.totalAmount || item.amount);
             const remaining = parseCurrency(item.remainingBalance);
-            
             let paid = parseCurrency(item.paidAmount || item.paid);
             if (paid === 0 && total > 0 && item.remainingBalance !== undefined) {
                 paid = total - remaining;
             }
-
             return { 
-                id: key, 
-                ...item,
+                id: key, ...item,
                 title: item.name || item.title || 'ບໍ່ລະບຸຊື່',
                 category: item.category || 'ອື່ນໆ',
-                totalAmount: total,
-                paidAmount: paid,
+                totalAmount: total, paidAmount: paid,
                 interestRate: parseCurrency(item.interestRate),
                 monthlyPayment: parseCurrency(item.monthlyPayment),
                 dueDate: item.dueDate || new Date().toISOString()
@@ -103,21 +99,14 @@ export default function DebtScreen() {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນ');
       return;
     }
-
     const amountNum = parseCurrency(totalAmount);
-
     const debtData = {
-      name: title,
-      title: title,
-      category,
-      originalAmount: amountNum,
-      totalAmount: amountNum,
-      remainingBalance: amountNum,
-      paidAmount: 0,
+      name: title, title: title, category,
+      originalAmount: amountNum, totalAmount: amountNum,
+      remainingBalance: amountNum, paidAmount: 0,
       interestRate: parseCurrency(interestRate),
       monthlyPayment: parseCurrency(monthlyPayment),
-      dueDate: dueDate.toISOString(),
-      updatedAt: new Date().toISOString()
+      dueDate: dueDate.toISOString(), updatedAt: new Date().toISOString()
     };
 
     try {
@@ -125,12 +114,7 @@ export default function DebtScreen() {
           const oldDebt = debts.find(d => d.id === currentId);
           const oldPaid = oldDebt?.paidAmount || 0;
           const newRemaining = amountNum - oldPaid;
-          
-          await update(ref(db, `debts/${currentId}`), {
-              ...debtData,
-              remainingBalance: newRemaining,
-              paidAmount: oldPaid
-          });
+          await update(ref(db, `debts/${currentId}`), { ...debtData, remainingBalance: newRemaining, paidAmount: oldPaid });
           Alert.alert('ສຳເລັດ', 'ແກ້ໄຂຂໍ້ມູນຮຽບຮ້ອຍ');
       } else {
           await push(ref(db, 'debts'), { ...debtData, createdAt: new Date().toISOString() });
@@ -138,26 +122,19 @@ export default function DebtScreen() {
       }
       setModalVisible(false);
       resetForm();
-    } catch (error) {
-      Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້');
-    }
+    } catch (error) { Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້'); }
   };
 
   const openEditModal = (item: DebtItem) => {
-      setCurrentId(item.id);
-      setTitle(item.title);
-      setCategory(item.category);
-      setTotalAmount(item.totalAmount.toString());
-      setInterestRate(item.interestRate.toString());
-      setMonthlyPayment(item.monthlyPayment.toString());
-      setDueDate(new Date(item.dueDate));
+      setCurrentId(item.id); setTitle(item.title); setCategory(item.category);
+      setTotalAmount(item.totalAmount.toString()); setInterestRate(item.interestRate.toString());
+      setMonthlyPayment(item.monthlyPayment.toString()); setDueDate(new Date(item.dueDate));
       setModalVisible(true);
   };
 
   const handlePayment = async () => {
     if (!selectedDebt || !payAmount) return;
     const amount = parseCurrency(payAmount);
-    
     const currentDebt = debts.find(d => d.id === selectedDebt.id) || selectedDebt;
     const newPaidAmount = (currentDebt.paidAmount || 0) + amount;
     const newRemaining = currentDebt.totalAmount - newPaidAmount;
@@ -167,25 +144,12 @@ export default function DebtScreen() {
         return;
     }
 
-    const paymentRecord = {
-        amount,
-        date: paymentDate.toISOString(),
-        type: 'PAYMENT'
-    };
-
     try {
-        await update(ref(db, `debts/${currentDebt.id}`), { 
-            paidAmount: newPaidAmount,
-            remainingBalance: newRemaining
-        });
-        await push(ref(db, `debts/${currentDebt.id}/history`), paymentRecord);
-        setPaymentModalVisible(false);
-        setPayAmount('');
-        setPaymentDate(new Date());
+        await update(ref(db, `debts/${currentDebt.id}`), { paidAmount: newPaidAmount, remainingBalance: newRemaining });
+        await push(ref(db, `debts/${currentDebt.id}/history`), { amount, date: paymentDate.toISOString(), type: 'PAYMENT' });
+        setPaymentModalVisible(false); setPayAmount(''); setPaymentDate(new Date());
         Alert.alert('ສຳເລັດ', 'ບັນທຶກການຊຳລະຮຽບຮ້ອຍ');
-    } catch (error) {
-        Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ');
-    }
+    } catch (error) { Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ'); }
   };
 
   const handleDelete = (id: string) => {
@@ -196,20 +160,19 @@ export default function DebtScreen() {
   };
 
   const resetForm = () => {
-    setCurrentId(null);
-    setTitle('');
-    setCategory(DEBT_CATEGORIES[0]);
-    setTotalAmount('');
-    setInterestRate('');
-    setMonthlyPayment('');
-    setDueDate(new Date());
+    setCurrentId(null); setTitle(''); setCategory(DEBT_CATEGORIES[0]);
+    setTotalAmount(''); setInterestRate(''); setMonthlyPayment(''); setDueDate(new Date());
   };
 
-  // 🟢 ຟັງຊັນເປີດປະຕິທິນ (ສຳຄັນ: ຕ້ອງປິດ Keyboard ກ່ອນ)
-  const openDatePicker = (mode: 'due' | 'payment') => {
-      Keyboard.dismiss(); 
-      setDateMode(mode);
-      setShowDatePicker(true);
+  // 🟢 ຟັງຊັນເປີດ/ປິດ ປະຕິທິນ
+  const toggleDatePicker = (mode: 'due' | 'payment') => {
+    Keyboard.dismiss(); // ປິດແປ້ນພິມກ່ອນ
+    if (showDatePicker && dateMode === mode) {
+        setShowDatePicker(false); // ຖ້າເປີດຢູ່ແລ້ວ ໃຫ້ປິດ
+    } else {
+        setDateMode(mode);
+        setShowDatePicker(true); // ເປີດໃໝ່
+    }
   };
 
   const onDateChange = (event: any, date?: Date) => {
@@ -221,10 +184,9 @@ export default function DebtScreen() {
   };
 
   const openPaymentModal = (item: DebtItem) => {
-      setSelectedDebt(item);
-      setPayAmount('');
-      setPaymentDate(new Date());
+      setSelectedDebt(item); setPayAmount(''); setPaymentDate(new Date());
       setPaymentModalVisible(true);
+      setShowDatePicker(false); // Reset date picker state
   };
 
   const renderItem = ({ item }: { item: DebtItem }) => {
@@ -240,7 +202,6 @@ export default function DebtScreen() {
                     <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
                     <Text style={styles.categoryBadge}>{item.category}</Text>
                 </View>
-                
                 <View style={styles.headerActions}>
                     <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
                         <Ionicons name="pencil" size={18} color={COLORS.primary} />
@@ -250,12 +211,10 @@ export default function DebtScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
-
             <View style={styles.amountRow}>
                 <Text style={styles.label}>ຍອດກູ້ຢືມ:</Text>
                 <Text style={styles.amountTotal}>{formatNumber(item.totalAmount)} ກີບ</Text>
             </View>
-
             <View style={styles.progressContainer}>
                 <View style={[styles.progressBar, { width: `${Math.min(progress * 100, 100)}%` }]} />
             </View>
@@ -263,36 +222,16 @@ export default function DebtScreen() {
                 <Text style={styles.progressText}>ຊຳລະແລ້ວ ({Math.round(progress * 100)}%)</Text>
                 <Text style={styles.remainingText}>{formatNumber(remaining)} ກີບ</Text>
             </View>
-
             <View style={styles.divider} />
-
-            <View style={styles.detailsGrid}>
-                <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>ດອກເບ້ຍ (%)</Text>
-                    <Text style={styles.detailValue}>{item.interestRate}% / ປີ</Text>
-                </View>
-                <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>ຜ່ອນ/ເດືອນ</Text>
-                    <Text style={styles.detailValue}>{formatNumber(item.monthlyPayment)} ກີບ</Text>
-                </View>
-            </View>
-            
             <View style={styles.footerRow}>
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
                     <Ionicons name="calendar-outline" size={14} color="#666" />
                     <Text style={styles.dueDateText}>ກຳນົດຈ່າຍ: {formatDate(new Date(item.dueDate))}</Text>
                 </View>
-                
-                <View style={styles.actionButtons}>
-                    <TouchableOpacity style={styles.historyBtn}>
-                        <Ionicons name="time-outline" size={16} color="#555" />
-                        <Text style={styles.historyText}>ປະຫວັດ</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.payBtn} onPress={() => openPaymentModal(item)}>
-                        <Ionicons name="wallet-outline" size={16} color="white" />
-                        <Text style={styles.payBtnText}>ຊຳລະ</Text>
-                    </TouchableOpacity>
-                </View>
+                <TouchableOpacity style={styles.payBtn} onPress={() => openPaymentModal(item)}>
+                    <Ionicons name="wallet-outline" size={16} color="white" />
+                    <Text style={styles.payBtnText}>ຊຳລະ</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -339,11 +278,7 @@ export default function DebtScreen() {
                     <Text style={styles.inputLabel}>ໝວດໝູ່ *</Text>
                     <View style={styles.categoryRow}>
                         {DEBT_CATEGORIES.map((cat) => (
-                            <TouchableOpacity 
-                                key={cat} 
-                                style={[styles.catChip, category === cat && styles.activeCatChip]}
-                                onPress={() => setCategory(cat)}
-                            >
+                            <TouchableOpacity key={cat} style={[styles.catChip, category === cat && styles.activeCatChip]} onPress={() => setCategory(cat)}>
                                 <Text style={[styles.catText, category === cat && {color: 'white'}]}>{cat}</Text>
                             </TouchableOpacity>
                         ))}
@@ -364,12 +299,26 @@ export default function DebtScreen() {
                     </View>
 
                     <Text style={styles.inputLabel}>ກຳນົດຊຳລະ</Text>
-                    
-                    {/* 🟢 ໃຊ້ openDatePicker */}
-                    <TouchableOpacity style={styles.dateInput} onPress={() => openDatePicker('due')}>
+                    {/* 🟢 ປຸ່ມເລືອກວັນທີ (Edit Modal) */}
+                    <TouchableOpacity style={styles.dateInput} onPress={() => toggleDatePicker('due')}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(dueDate)}</Text>
                     </TouchableOpacity>
+
+                    {/* 🟢 DateTimePicker (Inline ສຳລັບ iOS, Dialog ສຳລັບ Android) */}
+                    {showDatePicker && dateMode === 'due' && (
+                        <View style={Platform.OS === 'ios' ? styles.iosPickerContainer : null}>
+                            <DateTimePicker 
+                                value={dueDate} 
+                                mode="date" 
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                onChange={onDateChange}
+                                style={{ height: 120, width: '100%' }} // ສຳລັບ iOS
+                                textColor="black"
+                                themeVariant="light"
+                            />
+                        </View>
+                    )}
 
                     <View style={styles.modalActions}>
                         <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
@@ -410,12 +359,26 @@ export default function DebtScreen() {
                     )}
 
                     <Text style={styles.inputLabel}>ວັນທີຊຳລະ *</Text>
-                    
-                    {/* 🟢 ໃຊ້ openDatePicker */}
-                    <TouchableOpacity style={styles.dateInput} onPress={() => openDatePicker('payment')}>
+                    {/* 🟢 ປຸ່ມເລືອກວັນທີ (Payment Modal) */}
+                    <TouchableOpacity style={styles.dateInput} onPress={() => toggleDatePicker('payment')}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(paymentDate)}</Text>
                     </TouchableOpacity>
+
+                    {/* 🟢 DateTimePicker (Inline ສຳລັບ iOS, Dialog ສຳລັບ Android) */}
+                    {showDatePicker && dateMode === 'payment' && (
+                        <View style={Platform.OS === 'ios' ? styles.iosPickerContainer : null}>
+                            <DateTimePicker 
+                                value={paymentDate} 
+                                mode="date" 
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                onChange={onDateChange}
+                                style={{ height: 120, width: '100%' }} // ສຳລັບ iOS
+                                textColor="black"
+                                themeVariant="light"
+                            />
+                        </View>
+                    )}
 
                     <Text style={styles.inputLabel}>ຈຳນວນເງິນຊຳລະ (ເງິນຕົ້ນ) *</Text>
                     <TextInput 
@@ -444,37 +407,6 @@ export default function DebtScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 🟢 iOS Date Picker (Fix Dark Mode + Overlay + Modal) */}
-      {showDatePicker && (
-        Platform.OS === 'ios' ? (
-            <Modal visible={true} transparent={true} animationType="fade" supportedOrientations={['portrait', 'landscape']}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.iosDatePickerContainer}>
-                        <DateTimePicker 
-                            value={dateMode === 'due' ? dueDate : paymentDate} 
-                            mode="date" 
-                            display="inline" 
-                            onChange={onDateChange} 
-                            style={{ height: 320, width: '100%', backgroundColor: 'white' }} 
-                            textColor="black" 
-                            themeVariant="light"
-                        />
-                        <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
-                            <Text style={styles.iosDateDoneText}>ຕົກລົງ</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-        ) : (
-            <DateTimePicker 
-              value={dateMode === 'due' ? dueDate : paymentDate} 
-              mode="date" 
-              display="default" 
-              onChange={onDateChange} 
-            />
-        )
-      )}
-
     </SafeAreaView>
   );
 }
@@ -486,16 +418,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text },
   headerSub: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
 
-  card: { 
-    backgroundColor: 'white', 
-    borderRadius: 8, 
-    marginBottom: 15, 
-    padding: 15, 
-    elevation: 2, 
-    borderTopWidth: 5, 
-    borderTopColor: COLORS.primary,
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 
-  },
+  card: { backgroundColor: 'white', borderRadius: 8, marginBottom: 15, padding: 15, elevation: 2, borderTopWidth: 5, borderTopColor: COLORS.primary },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 },
   cardTitle: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text, flex: 1 },
   categoryBadge: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#888', marginTop: 2 },
@@ -558,8 +481,5 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
 
-  // 🟢 iOS Date Picker Styles
-  iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
-  iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
-  iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 }
+  iosPickerContainer: { backgroundColor: '#fff', borderRadius: 10, marginTop: 5, overflow: 'hidden', padding: 0 }
 });

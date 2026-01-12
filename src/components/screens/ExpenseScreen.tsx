@@ -7,22 +7,22 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Keyboard,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Keyboard,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
-import CurrencyInput from '../ui/CurrencyInput'; // 🟢 Import Component ໃໝ່
+// 🟢 Import CurrencyInput ທີ່ສ້າງໃໝ່
+import CurrencyInput from '../ui/CurrencyInput';
 
-// ສີສົ້ມ (ໃຊ້ສະເພາະບາງຈຸດທີ່ຍັງຕ້ອງການ)
 const ORANGE_COLOR = '#F57C00';
 const ORANGE_BG = '#FFF3E0';
 
@@ -39,7 +39,7 @@ export default function ExpenseScreen() {
     const [loading, setLoading] = useState(true);
 
     const [id, setId] = useState<string | null>(null);
-    const [amount, setAmount] = useState(''); // 🟢 ເກັບຄ່າເປັນ String ຕົວເລກລ້ວນ (ບໍ່ມີຈຸດ)
+    const [amount, setAmount] = useState(''); // ເກັບເປັນ String ຕົວເລກລ້ວນ
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('ສັ່ງສິນຄ້າ'); 
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -126,8 +126,8 @@ export default function ExpenseScreen() {
             date: selectedDate.toISOString(),
             category,
             description,
-            // 🟢 ແປງ String ທີ່ມີຈຸດໃຫ້ເປັນ Number (ປ້ອງກັນໄວ້ກ່ອນ)
-            amount: parseFloat(amount.replace(/,/g, '')),
+            // 🟢 ແປງ String ເປັນ Number ກ່ອນບັນທຶກ
+            amount: parseFloat(amount),
             createdAt: new Date().toISOString()
         };
         try {
@@ -152,8 +152,7 @@ export default function ExpenseScreen() {
 
     const handleEdit = (item: ExpenseRecord) => {
         setId(item.id!);
-        // 🟢 ແປງ Number ເປັນ String ເພື່ອໄປສະແດງໃນ Input
-        setAmount(item.amount.toString());
+        setAmount(item.amount.toString()); // 🟢 ຕັ້ງຄ່າເປັນ String
         setDescription(item.description);
         setCategory(item.category);
         setSelectedDate(new Date(item.date));
@@ -172,7 +171,6 @@ export default function ExpenseScreen() {
         if (date) setSelectedDate(date);
     };
 
-    // 🟢 ສ່ວນ Header ທີ່ຈະຢູ່ໃນ List (ເພື່ອໃຫ້ເລື່ອນໄປພ້ອມກັນ)
     const renderListHeader = () => (
         <View>
             <View style={styles.formCard}>
@@ -206,8 +204,7 @@ export default function ExpenseScreen() {
 
                 <View style={styles.amountContainer}>
                     <Text style={[styles.currencyLabel, {color: ORANGE_COLOR}]}>₭</Text>
-                    
-                    {/* 🟢 ໃຊ້ CurrencyInput ຢ່າງຖືກຕ້ອງ: ສົ່ງຄ່າ amount ໂດຍກົງ */}
+                    {/* 🟢 ໃຊ້ CurrencyInput ແກ້ໄຂໃໝ່ */}
                     <CurrencyInput 
                         style={[styles.amountInput, {color: ORANGE_COLOR}]} 
                         placeholder="0" 
@@ -237,7 +234,6 @@ export default function ExpenseScreen() {
 
     return (
         <View style={styles.container}>
-            {/* FlatList ກວມເອົາທັງໝົດ */}
             <FlatList
                 data={expenses}
                 keyExtractor={item => item.id!}
@@ -268,7 +264,6 @@ export default function ExpenseScreen() {
                 )}
             />
 
-            {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
             {showDatePicker && (
                 Platform.OS === 'ios' ? (
                     <Modal visible={true} transparent={true} animationType="fade">

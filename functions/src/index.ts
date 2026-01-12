@@ -48,6 +48,7 @@ function calcCrc16(s: string): string {
 // --- Main Cloud Function ---
 
 export const generateOnePayQR = onCall(async (request) => {
+    // ດຶງຂໍ້ມູນຈາກ request.data (v2)
     const { amount, invoiceId } = request.data;
     const mcid = "mch6824249c116e4"; // ຂໍ້ມູນຂອງທ່ານ
     const merchantName = "SOUDAPHONE SOUKTHAVONE MR"; // ຂໍ້ມູນຂອງທ່ານ
@@ -68,7 +69,7 @@ export const generateOnePayQR = onCall(async (request) => {
 
         rawqr += makeMessageData("52", "5651");             // MCC ຂອງທ່ານ
         rawqr += makeMessageData("53", "418");              // Currency (LAK)
-        rawqr += makeMessageData("54", amount);            // Amount
+        rawqr += makeMessageData("54", amount);             // Amount
         rawqr += makeMessageData("58", "LA");               // Country
         rawqr += makeMessageData("59", merchantName);       // Merchant Name
         rawqr += makeMessageData("60", "VTE");              // City

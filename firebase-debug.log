@@ -32,3 +32,78 @@
 [info] 
 [info] i  deploying functions 
 [info] Running command: npm --prefix "$RESOURCE_DIR" run build
+[info] ✔  functions: Finished running predeploy script. 
+[debug] [2026-01-12T10:18:19.267Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:19.267Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:19.267Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa [none]
+[debug] [2026-01-12T10:18:19.479Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa 200
+[debug] [2026-01-12T10:18:19.479Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa {"projectNumber":"1085134944350","projectId":"studio-7834307833-10afa","lifecycleState":"ACTIVE","name":"Firebase app","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-01-02T18:28:37.946687Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-01-12T10:18:19.482Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:19.482Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:19.482Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/studio-7834307833-10afa/adminSdkConfig [none]
+[debug] [2026-01-12T10:18:19.750Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/studio-7834307833-10afa/adminSdkConfig 200
+[debug] [2026-01-12T10:18:19.750Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/studio-7834307833-10afa/adminSdkConfig {"projectId":"studio-7834307833-10afa","databaseURL":"https://studio-7834307833-10afa-default-rtdb.asia-southeast1.firebasedatabase.app","storageBucket":"studio-7834307833-10afa.firebasestorage.app"}
+[debug] [2026-01-12T10:18:19.751Z] Validating nodejs source
+[debug] [2026-01-12T10:18:20.363Z] > [functions] package.json contents: {
+  "name": "functions",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "24"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.4.1",
+    "typescript": "^5.7.3"
+  },
+  "private": true
+}
+[debug] [2026-01-12T10:18:20.363Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2026-01-12T10:18:20.365Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-01-12T10:18:20.369Z] Found firebase-functions binary at '/home/user/pos-app/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8344
+
+[debug] [2026-01-12T10:18:20.661Z] Got response from /__/functions.yaml {"endpoints":{"generateOnePayQR":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"generateOnePayQR"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[info] i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled... 
+[debug] [2026-01-12T10:18:24.686Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-01-12T10:18:24.686Z] > authorizing via signed-in user (keota.mar@gmail.com)
+[debug] [2026-01-12T10:18:24.686Z] [iam] checking project studio-7834307833-10afa for permissions ["firebase.projects.get","firebaseextensions.instances.list"]
+[debug] [2026-01-12T10:18:24.687Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:24.687Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:24.687Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions [none]
+[debug] [2026-01-12T10:18:24.687Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions x-goog-quota-user=projects/studio-7834307833-10afa
+[debug] [2026-01-12T10:18:24.687Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-01-12T10:18:25.429Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions 200
+[debug] [2026-01-12T10:18:25.429Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-01-12T10:18:25.430Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:25.430Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:25.430Z] >>> [apiv2][query] GET https://firebaseextensions.googleapis.com/v1beta/projects/studio-7834307833-10afa/instances pageSize=100&pageToken=
+[debug] [2026-01-12T10:18:26.381Z] <<< [apiv2][status] GET https://firebaseextensions.googleapis.com/v1beta/projects/studio-7834307833-10afa/instances 200
+[debug] [2026-01-12T10:18:26.381Z] <<< [apiv2][body] GET https://firebaseextensions.googleapis.com/v1beta/projects/studio-7834307833-10afa/instances {}
+[info] i  functions: preparing functions directory for uploading... 
+[info] i  functions: packaged /home/user/pos-app/functions (76.71 KB) for uploading 
+[debug] [2026-01-12T10:18:26.439Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:26.439Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:26.439Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/studio-7834307833-10afa/locations/-/functions [none]
+[debug] [2026-01-12T10:18:27.145Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/studio-7834307833-10afa/locations/-/functions 200
+[debug] [2026-01-12T10:18:27.146Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/studio-7834307833-10afa/locations/-/functions {}
+[debug] [2026-01-12T10:18:27.146Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:27.146Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:18:27.147Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/studio-7834307833-10afa/locations/-/functions filter=environment%3D%22GEN_2%22

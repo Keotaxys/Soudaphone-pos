@@ -3,18 +3,19 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
@@ -69,7 +70,6 @@ export default function DebtScreen() {
         
         const list = Object.keys(data).map(key => {
             const item = data[key];
-            
             const total = parseCurrency(item.originalAmount || item.totalAmount || item.amount);
             const remaining = parseCurrency(item.remainingBalance);
             
@@ -205,7 +205,13 @@ export default function DebtScreen() {
     setDueDate(new Date());
   };
 
-  // 🟢 ແກ້ໄຂ Date Change Handler
+  // 🟢 ຟັງຊັນເປີດປະຕິທິນ (ສຳຄັນ: ຕ້ອງປິດ Keyboard ກ່ອນ)
+  const openDatePicker = (mode: 'due' | 'payment') => {
+      Keyboard.dismiss(); 
+      setDateMode(mode);
+      setShowDatePicker(true);
+  };
+
   const onDateChange = (event: any, date?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
     if (date) {
@@ -358,8 +364,9 @@ export default function DebtScreen() {
                     </View>
 
                     <Text style={styles.inputLabel}>ກຳນົດຊຳລະ</Text>
-                    {/* 🟢 ເປີດ Date Picker ທັນທີ */}
-                    <TouchableOpacity style={styles.dateInput} onPress={() => { setDateMode('due'); setShowDatePicker(true); }}>
+                    
+                    {/* 🟢 ໃຊ້ openDatePicker */}
+                    <TouchableOpacity style={styles.dateInput} onPress={() => openDatePicker('due')}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(dueDate)}</Text>
                     </TouchableOpacity>
@@ -403,8 +410,9 @@ export default function DebtScreen() {
                     )}
 
                     <Text style={styles.inputLabel}>ວັນທີຊຳລະ *</Text>
-                    {/* 🟢 ເປີດ Date Picker ທັນທີ */}
-                    <TouchableOpacity style={styles.dateInput} onPress={() => { setDateMode('payment'); setShowDatePicker(true); }}>
+                    
+                    {/* 🟢 ໃຊ້ openDatePicker */}
+                    <TouchableOpacity style={styles.dateInput} onPress={() => openDatePicker('payment')}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(paymentDate)}</Text>
                     </TouchableOpacity>
@@ -436,10 +444,10 @@ export default function DebtScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
+      {/* 🟢 iOS Date Picker (Fix Dark Mode + Overlay + Modal) */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
-            <Modal visible={true} transparent={true} animationType="fade">
+            <Modal visible={true} transparent={true} animationType="fade" supportedOrientations={['portrait', 'landscape']}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.iosDatePickerContainer}>
                         <DateTimePicker 

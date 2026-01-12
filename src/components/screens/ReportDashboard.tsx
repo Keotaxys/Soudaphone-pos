@@ -11,6 +11,8 @@ import {
     Dimensions,
     FlatList,
     Image,
+    Modal,
+    Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -234,6 +236,13 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
 
   const keyExtractor = (item: any, index: number) => item.id ? item.id.toString() : index.toString();
 
+  // 🟢 Date Change Handler (ແກ້ໄຂ Dark Mode)
+  const onDateChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (date) setCurrentDate(date);
+  };
+
+  // 🟢 Dashboard Content (Overview)
   const DashboardContent = () => (
     <View>
         <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 15}}>
@@ -272,6 +281,7 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
     </View>
   );
 
+  // 🟢 Header Component (Filters & Tabs)
   const HeaderComponent = () => (
     <View>
         <View style={styles.header}>
@@ -387,7 +397,31 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
           />
       )}
 
-      {showDatePicker && (<DateTimePicker value={currentDate} mode="date" display="default" onChange={(e, d) => { setShowDatePicker(false); if(d) setCurrentDate(d); }} />)}
+      {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
+      {showDatePicker && (
+          Platform.OS === 'ios' ? (
+              <Modal visible={true} transparent={true} animationType="fade">
+                  <View style={styles.modalOverlay}>
+                      <View style={styles.iosDatePickerContainer}>
+                          <DateTimePicker 
+                              value={currentDate} 
+                              mode="date" 
+                              display="inline" 
+                              onChange={onDateChange} 
+                              style={{ height: 320, width: '100%', backgroundColor: 'white' }} 
+                              textColor="black" 
+                              themeVariant="light"
+                          />
+                          <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
+                              <Text style={styles.iosDateDoneText}>ຕົກລົງ</Text>
+                          </TouchableOpacity>
+                      </View>
+                  </View>
+              </Modal>
+          ) : (
+              <DateTimePicker value={currentDate} mode="date" display="default" onChange={onDateChange} />
+          )
+      )}
     </SafeAreaView>
   );
 }
@@ -456,5 +490,11 @@ const styles = StyleSheet.create({
   // 🟢 ເພີ່ມ styles ທີ່ຂາດໄປ
   prodNameText: { fontFamily: 'Lao-Bold', fontSize: 13, color: COLORS.text }, 
   prodSold: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#666' },
-  prodAmount: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.primary }
+  prodAmount: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.primary },
+
+  // 🟢 iOS Date Picker Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
+  iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
+  iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 }
 });

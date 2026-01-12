@@ -1,0 +1,39 @@
+[debug] [2026-01-12T09:45:04.878Z] ----------------------------------------------------------------------
+[debug] [2026-01-12T09:45:04.880Z] Command:       /nix/store/6ljnnmh7di4dyalyhb08jk6zvh05pk79-nodejs-20.19.5/bin/node /home/user/.global_modules/bin/firebase deploy --only functions
+[debug] [2026-01-12T09:45:04.880Z] CLI Version:   15.2.1
+[debug] [2026-01-12T09:45:04.881Z] Platform:      linux
+[debug] [2026-01-12T09:45:04.881Z] Node Version:  v20.19.5
+[debug] [2026-01-12T09:45:04.881Z] Time:          Mon Jan 12 2026 09:45:04 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-01-12T09:45:04.881Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-01-12T09:45:05.997Z] Checked if tokens are valid: false, expires at: 1768211912670
+[debug] [2026-01-12T09:45:05.997Z] Checked if tokens are valid: false, expires at: 1768211912670
+[debug] [2026-01-12T09:45:05.998Z] > refreshing access token with scopes: []
+[debug] [2026-01-12T09:45:06.000Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-01-12T09:45:06.000Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-01-12T09:45:06.071Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-01-12T09:45:06.072Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-01-12T09:45:06.081Z] >>> [apiv2][query] GET https://monospace-pa.googleapis.com/v1/workspaces/pos-app-91717833 [none]
+[debug] [2026-01-12T09:45:06.936Z] <<< [apiv2][status] GET https://monospace-pa.googleapis.com/v1/workspaces/pos-app-91717833 200
+[debug] [2026-01-12T09:45:06.937Z] <<< [apiv2][body] GET https://monospace-pa.googleapis.com/v1/workspaces/pos-app-91717833 {"workspaceId":"pos-app-91717833","name":"POS App","workspaceRedirectUrl":"firebase-pos-app-1767708895237.cluster-bg6uurscprhn6qxr6xwtrhvkf6.cloudworkstations.dev","status":"WORKSPACE_STATUS_RUNNING","lastAccessDatetime":"2026-01-12T09:23:34.149566Z","workspaceTemplate":"WORKSPACE_TEMPLATE_FLUTTER","owner":"SELF","serviceAccountEmail":"msp-1093350999001435185@monospace-per-ws-sa-9.iam.gserviceaccount.com","enableNix":true,"ownerEmail":"Keota.mar@gmail.com","workspaceImageUrl":"https://www.gstatic.com/monospace/231115/logo_react.svg","templateArgs":"{\"openIn\":\"go\"}","templateRepoUrl":"github:monogramdesign/idx-react-native","workstationAccessToken":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2Nsb3VkLmdvb2dsZS5jb20vd29ya3N0YXRpb25zIiwiYXVkIjoiZmlyZWJhc2UtcG9zLWFwcC0xNzY3NzA4ODk1MjM3LmNsdXN0ZXItYmc2dXVyc2NwcmhuNnF4cjZ4d3RyaHZrZjYuY2xvdWR3b3Jrc3RhdGlvbnMuZGV2IiwiaWF0IjoxNzY4MjExMTA2LCJleHAiOjE3NjgyOTc1MDZ9.He4iV-8VO5vtiSTeTd5HbQNKKuEc-BFBD7JbcKv_lRjcSS6_6o30Nlfn8okeAidAXyS6mB0aoaaTgd3VL-6L3pjLbpNlNEuv61NksWeqEmxjUU65JZ5eAMzAZwwLTrCd8itrGBsPZXVKG4bcGKxdair1_-muRw0z1atqnWB1B5_5uD5n7yEZmkiRouEstKK2dlyL6YO22bWbLdr3-hKtzvH1pmgqN-LtJ1fH4YpVJCLjT6i4VNpAcNckgtXIS07EFWRySbu7f_91x6-614rVPeWyU2yKx8LlArkzHZe_wkVFS9SnKBZUTBA-Tb0kondH8HCHbXcelUJPJcj6uCIvRA","firebaseProjectId":"studio-7834307833-10afa"}
+[debug] [2026-01-12T09:45:06.938Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-01-12T09:45:06.938Z] > authorizing via signed-in user (keota.mar@gmail.com)
+[debug] [2026-01-12T09:45:06.939Z] [iam] checking project studio-7834307833-10afa for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-01-12T09:45:06.939Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T09:45:06.939Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T09:45:06.939Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions [none]
+[debug] [2026-01-12T09:45:06.939Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions x-goog-quota-user=projects/studio-7834307833-10afa
+[debug] [2026-01-12T09:45:06.939Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-01-12T09:45:07.683Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions 200
+[debug] [2026-01-12T09:45:07.683Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-01-12T09:45:07.683Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T09:45:07.684Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T09:45:07.684Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/studio-7834307833-10afa/serviceAccounts/studio-7834307833-10afa@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-01-12T09:45:07.684Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/studio-7834307833-10afa/serviceAccounts/studio-7834307833-10afa@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-01-12T09:45:08.669Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/studio-7834307833-10afa/serviceAccounts/studio-7834307833-10afa@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-01-12T09:45:08.670Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/studio-7834307833-10afa/serviceAccounts/studio-7834307833-10afa@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'studio-7834307833-10afa'...
+[info] 
+[info] i  deploying functions 
+[info] Running command: npm --prefix "$RESOURCE_DIR" run build

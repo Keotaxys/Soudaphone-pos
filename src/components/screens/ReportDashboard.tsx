@@ -7,16 +7,16 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  FlatList,
-  Image,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Alert,
+    Dimensions,
+    FlatList,
+    Image,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
@@ -229,7 +229,6 @@ export default function ReportDashboard() {
   };
 
   const SummaryCard = ({ label, amount, color, icon, isProfit = false }: any) => {
-    // 🟢 ຖ້າເປັນກຳໄລ: ລົບ = ສີສົ້ມ, ບວກ = ສີທີ່ສົ່ງມາ (Teal)
     const displayColor = isProfit && amount < 0 ? '#F57C00' : color;
     return (
         <View style={[styles.card, { borderLeftColor: displayColor, borderLeftWidth: 5 }]}>
@@ -273,7 +272,7 @@ export default function ReportDashboard() {
         <View style={styles.chartBox}>
             <Text style={styles.chartTitle}>ປຽບທຽບ ລາຍຮັບ vs ລາຍຈ່າຍ</Text>
             
-            {/* ລາຍຮັບ (Income) */}
+            {/* Income */}
             <View style={styles.hChartRow}>
                 <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
                     <Text style={styles.chartLabel}>ລາຍຮັບ</Text>
@@ -284,7 +283,7 @@ export default function ReportDashboard() {
                 </View>
             </View>
 
-            {/* ລາຍຈ່າຍ (Expense) - ສີສົ້ມ */}
+            {/* Expense */}
             <View style={styles.hChartRow}>
                 <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
                     <Text style={styles.chartLabel}>ລາຍຈ່າຍ</Text>
@@ -300,100 +299,144 @@ export default function ReportDashboard() {
 
   const keyExtractor = (item: any, index: number) => item.id ? item.id.toString() : index.toString();
 
-  const renderContent = () => {
-      switch (activeTab) {
-          case 'overview':
-              const profit = totalRevenue - totalExpense;
-              return (
-                  <ScrollView showsVerticalScrollIndicator={false}>
-                      <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10}}>
-                        <View style={{width: '100%'}}>
-                            {/* 🟢 ກຳໄລ: ສົ່ງສີ Teal ໄປ (ຖ້າລົບມັນຈະປ່ຽນເປັນສົ້ມເອງ) */}
-                            <SummaryCard label="ກຳໄລສຸດທິ" amount={profit} color={COLORS.primary} icon="trending-up" isProfit={true} />
+  const DashboardContent = () => (
+    <View>
+        <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 15}}>
+            <View style={{width: '100%'}}>
+                <SummaryCard label="ກຳໄລສຸດທິ" amount={totalRevenue - totalExpense} color={COLORS.primary} icon="trending-up" isProfit={true} />
+            </View>
+            <View style={{flex: 1}}><SummaryCard label="ຍອດຂາຍລວມ" amount={totalRevenue} color={COLORS.primary} icon="cash" /></View>
+            <View style={{flex: 1}}><SummaryCard label="ລາຍຈ່າຍ" amount={totalExpense} color="#F57C00" icon="wallet" /></View>
+        </View>
+        
+        <HorizontalChart />
+
+        {topProducts.length > 0 && (
+            <View style={styles.topProductsCard}>
+                <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionHeader}>🏆 5 ອັນດັບສິນຄ້າຂາຍດີ</Text>
+                </View>
+                {topProducts.map((prod, index) => (
+                    <View key={index} style={styles.topProductRow}>
+                        <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
+                            <View style={[styles.rankBadge, index === 0 ? {backgroundColor: '#FFD700'} : index === 1 ? {backgroundColor: '#C0C0C0'} : index === 2 ? {backgroundColor: '#CD7F32'} : {}]}>
+                                <Text style={[styles.rankText, index < 3 ? {color: 'white'} : {}]}>{index + 1}</Text>
+                            </View>
+                            <Image source={prod.imageUrl ? { uri: prod.imageUrl } : { uri: 'https://via.placeholder.com/50' }} style={styles.prodImage} />
+                            <View style={{marginLeft: 10}}>
+                                <Text style={styles.prodName} numberOfLines={1}>{prod.name}</Text>
+                                <Text style={styles.prodSold}>ຂາຍອອກ: {prod.totalSold} ໜ່ວຍ</Text>
+                            </View>
                         </View>
-                        <View style={{flex: 1}}><SummaryCard label="ຍອດຂາຍລວມ" amount={totalRevenue} color={COLORS.primary} icon="cash" /></View>
-                        <View style={{flex: 1}}><SummaryCard label="ລາຍຈ່າຍ" amount={totalExpense} color="#F57C00" icon="wallet" /></View>
-                      </View>
-                      
-                      <HorizontalChart />
+                        <Text style={styles.prodAmount}>{formatNumber(prod.totalAmount)}</Text>
+                    </View>
+                ))}
+            </View>
+        )}
 
-                      {topProducts.length > 0 && (
-                          <View style={styles.topProductsCard}>
-                              <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionHeader}>🏆 5 ອັນດັບສິນຄ້າຂາຍດີ</Text>
-                              </View>
-                              {topProducts.map((prod, index) => (
-                                  <View key={index} style={styles.topProductRow}>
-                                      <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
-                                          <View style={[styles.rankBadge, index === 0 ? {backgroundColor: '#FFD700'} : index === 1 ? {backgroundColor: '#C0C0C0'} : index === 2 ? {backgroundColor: '#CD7F32'} : {}]}>
-                                            <Text style={[styles.rankText, index < 3 ? {color: 'white'} : {}]}>{index + 1}</Text>
-                                          </View>
-                                          <Image source={prod.imageUrl ? { uri: prod.imageUrl } : { uri: 'https://via.placeholder.com/50' }} style={styles.prodImage} />
-                                          <View style={{marginLeft: 10}}>
-                                              <Text style={styles.prodName} numberOfLines={1}>{prod.name}</Text>
-                                              <Text style={styles.prodSold}>ຂາຍອອກ: {prod.totalSold} ໜ່ວຍ</Text>
-                                          </View>
-                                      </View>
-                                      <Text style={styles.prodAmount}>{formatNumber(prod.totalAmount)}</Text>
-                                  </View>
-                              ))}
-                          </View>
-                      )}
+        <CategoryChart title="💰 ລາຍຮັບແຍກຕາມໝວດໝູ່" data={salesByCategory} color={COLORS.primary} />
+        <CategoryChart title="💸 ລາຍຈ່າຍແຍກຕາມໝວດໝູ່" data={expensesByCategory} color="#F57C00" />
 
-                      <CategoryChart title="💰 ລາຍຮັບແຍກຕາມໝວດໝູ່" data={salesByCategory} color={COLORS.primary} />
-                      <CategoryChart title="💸 ລາຍຈ່າຍແຍກຕາມໝວດໝູ່" data={expensesByCategory} color="#F57C00" />
+        <View style={styles.debtCard}>
+            <Text style={styles.debtTitle}>ສະຖານະໜີ້ສິນລວມ</Text>
+            <Text style={styles.debtAmount}>{formatNumber(totalDebt)} ₭</Text>
+            <Text style={styles.debtSub}>ທີ່ຍັງຄ້າງຊຳລະ</Text>
+        </View>
+    </View>
+  );
 
-                      <View style={styles.debtCard}>
-                          <Text style={styles.debtTitle}>ສະຖານະໜີ້ສິນລວມ</Text>
-                          <Text style={styles.debtAmount}>{formatNumber(totalDebt)} ₭</Text>
-                          <Text style={styles.debtSub}>ທີ່ຍັງຄ້າງຊຳລະ</Text>
-                      </View>
-                  </ScrollView>
-              );
-          case 'sales':
-              return (
-                  <FlatList 
-                    data={filteredSales}
-                    keyExtractor={keyExtractor}
-                    contentContainerStyle={{paddingBottom: 50}}
-                    renderItem={({item}) => (
-                        <View style={styles.listItem}>
+  const HeaderComponent = () => (
+    <View>
+        <View style={styles.header}>
+            <Text style={styles.headerTitle}>ລາຍງານ (Reports)</Text>
+            <View style={{flexDirection: 'row', gap: 5}}>
+                <TouchableOpacity style={[styles.exportBtn, {backgroundColor: COLORS.primary}]} onPress={generateExcel}>
+                    <Ionicons name="document-text-outline" size={16} color="white" />
+                    <Text style={styles.exportText}>Excel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.exportBtn} onPress={generatePDF}>
+                    <Ionicons name="print-outline" size={16} color="white" />
+                    <Text style={styles.exportText}>PDF</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+
+        <View style={styles.filterBar}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginRight: 10}}>
+                {['day', 'week', 'month', 'year'].map((t) => (
+                    <TouchableOpacity 
+                        key={t} 
+                        style={[styles.filterChip, filterType === t && styles.activeFilter]}
+                        onPress={() => setFilterType(t as FilterType)}
+                    >
+                        <Text style={[styles.filterText, filterType === t && {color: 'white'}]}>
+                            {t === 'day' ? 'ມື້' : t === 'week' ? 'ອາທິດ' : t === 'month' ? 'ເດືອນ' : 'ປີ'}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+            <View style={styles.dateNav}>
+                <TouchableOpacity onPress={() => handleNavigateDate('prev')}><Ionicons name="chevron-back" size={20} color="#666" /></TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowDatePicker(true)}><Text style={styles.dateLabel}>{formatDate(currentDate)}</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => handleNavigateDate('next')}><Ionicons name="chevron-forward" size={20} color="#666" /></TouchableOpacity>
+            </View>
+        </View>
+
+        <View style={styles.tabs}>
+            <TouchableOpacity style={[styles.tab, activeTab === 'overview' && styles.activeTab]} onPress={() => setActiveTab('overview')}><Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>ພາບລວມ</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, activeTab === 'sales' && styles.activeTab]} onPress={() => setActiveTab('sales')}><Text style={[styles.tabText, activeTab === 'sales' && styles.activeTabText]}>ການຂາຍ</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, activeTab === 'expenses' && styles.activeTab]} onPress={() => setActiveTab('expenses')}><Text style={[styles.tabText, activeTab === 'expenses' && styles.activeTabText]}>ລາຍຈ່າຍ</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, activeTab === 'debts' && styles.activeTab]} onPress={() => setActiveTab('debts')}><Text style={[styles.tabText, activeTab === 'debts' && styles.activeTabText]}>ໜີ້ສິນ</Text></TouchableOpacity>
+        </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {activeTab === 'overview' ? (
+          <FlatList
+            data={[]} 
+            renderItem={null}
+            ListHeaderComponent={
+                <>
+                    <HeaderComponent />
+                    <View style={styles.content}>
+                        <DashboardContent />
+                    </View>
+                </>
+            }
+            contentContainerStyle={{paddingBottom: 50}}
+          />
+      ) : (
+          <FlatList 
+            data={activeTab === 'sales' ? filteredSales : activeTab === 'expenses' ? filteredExpenses : debts}
+            keyExtractor={keyExtractor}
+            ListHeaderComponent={<HeaderComponent />}
+            contentContainerStyle={{paddingBottom: 50}}
+            renderItem={({item}) => {
+                if (activeTab === 'sales') {
+                    return (
+                        <View style={[styles.listItem, { marginHorizontal: 15 }]}>
                             <View>
                                 <Text style={styles.listTitle}>ບິນ #{item.id ? item.id.slice(-4) : '-'}</Text>
                                 <Text style={styles.listSub}>{new Date(item.date).toLocaleString('lo-LA')}</Text>
                             </View>
                             <Text style={styles.listAmount}>+{formatNumber(parseCurrency(item.total))}</Text>
                         </View>
-                    )}
-                    ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນການຂາຍ</Text>}
-                  />
-              );
-          case 'expenses':
-              return (
-                <FlatList 
-                    data={filteredExpenses}
-                    keyExtractor={keyExtractor}
-                    contentContainerStyle={{paddingBottom: 50}}
-                    renderItem={({item}) => (
-                        <View style={styles.listItem}>
+                    );
+                } else if (activeTab === 'expenses') {
+                    return (
+                        <View style={[styles.listItem, { marginHorizontal: 15 }]}>
                             <View>
                                 <Text style={styles.listTitle}>{item.category}</Text>
                                 <Text style={styles.listSub}>{item.note || 'ບໍ່ມີໝາຍເຫດ'}</Text>
                             </View>
                             <Text style={[styles.listAmount, {color: '#F57C00'}]}>-{formatNumber(parseCurrency(item.amount))}</Text>
                         </View>
-                    )}
-                    ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນລາຍຈ່າຍ</Text>}
-                  />
-              );
-          case 'debts':
-              return (
-                <FlatList 
-                    data={debts}
-                    keyExtractor={keyExtractor}
-                    contentContainerStyle={{paddingBottom: 50}}
-                    renderItem={({item}) => (
-                        <View style={styles.listItem}>
+                    );
+                } else {
+                    return (
+                        <View style={[styles.listItem, { marginHorizontal: 15 }]}>
                             <View>
                                 <Text style={styles.listTitle}>{item.title}</Text>
                                 <Text style={styles.listSub}>ກຳນົດ: {formatDate(new Date(item.dueDate))}</Text>
@@ -403,60 +446,12 @@ export default function ReportDashboard() {
                                 <Text style={{fontSize: 10, color: '#999'}}>ຍັງເຫຼືອ</Text>
                             </View>
                         </View>
-                    )}
-                    ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີໜີ້ສິນ</Text>}
-                  />
-              );
-      }
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>ລາຍງານ (Reports)</Text>
-        <View style={{flexDirection: 'row', gap: 5}}>
-            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: COLORS.primary}]} onPress={generateExcel}>
-                <Ionicons name="document-text-outline" size={16} color="white" />
-                <Text style={styles.exportText}>Excel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.exportBtn} onPress={generatePDF}>
-                <Ionicons name="print-outline" size={16} color="white" />
-                <Text style={styles.exportText}>PDF</Text>
-            </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.filterBar}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginRight: 10}}>
-            {['day', 'week', 'month', 'year'].map((t) => (
-                <TouchableOpacity 
-                    key={t} 
-                    style={[styles.filterChip, filterType === t && styles.activeFilter]}
-                    onPress={() => setFilterType(t as FilterType)}
-                >
-                    <Text style={[styles.filterText, filterType === t && {color: 'white'}]}>
-                        {t === 'day' ? 'ມື້' : t === 'week' ? 'ອາທິດ' : t === 'month' ? 'ເດືອນ' : 'ປີ'}
-                    </Text>
-                </TouchableOpacity>
-            ))}
-        </ScrollView>
-        <View style={styles.dateNav}>
-            <TouchableOpacity onPress={() => handleNavigateDate('prev')}><Ionicons name="chevron-back" size={20} color="#666" /></TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowDatePicker(true)}><Text style={styles.dateLabel}>{formatDate(currentDate)}</Text></TouchableOpacity>
-            <TouchableOpacity onPress={() => handleNavigateDate('next')}><Ionicons name="chevron-forward" size={20} color="#666" /></TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.tabs}>
-          <TouchableOpacity style={[styles.tab, activeTab === 'overview' && styles.activeTab]} onPress={() => setActiveTab('overview')}><Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>ພາບລວມ</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.tab, activeTab === 'sales' && styles.activeTab]} onPress={() => setActiveTab('sales')}><Text style={[styles.tabText, activeTab === 'sales' && styles.activeTabText]}>ການຂາຍ</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.tab, activeTab === 'expenses' && styles.activeTab]} onPress={() => setActiveTab('expenses')}><Text style={[styles.tabText, activeTab === 'expenses' && styles.activeTabText]}>ລາຍຈ່າຍ</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.tab, activeTab === 'debts' && styles.activeTab]} onPress={() => setActiveTab('debts')}><Text style={[styles.tabText, activeTab === 'debts' && styles.activeTabText]}>ໜີ້ສິນ</Text></TouchableOpacity>
-      </View>
-
-      <View style={styles.content}>
-          {renderContent()}
-      </View>
+                    );
+                }
+            }}
+            ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນ</Text>}
+          />
+      )}
 
       {showDatePicker && (<DateTimePicker value={currentDate} mode="date" display="default" onChange={(e, d) => { setShowDatePicker(false); if(d) setCurrentDate(d); }} />)}
     </SafeAreaView>

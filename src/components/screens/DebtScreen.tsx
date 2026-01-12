@@ -361,6 +361,7 @@ export default function DebtScreen() {
                     </View>
 
                     <Text style={styles.inputLabel}>ກຳນົດຊຳລະ</Text>
+                    {/* 🟢 ເປີດ Modal ປະຕິທິນທັນທີທີ່ກົດ */}
                     <TouchableOpacity style={styles.dateInput} onPress={() => { setDateMode('due'); setShowDatePicker(true); }}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(dueDate)}</Text>
@@ -405,6 +406,7 @@ export default function DebtScreen() {
                     )}
 
                     <Text style={styles.inputLabel}>ວັນທີຊຳລະ *</Text>
+                    {/* 🟢 ເປີດ Modal ປະຕິທິນທັນທີທີ່ກົດ */}
                     <TouchableOpacity style={styles.dateInput} onPress={() => { setDateMode('payment'); setShowDatePicker(true); }}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(paymentDate)}</Text>

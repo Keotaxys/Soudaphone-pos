@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-import { getAuth } from 'firebase/auth'; // 🟢 1. ຢ່າລືມ Import ອັນນີ້
+// 🟢 ປ່ຽນການ Import ຈາກ getAuth ເປັນ initializeAuth
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",
@@ -18,5 +20,8 @@ export const app = initializeApp(firebaseConfig);
 // Initialize Realtime Database
 export const db = getDatabase(app);
 
-// 🟢 2. Initialize Auth ແລະ Export ອອກໄປ (ສຳຄັນສຳລັບໜ້າ Login)
-export const auth = getAuth(app);
+// 🟢 ແກ້ໄຂການ Initialize Auth ໃຫ້ຮອງຮັບ AsyncStorage
+// ວິທີນີ້ຈະເຮັດໃຫ້ສະຖານະ Login ບໍ່ຫຼຸດ ເວລາປິດແອັບ
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});

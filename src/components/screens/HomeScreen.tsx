@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
   FlatList,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -151,6 +154,17 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
     return formatDate(start); 
   };
 
+  // 🟢 ຟັງຊັນຈັດການເລືອກວັນທີ (ແກ້ໄຂບັນຫາ Dark Mode)
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+        setShowDatePicker(false);
+    }
+    if (selectedDate) {
+        if (pickerMode === 'start') setCustomStart(selectedDate);
+        else setCustomEnd(selectedDate);
+    }
+  };
+
   const profit = filteredTotal - filteredExpenses;
 
   return (
@@ -158,11 +172,22 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
       <View style={styles.filterSection}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterTabs}>
           {['day', 'week', 'month', 'year', 'custom'].map((type) => (
-            <TouchableOpacity key={type} style={[styles.filterTab, filterType === type && styles.activeTab]} onPress={() => { setFilterType(type as FilterType); if (type === 'custom') setShowCustomPicker(true); }}>
-              <Text style={[styles.filterText, filterType === type && styles.activeText]}>{type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}</Text>
+            <TouchableOpacity 
+                key={type} 
+                style={[styles.filterTab, filterType === type && styles.activeTab]} 
+                onPress={() => { 
+                    setFilterType(type as FilterType); 
+                    // 🟢 ເປີດ Modal ທັນທີເມື່ອກົດ "custom"
+                    if (type === 'custom') setShowCustomPicker(true); 
+                }}
+            >
+              <Text style={[styles.filterText, filterType === type && styles.activeText]}>
+                  {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
+
         {filterType !== 'custom' ? (
           <View style={styles.navRow}>
             <TouchableOpacity onPress={() => handleNavigateDate('prev')} style={styles.navBtn}><Ionicons name="chevron-back" size={24} color={COLORS.primary} /></TouchableOpacity>
@@ -232,7 +257,60 @@ export default function HomeScreen({ salesHistory, products }: HomeScreenProps) 
         )) : <Text style={styles.noDataText}>ບໍ່ມີຂໍ້ມູນ</Text>}
       </View>
 
-      {/* DatePicker & Modal omitted for brevity, logic remains same */}
+      {/* 🟢 Modal ເລືອກວັນທີ (Custom Picker) */}
+      <Modal visible={showCustomPicker} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+            <View style={styles.pickerContainer}>
+                <Text style={styles.pickerTitle}>ເລືອກຊ່ວງວັນທີ</Text>
+                
+                <View style={styles.pickerRow}>
+                    <TouchableOpacity 
+                        style={[styles.dateInput, pickerMode === 'start' && showDatePicker && styles.activeDateInput]} 
+                        onPress={() => { setPickerMode('start'); setShowDatePicker(true); }}
+                    >
+                        <Text style={styles.pickerLabel}>ເລີ່ມຕົ້ນ</Text>
+                        <Text style={styles.pickerValue}>{formatDate(customStart)}</Text>
+                    </TouchableOpacity>
+                    
+                    <Ionicons name="arrow-forward" size={20} color="#ccc" />
+                    
+                    <TouchableOpacity 
+                        style={[styles.dateInput, pickerMode === 'end' && showDatePicker && styles.activeDateInput]} 
+                        onPress={() => { setPickerMode('end'); setShowDatePicker(true); }}
+                    >
+                        <Text style={styles.pickerLabel}>ສິ້ນສຸດ</Text>
+                        <Text style={styles.pickerValue}>{formatDate(customEnd)}</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {showDatePicker && (
+                    <View style={{width: '100%', alignItems: 'center', marginVertical: 10, backgroundColor: 'white', borderRadius: 10}}>
+                        <DateTimePicker 
+                            value={pickerMode === 'start' ? customStart : customEnd} 
+                            mode="date" 
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'} 
+                            onChange={onDateChange}
+                            style={{height: 120, width: '100%', backgroundColor: 'white'}} // 🟢 ແກ້ Dark Mode ໃຫ້ພື້ນຫຼັງຂາວ
+                            textColor="black" // 🟢 ບັງຄັບຕົວໜັງສືດຳ
+                            themeVariant="light" // 🟢 ບັງຄັບ Light Theme (iOS 13+)
+                        />
+                        {Platform.OS === 'ios' && (
+                            <TouchableOpacity style={styles.iosDoneBtn} onPress={() => setShowDatePicker(false)}>
+                                <Text style={styles.iosDoneText}>ຕົກລົງ</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
+                
+                {!showDatePicker && (
+                    <TouchableOpacity style={styles.confirmBtn} onPress={() => setShowCustomPicker(false)}>
+                        <Text style={styles.confirmText}>ຢືນຢັນການເລືອກ</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+        </View>
+      </Modal>
+
     </ScrollView>
   );
 }
@@ -271,4 +349,18 @@ const styles = StyleSheet.create({
   progressBarBg: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
   progressBarFill: { height: '100%', borderRadius: 4 },
   noDataText: { textAlign: 'center', color: '#ccc', fontFamily: 'Lao-Regular', padding: 20 },
+  
+  // 🟢 Modal Picker Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  pickerContainer: { width: '85%', backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 5 },
+  pickerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, textAlign: 'center', marginBottom: 20 },
+  pickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  dateInput: { flex: 1, alignItems: 'center', padding: 12, backgroundColor: '#f0f0f0', borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
+  activeDateInput: { borderColor: COLORS.primary, backgroundColor: '#E0F2F1' },
+  pickerLabel: { fontSize: 12, color: '#888' },
+  pickerValue: { fontFamily: 'Lao-Bold', color: COLORS.primary, marginTop: 5, fontSize: 16 },
+  confirmBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
+  confirmText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
+  iosDoneBtn: { marginTop: 5, padding: 5 },
+  iosDoneText: { color: COLORS.primary, fontFamily: 'Lao-Bold' }
 });

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { printAsync } from 'expo-print'; // 🟢 Import Print
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
@@ -56,6 +57,10 @@ export default function POSScreen({
   const [customTotal, setCustomTotal] = useState<string>('');
   const [isEditingTotal, setIsEditingTotal] = useState(false);
 
+  // 🟢 Success & Print States
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastOrder, setLastOrder] = useState<any>(null);
+
   const categories = ['ທັງໝົດ', ...Array.from(new Set(products.map(p => p.category || 'ອື່ນໆ')))];
 
   const filteredProducts = products.filter(p => {
@@ -97,7 +102,9 @@ export default function POSScreen({
 
   const handleCheckout = () => {
       const finalAmountLAK = paymentCurrency === 'LAK' ? finalTotal : Math.ceil(finalTotal * currentRate);
-      onCheckout({
+      
+      const orderDetails = {
+          items: [...cart], // Copy cart
           paymentMethod,
           amountReceived: finalAmountLAK, 
           change: 0,
@@ -106,9 +113,77 @@ export default function POSScreen({
           currency: paymentCurrency,
           totalPaid: finalTotal,
           baseTotalLAK: finalAmountLAK
-      });
+      };
+
+      // 🟢 1. ບັນທຶກລົງ Firebase
+      onCheckout(orderDetails);
+
+      // 🟢 2. ເກັບຂໍ້ມູນໄວ້ເພື່ອພິມ ແລະ ສະແດງ Modal
+      setLastOrder(orderDetails);
       setCartModalVisible(false);
       setCustomTotal('');
+      
+      // 🟢 3. ເປີດ Modal ຖາມພິມໃບບິນ
+      setTimeout(() => setShowSuccessModal(true), 500); 
+  };
+
+  // 🟢 ຟັງຊັນສ້າງ HTML ສຳລັບພິມໃບບິນ
+  const printReceipt = async () => {
+    if (!lastOrder) return;
+
+    const html = `
+      <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica', sans-serif; font-size: 12px; }
+            .header { text-align: center; margin-bottom: 10px; }
+            .title { font-size: 18px; font-weight: bold; }
+            .line { border-bottom: 1px dashed #000; margin: 5px 0; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+            .total { font-weight: bold; font-size: 14px; margin-top: 5px; }
+            .footer { text-align: center; margin-top: 10px; font-size: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">ຮ້ານ ສຸດາພອນ</div>
+            <div>ເສື້ອຜ້າເດັກນ້ອຍ</div>
+            <div>ໂທ: 020 9999 8888</div>
+            <div>ວັນທີ: ${new Date(lastOrder.date).toLocaleString('lo-LA')}</div>
+          </div>
+          <div class="line"></div>
+          
+          ${lastOrder.items.map((item: any) => `
+            <div class="row">
+              <div style="flex: 2;">${item.name}</div>
+              <div style="flex: 1; text-align: right;">x${item.quantity}</div>
+              <div style="flex: 1; text-align: right;">${formatNumber(item.price)}</div>
+            </div>
+          `).join('')}
+          
+          <div class="line"></div>
+          <div class="row total">
+            <div>ລວມທັງໝົດ:</div>
+            <div>${formatNumber(lastOrder.totalPaid)} ${lastOrder.currency === 'LAK' ? '₭' : '฿'}</div>
+          </div>
+          <div class="row">
+            <div>ຊຳລະໂດຍ:</div>
+            <div>${lastOrder.paymentMethod}</div>
+          </div>
+          
+          <div class="footer">
+            ຂອບໃຈທີ່ອຸດໜູນ<br/>Thank You
+          </div>
+        </body>
+      </html>
+    `;
+
+    try {
+        await printAsync({ html });
+        setShowSuccessModal(false); // ປິດ Modal ຫຼັງຈາກກົດພິມ
+    } catch (error) {
+        // Handle error if needed
+    }
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
@@ -117,10 +192,8 @@ export default function POSScreen({
       setCheckoutDate(currentDate);
   };
 
-  // 🟢 Header Component (Search + Actions + Filter)
   const ListHeader = () => (
     <View style={styles.headerContainer}>
-        {/* Search Bar */}
         <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#999" />
             <TextInput
@@ -136,7 +209,6 @@ export default function POSScreen({
             )}
         </View>
 
-        {/* Action Buttons */}
         <View style={styles.actionRow}>
             <TouchableOpacity style={styles.scanBtn} onPress={openScanner}>
                 <Ionicons name="barcode-outline" size={24} color="white" />
@@ -148,7 +220,6 @@ export default function POSScreen({
             </TouchableOpacity>
         </View>
 
-        {/* Category Filter Chips */}
         <View style={styles.categoryContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal: 10}}>
                 {categories.map((cat, index) => (
@@ -176,12 +247,10 @@ export default function POSScreen({
   return (
     <View style={styles.container}>
       
-      {/* 🟢 FlatList with Header */}
       <FlatList
         data={filteredProducts}
         keyExtractor={item => item.id!}
         numColumns={2}
-        // 🟢 ເອົາ Header ມາໃສ່ໃນນີ້ເພື່ອໃຫ້ມັນ Scroll ໄປພ້ອມກັນ
         ListHeaderComponent={ListHeader} 
         contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={
@@ -222,7 +291,6 @@ export default function POSScreen({
         )}
       />
 
-      {/* Floating Cart Button */}
       {totalItems > 0 && (
           <TouchableOpacity style={styles.cartFloat} onPress={() => setCartModalVisible(true)}>
               <View style={styles.cartIconBadge}>
@@ -386,13 +454,37 @@ export default function POSScreen({
           )}
       </Modal>
 
+      {/* 🟢 Success & Print Modal */}
+      <Modal visible={showSuccessModal} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+            <View style={styles.successCard}>
+                <View style={styles.successIcon}>
+                    <Ionicons name="checkmark-circle" size={60} color={COLORS.success} />
+                </View>
+                <Text style={styles.successTitle}>ຂາຍສຳເລັດ!</Text>
+                <Text style={styles.successSub}>ບັນທຶກຂໍ້ມູນການຂາຍຮຽບຮ້ອຍແລ້ວ</Text>
+                
+                <View style={{marginTop: 20, width: '100%', gap: 10}}>
+                    <TouchableOpacity style={styles.printBtn} onPress={printReceipt}>
+                        <Ionicons name="print-outline" size={20} color="white" />
+                        <Text style={styles.printBtnText}>ພິມໃບບິນ</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={styles.closeBtn} onPress={() => setShowSuccessModal(false)}>
+                        <Text style={styles.closeBtnText}>ປິດ</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerContainer: { backgroundColor: COLORS.background, paddingBottom: 5 }, // 🟢 Header Wrapper
+  headerContainer: { backgroundColor: COLORS.background, paddingBottom: 5 },
   
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', margin: 10, paddingHorizontal: 15, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#eee' },
   searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 16 },
@@ -469,5 +561,15 @@ const styles = StyleSheet.create({
   iosDatePickerOverlay: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, shadowColor: '#000', shadowOffset: {width: 0, height: -2}, shadowOpacity: 0.2, shadowRadius: 5 },
   iosDatePickerContent: { alignItems: 'center' },
   iosDateDoneBtn: { padding: 15, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
-  iosDateDoneText: { color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 18 }
+  iosDateDoneText: { color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 18 },
+
+  // 🟢 Success Modal Styles
+  successCard: { backgroundColor: 'white', width: '80%', padding: 20, borderRadius: 20, alignItems: 'center', elevation: 5 },
+  successIcon: { marginBottom: 10 },
+  successTitle: { fontSize: 22, fontFamily: 'Lao-Bold', color: COLORS.success, marginBottom: 5 },
+  successSub: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#666', marginBottom: 20 },
+  printBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, padding: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center', width: '100%' },
+  printBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 5 },
+  closeBtn: { padding: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center', width: '100%', backgroundColor: '#f0f0f0' },
+  closeBtnText: { color: '#666', fontFamily: 'Lao-Bold', fontSize: 16 }
 });

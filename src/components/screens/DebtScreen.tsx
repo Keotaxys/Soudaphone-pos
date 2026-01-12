@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
+import CurrencyInput from '../ui/CurrencyInput'; // 🟢 Import Component ໃໝ່
 
 const DEBT_CATEGORIES = ['ເງິນກູ້', 'ບັດເຄດິດ', 'ຢືມເພື່ອນ', 'ຜ່ອນສິນຄ້າ', 'ອື່ນໆ'];
 const ORANGE_COLOR = '#F57C00';
@@ -33,7 +34,7 @@ interface DebtItem {
   monthlyPayment: number;
   dueDate: string;
   history?: Record<string, any>;
-  [key: string]: any; // Allow indexing for flat structure check
+  [key: string]: any; 
 }
 
 export default function DebtScreen() {
@@ -87,7 +88,7 @@ export default function DebtScreen() {
 
             return { 
                 id: key, 
-                ...item, // ເອົາຂໍ້ມູນທັງໝົດມາ (ລວມທັງປະຫວັດແບບ Flat)
+                ...item, 
                 title: item.name || item.title || 'ບໍ່ລະບຸຊື່',
                 category: item.category || 'ອື່ນໆ',
                 totalAmount: total,
@@ -104,6 +105,23 @@ export default function DebtScreen() {
     });
     return () => unsubscribe();
   }, []);
+
+  // 2. ອັບເດດປະຫວັດ
+  useEffect(() => {
+    if (selectedDebt && historyModalVisible) {
+        const currentDebt = debts.find(d => d.id === selectedDebt.id);
+        if (currentDebt && currentDebt.history) {
+            const list = Object.keys(currentDebt.history).map(key => ({
+                id: key,
+                ...currentDebt.history![key]
+            }));
+            list.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setHistoryList(list);
+        } else {
+            setHistoryList([]);
+        }
+    }
+  }, [debts, selectedDebt, historyModalVisible]);
 
   const handleSaveDebt = async () => {
     if (!title || !totalAmount) {
@@ -185,7 +203,6 @@ export default function DebtScreen() {
             paidAmount: newPaidAmount,
             remainingBalance: newRemaining
         });
-        // 🟢 Push ລົງ history (ຮອງຮັບໂຄງສ້າງໃໝ່)
         await push(ref(db, `debts/${currentDebt.id}/history`), paymentRecord);
         
         setPaymentModalVisible(false);
@@ -234,35 +251,18 @@ export default function DebtScreen() {
       setShowDatePicker(false);
   };
 
-  // 🟢 ຟັງຊັນເປີດປະຫວັດ (ແກ້ໄຂໃຫ້ດຶງຂໍ້ມູນໄດ້ທຸກຮູບແບບ)
   const openHistoryModal = (item: DebtItem) => {
       setSelectedDebt(item);
-      const list: any[] = [];
-
-      // 1. ກວດສອບແບບມີໂຟນເດີ history (ໂຄງສ້າງໃໝ່)
       if (item.history) {
-          Object.keys(item.history).forEach(key => {
-              if (typeof item.history![key] === 'object') {
-                  list.push({ id: key, ...item.history![key] });
-              }
-          });
+          const list = Object.keys(item.history).map(key => ({
+              id: key,
+              ...item.history![key]
+          }));
+          list.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          setHistoryList(list);
+      } else {
+          setHistoryList([]);
       }
-
-      // 2. ກວດສອບແບບ Flat Structure (ໂຄງສ້າງເກົ່າທີ່ທ່ານມີ)
-      // ວົນລູບທຸກ Key ໃນ item ເພື່ອຊອກຫາ Object ທີ່ມີ date
-      Object.keys(item).forEach(key => {
-          if (key === 'history' || key === 'id') return; // ຂ້າມ key ທີ່ຮູ້ຈັກ
-          
-          const val = item[key];
-          // ຖ້າເປັນ Object ແລະ ມີວັນທີ (date) => ຖືວ່າເປັນປະຫວັດ
-          if (val && typeof val === 'object' && val.date && (val.amount || val.total || val.principal)) {
-              list.push({ id: key, ...val });
-          }
-      });
-
-      // ລຽງວັນທີລ່າສຸດຂຶ້ນກ່ອນ
-      list.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setHistoryList(list);
       setHistoryModalVisible(true);
   };
 
@@ -380,7 +380,13 @@ export default function DebtScreen() {
                     </View>
 
                     <Text style={styles.inputLabel}>ຈຳນວນເງິນຕົ້ນ *</Text>
-                    <TextInput style={styles.input} value={totalAmount} onChangeText={setTotalAmount} keyboardType="numeric" placeholder="0" />
+                    {/* 🟢 ໃຊ້ CurrencyInput */}
+                    <CurrencyInput 
+                        style={styles.input} 
+                        value={totalAmount} 
+                        onChangeValue={setTotalAmount} 
+                        placeholder="0" 
+                    />
 
                     <View style={{flexDirection: 'row', gap: 10}}>
                         <View style={{flex: 1}}>
@@ -389,7 +395,13 @@ export default function DebtScreen() {
                         </View>
                         <View style={{flex: 1}}>
                             <Text style={styles.inputLabel}>ຜ່ອນ/ເດືອນ</Text>
-                            <TextInput style={styles.input} value={monthlyPayment} onChangeText={setMonthlyPayment} keyboardType="numeric" placeholder="0" />
+                            {/* 🟢 ໃຊ້ CurrencyInput */}
+                            <CurrencyInput 
+                                style={styles.input} 
+                                value={monthlyPayment} 
+                                onChangeValue={setMonthlyPayment} 
+                                placeholder="0" 
+                            />
                         </View>
                     </View>
 
@@ -444,11 +456,11 @@ export default function DebtScreen() {
                     </TouchableOpacity>
 
                     <Text style={styles.inputLabel}>ຈຳນວນເງິນຊຳລະ (ເງິນຕົ້ນ) *</Text>
-                    <TextInput 
+                    {/* 🟢 ໃຊ້ CurrencyInput */}
+                    <CurrencyInput 
                         style={[styles.inputLarge, { color: COLORS.primary }]} 
                         value={payAmount} 
-                        onChangeText={(t) => setPayAmount(formatNumber(t.replace(/,/g, '')))} 
-                        keyboardType="numeric" 
+                        onChangeValue={setPayAmount} 
                         placeholder="0" 
                     />
 
@@ -470,7 +482,7 @@ export default function DebtScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 🟢 History Modal */}
+      {/* History Modal */}
       <Modal visible={historyModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -505,7 +517,6 @@ export default function DebtScreen() {
                                     {item.interest > 0 ? `ດອກເບ້ຍ: ${formatNumber(item.interest)}` : 'ຊຳລະເງິນຕົ້ນ'}
                                 </Text>
                             </View>
-                            {/* 🟢 ຮອງຮັບທັງ amount, total, principal */}
                             <Text style={styles.historyAmount}>
                                 + {formatNumber(item.amount || item.total || item.principal)}
                             </Text>
@@ -516,7 +527,7 @@ export default function DebtScreen() {
         </View>
       </Modal>
 
-      {/* Date Picker Modal (Fix Dark Mode + Overlay) */}
+      {/* iOS Date Picker Modal */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
             <Modal visible={true} transparent={true} animationType="fade">

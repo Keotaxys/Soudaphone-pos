@@ -3,18 +3,18 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
@@ -61,7 +61,6 @@ export default function DebtScreen() {
       return isNaN(num) ? 0 : num;
   };
 
-  // 1. ດຶງຂໍ້ມູນຈາກ Firebase
   useEffect(() => {
     const debtRef = ref(db, 'debts');
     const unsubscribe = onValue(debtRef, (snapshot) => {
@@ -99,7 +98,6 @@ export default function DebtScreen() {
     return () => unsubscribe();
   }, []);
 
-  // 2. ບັນທຶກ (Add/Edit)
   const handleSaveDebt = async () => {
     if (!title || !totalAmount) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນ');
@@ -156,7 +154,6 @@ export default function DebtScreen() {
       setModalVisible(true);
   };
 
-  // 3. ບັນທຶກການຊຳລະ
   const handlePayment = async () => {
     if (!selectedDebt || !payAmount) return;
     const amount = parseCurrency(payAmount);
@@ -208,6 +205,7 @@ export default function DebtScreen() {
     setDueDate(new Date());
   };
 
+  // 🟢 ແກ້ໄຂ Date Change Handler
   const onDateChange = (event: any, date?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
     if (date) {
@@ -231,7 +229,6 @@ export default function DebtScreen() {
 
     return (
         <View style={styles.card}>
-            {/* Header */}
             <View style={styles.cardHeader}>
                 <View style={{flex: 1}}>
                     <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
@@ -361,7 +358,7 @@ export default function DebtScreen() {
                     </View>
 
                     <Text style={styles.inputLabel}>ກຳນົດຊຳລະ</Text>
-                    {/* 🟢 ເປີດ Modal ປະຕິທິນທັນທີທີ່ກົດ */}
+                    {/* 🟢 ເປີດ Date Picker ທັນທີ */}
                     <TouchableOpacity style={styles.dateInput} onPress={() => { setDateMode('due'); setShowDatePicker(true); }}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(dueDate)}</Text>
@@ -406,7 +403,7 @@ export default function DebtScreen() {
                     )}
 
                     <Text style={styles.inputLabel}>ວັນທີຊຳລະ *</Text>
-                    {/* 🟢 ເປີດ Modal ປະຕິທິນທັນທີທີ່ກົດ */}
+                    {/* 🟢 ເປີດ Date Picker ທັນທີ */}
                     <TouchableOpacity style={styles.dateInput} onPress={() => { setDateMode('payment'); setShowDatePicker(true); }}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(paymentDate)}</Text>

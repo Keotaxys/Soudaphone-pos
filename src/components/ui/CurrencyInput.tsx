@@ -9,20 +9,20 @@ interface CurrencyInputProps extends TextInputProps {
 
 export default function CurrencyInput({ value, onChangeValue, style, ...props }: CurrencyInputProps) {
   
-  // ຟັງຊັນຈັດ Format ຕົວເລກ (ໃສ່ຈຸດ)
-  const formatNumber = (num: string) => {
+  // ຟັງຊັນຈັດ Format ຕົວເລກ (ໃສ່ຈຸດສະແດງຜົນ)
+  const formatDisplayValue = (num: string) => {
     if (!num) return '';
     // ລຶບທຸກຢ່າງທີ່ບໍ່ແມ່ນຕົວເລກອອກ
-    const cleanNum = num.replace(/\D/g, '');
+    const cleanNum = num.replace(/[^0-9]/g, '');
     // ໃສ່ຈຸດທຸກ 3 ຫຼັກ
     return cleanNum.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 
   const handleChangeText = (text: string) => {
-    // 1. ລຶບຈຸດອອກເພື່ອເອົາຄ່າທີ່ແທ້ຈິງ
+    // ເວລາພິມ ໃຫ້ເອົາຈຸດອອກກ່ອນສົ່ງຄ່າກັບໄປ State
     const rawValue = text.replace(/,/g, '');
     
-    // 2. ກວດສອບວ່າເປັນຕົວເລກລ້ວນບໍ່ (ປ້ອງກັນການພິມຕົວອັກສອນ)
+    // ກວດສອບວ່າເປັນຕົວເລກລ້ວນບໍ່ (ປ້ອງກັນການພິມຕົວອັກສອນ)
     if (/^\d*$/.test(rawValue)) {
         onChangeValue(rawValue);
     }
@@ -32,10 +32,10 @@ export default function CurrencyInput({ value, onChangeValue, style, ...props }:
     <TextInput
       {...props}
       style={[styles.input, style]}
-      value={formatNumber(value)} // ສະແດງຜົນແບບມີຈຸດ
+      value={formatDisplayValue(value)} // 🟢 ບັງຄັບໃຫ້ສະແດງຜົນແບບມີຈຸດ
       onChangeText={handleChangeText}
       keyboardType="numeric"
-      selectTextOnFocus={true} // ກົດແລ້ວພິມທັບໄດ້ເລີຍ
+      selectTextOnFocus={true} // ກົດແລ້ວເລືອກທັງໝົດ (ພິມທັບໄດ້ເລີຍ)
     />
   );
 }

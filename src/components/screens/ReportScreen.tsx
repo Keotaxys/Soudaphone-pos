@@ -3,14 +3,14 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { ref, remove } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber, SaleRecord } from '../../types';

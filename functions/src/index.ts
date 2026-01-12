@@ -1,32 +1,56 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-import {setGlobalOptions} from "firebase-functions";
-import {onRequest} from "firebase-functions/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import axios from "axios";
 
-// Start writing functions
-// https://firebase.google.com/docs/functions/typescript
+// 1. ຕັ້ງຄ່າຂໍ້ມູນຮ້ານຄ້າ (ຂໍ້ມູນຈຳລອງ)
+const ONEPAY_CONFIG = {
+    endpoint: "https://bcel.com.la:8083/onepay/api/v1/create_link", // UAT/Prod URL
+    mcid: "mch5c2f0404102fb",        // ໃສ່ MCID ຂອງທ່ານ
+    shopCode: "12345678",            // ໃສ່ Shop Code ຂອງທ່ານ
+    terminalId: "00000001"           // ໃສ່ Terminal ID (ຖ້າມີ)
+};
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+// 2. ສ້າງ Function
+export const generateOnePayQR = onCall(async (request) => {
+    // 🟢 ແກ້ໄຂຈຸດນີ້: ດຶງຂໍ້ມູນຈາກ request.data
+    const { amount, invoiceId, description } = request.data;
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+    // ກວດສອບຂໍ້ມູນ
+    if (!amount || !invoiceId) {
+        throw new HttpsError("invalid-argument", "Missing amount or invoiceId.");
+    }
+
+    try {
+        logger.info("Generating OnePay QR for:", { amount, invoiceId });
+
+        // ກຽມ Payload ສົ່ງໃຫ້ BCEL
+        const payload = {
+            mcid: ONEPAY_CONFIG.mcid,
+            shop_code: ONEPAY_CONFIG.shopCode,
+            terminal_id: ONEPAY_CONFIG.terminalId,
+            amount: amount,
+            invoice_id: invoiceId,
+            currency: "LAK",
+            description: description || "Payment for Goods",
+            expire_time: 15 // ນາທີ
+        };
+
+        // ຍິງ Request ໄປຫາ BCEL
+        // (ໝາຍເຫດ: ຖ້າຍັງບໍ່ມີ MCID ແທ້ ອາດຈະ Error ຈາກ BCEL ແຕ່ Function ເຮົາຈະບໍ່ແຕກ)
+        const response = await axios.post(ONEPAY_CONFIG.endpoint, payload);
+
+        // ສົ່ງຜົນລັພກັບໄປໃຫ້ App
+        return {
+            success: true,
+            qrCode: response.data.qr_code, // String ທີ່ເອົາໄປສ້າງ QR
+            ticketId: response.data.ticket_id,
+            fullResponse: response.data
+        };
+
+    } catch (error: any) {
+        logger.error("OnePay Error:", error.message);
+        
+        // ສົ່ງ Error ກັບໄປ (ແຕ່ບໍ່ບອກລາຍລະອຽດເລິກເພື່ອຄວາມປອດໄພ)
+        throw new HttpsError("internal", "Failed to generate QR Code.");
+    }
+});

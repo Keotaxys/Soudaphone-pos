@@ -227,11 +227,11 @@ export default function ExpenseScreen() {
 
     return (
         <View style={styles.container}>
-            {/* 🟢 FlatList ກວມເອົາທັງໝົດ */}
+            {/* FlatList ກວມເອົາທັງໝົດ */}
             <FlatList
                 data={expenses}
                 keyExtractor={item => item.id!}
-                ListHeaderComponent={renderListHeader} // 🟢 ເອົາຟອມມາໄວ້ທີ່ນີ້
+                ListHeaderComponent={renderListHeader}
                 contentContainerStyle={{ paddingBottom: 100 }}
                 renderItem={({ item }) => (
                     <View style={styles.expenseItem}>
@@ -258,7 +258,31 @@ export default function ExpenseScreen() {
                 )}
             />
 
-            {showDatePicker && (<DateTimePicker value={selectedDate} mode="date" display="default" onChange={onDateChange} />)}
+            {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
+            {showDatePicker && (
+                Platform.OS === 'ios' ? (
+                    <Modal visible={true} transparent={true} animationType="fade">
+                        <View style={styles.modalOverlay}>
+                            <View style={styles.iosDatePickerContainer}>
+                                <DateTimePicker 
+                                    value={selectedDate} 
+                                    mode="date" 
+                                    display="inline" 
+                                    onChange={onDateChange} 
+                                    style={{ height: 320, width: '100%', backgroundColor: 'white' }} 
+                                    textColor="black" 
+                                    themeVariant="light"
+                                />
+                                <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
+                                    <Text style={styles.iosDateDoneText}>ຕົກລົງ</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </Modal>
+                ) : (
+                    <DateTimePicker value={selectedDate} mode="date" display="default" onChange={onDateChange} />
+                )
+            )}
 
             <Modal visible={showCategoryPicker} transparent={true} animationType="fade">
                 <View style={styles.modalOverlay}>
@@ -320,5 +344,10 @@ const styles = StyleSheet.create({
     modalTitle: { fontFamily: 'Lao-Bold', fontSize: 18, textAlign: 'center', marginBottom: 15 },
     categoryItem: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#f5f5f5', flexDirection: 'row', justifyContent: 'space-between' },
     categoryItemText: { fontFamily: 'Lao-Regular', fontSize: 16, color: '#333' },
-    closeModalBtn: { marginTop: 15, padding: 10, alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10 }
+    closeModalBtn: { marginTop: 15, padding: 10, alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10 },
+    
+    // 🟢 iOS Date Picker Styles
+    iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
+    iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
+    iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 }
 });

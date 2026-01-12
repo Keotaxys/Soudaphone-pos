@@ -3,19 +3,19 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
@@ -33,6 +33,7 @@ interface DebtItem {
   monthlyPayment: number;
   dueDate: string;
   history?: Record<string, any>;
+  [key: string]: any; // Allow indexing for flat structure check
 }
 
 export default function DebtScreen() {
@@ -86,7 +87,7 @@ export default function DebtScreen() {
 
             return { 
                 id: key, 
-                ...item, // ດຶງ history ມາພ້ອມກັນ
+                ...item, // ເອົາຂໍ້ມູນທັງໝົດມາ (ລວມທັງປະຫວັດແບບ Flat)
                 title: item.name || item.title || 'ບໍ່ລະບຸຊື່',
                 category: item.category || 'ອື່ນໆ',
                 totalAmount: total,
@@ -103,23 +104,6 @@ export default function DebtScreen() {
     });
     return () => unsubscribe();
   }, []);
-
-  // 🟢 2. ອັບເດດປະຫວັດເມື່ອມີການປ່ຽນແປງ
-  useEffect(() => {
-    if (selectedDebt && historyModalVisible) {
-        const currentDebt = debts.find(d => d.id === selectedDebt.id);
-        if (currentDebt && currentDebt.history) {
-            const list = Object.keys(currentDebt.history).map(key => ({
-                id: key,
-                ...currentDebt.history![key]
-            }));
-            list.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setHistoryList(list);
-        } else {
-            setHistoryList([]);
-        }
-    }
-  }, [debts, selectedDebt, historyModalVisible]);
 
   const handleSaveDebt = async () => {
     if (!title || !totalAmount) {
@@ -201,7 +185,7 @@ export default function DebtScreen() {
             paidAmount: newPaidAmount,
             remainingBalance: newRemaining
         });
-        // 🟢 Push ລົງ history
+        // 🟢 Push ລົງ history (ຮອງຮັບໂຄງສ້າງໃໝ່)
         await push(ref(db, `debts/${currentDebt.id}/history`), paymentRecord);
         
         setPaymentModalVisible(false);
@@ -250,18 +234,35 @@ export default function DebtScreen() {
       setShowDatePicker(false);
   };
 
+  // 🟢 ຟັງຊັນເປີດປະຫວັດ (ແກ້ໄຂໃຫ້ດຶງຂໍ້ມູນໄດ້ທຸກຮູບແບບ)
   const openHistoryModal = (item: DebtItem) => {
       setSelectedDebt(item);
+      const list: any[] = [];
+
+      // 1. ກວດສອບແບບມີໂຟນເດີ history (ໂຄງສ້າງໃໝ່)
       if (item.history) {
-          const list = Object.keys(item.history).map(key => ({
-              id: key,
-              ...item.history![key]
-          }));
-          list.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          setHistoryList(list);
-      } else {
-          setHistoryList([]);
+          Object.keys(item.history).forEach(key => {
+              if (typeof item.history![key] === 'object') {
+                  list.push({ id: key, ...item.history![key] });
+              }
+          });
       }
+
+      // 2. ກວດສອບແບບ Flat Structure (ໂຄງສ້າງເກົ່າທີ່ທ່ານມີ)
+      // ວົນລູບທຸກ Key ໃນ item ເພື່ອຊອກຫາ Object ທີ່ມີ date
+      Object.keys(item).forEach(key => {
+          if (key === 'history' || key === 'id') return; // ຂ້າມ key ທີ່ຮູ້ຈັກ
+          
+          const val = item[key];
+          // ຖ້າເປັນ Object ແລະ ມີວັນທີ (date) => ຖືວ່າເປັນປະຫວັດ
+          if (val && typeof val === 'object' && val.date && (val.amount || val.total || val.principal)) {
+              list.push({ id: key, ...val });
+          }
+      });
+
+      // ລຽງວັນທີລ່າສຸດຂຶ້ນກ່ອນ
+      list.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setHistoryList(list);
       setHistoryModalVisible(true);
   };
 
@@ -500,12 +501,11 @@ export default function DebtScreen() {
                         <View style={styles.historyItem}>
                             <View>
                                 <Text style={styles.historyDate}>{formatDate(new Date(item.date))}</Text>
-                                {/* 🟢 ສະແດງຂໍ້ຄວາມໃຫ້ຄົບຖ້ວນ ບໍ່ວ່າຈະເປັນ amount, total ຫຼື principal */}
                                 <Text style={{fontSize: 10, color: '#999'}}>
                                     {item.interest > 0 ? `ດອກເບ້ຍ: ${formatNumber(item.interest)}` : 'ຊຳລະເງິນຕົ້ນ'}
                                 </Text>
                             </View>
-                            {/* 🟢 ສະແດງຍອດເງິນ */}
+                            {/* 🟢 ຮອງຮັບທັງ amount, total, principal */}
                             <Text style={styles.historyAmount}>
                                 + {formatNumber(item.amount || item.total || item.principal)}
                             </Text>

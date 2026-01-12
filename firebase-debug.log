@@ -135,3 +135,55 @@
 [debug] [2026-01-12T09:14:19.317Z] Checked if tokens are valid: true, expires at: 1768211912670
 [debug] [2026-01-12T09:14:19.317Z] Checked if tokens are valid: true, expires at: 1768211912670
 [debug] [2026-01-12T09:14:19.317Z] >>> [apiv2][query] GET https://firebaseextensions.googleapis.com/v1beta/projects/studio-7834307833-10afa/instances pageSize=100&pageToken=
+[debug] [2026-01-12T09:14:22.622Z] <<< [apiv2][status] GET https://firebaseextensions.googleapis.com/v1beta/projects/studio-7834307833-10afa/instances 200
+[debug] [2026-01-12T09:14:22.622Z] <<< [apiv2][body] GET https://firebaseextensions.googleapis.com/v1beta/projects/studio-7834307833-10afa/instances {}
+[info] i  functions: preparing functions directory for uploading... 
+[info] i  functions: packaged /home/user/pos-app/functions (74.03 KB) for uploading 
+[debug] [2026-01-12T09:14:22.710Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:22.710Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:22.710Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/studio-7834307833-10afa/locations/-/functions [none]
+[debug] [2026-01-12T09:14:23.450Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/studio-7834307833-10afa/locations/-/functions 200
+[debug] [2026-01-12T09:14:23.451Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/studio-7834307833-10afa/locations/-/functions {}
+[debug] [2026-01-12T09:14:23.451Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:23.451Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:23.452Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/studio-7834307833-10afa/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-01-12T09:14:24.741Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/studio-7834307833-10afa/locations/-/functions 200
+[debug] [2026-01-12T09:14:24.742Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v2/projects/studio-7834307833-10afa/locations/-/functions {}
+[info] i  functions: ensuring required API run.googleapis.com is enabled... 
+[debug] [2026-01-12T09:14:24.744Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:24.744Z] Checked if tokens are valid: true, expires at: 1768211912670
+[info] i  functions: ensuring required API eventarc.googleapis.com is enabled... 
+[debug] [2026-01-12T09:14:24.745Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:24.745Z] Checked if tokens are valid: true, expires at: 1768211912670
+[info] i  functions: ensuring required API pubsub.googleapis.com is enabled... 
+[debug] [2026-01-12T09:14:24.745Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:24.745Z] Checked if tokens are valid: true, expires at: 1768211912670
+[info] i  functions: ensuring required API storage.googleapis.com is enabled... 
+[debug] [2026-01-12T09:14:24.745Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:24.745Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:24.746Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/run.googleapis.com [none]
+[debug] [2026-01-12T09:14:24.746Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/run.googleapis.com x-goog-quota-user=projects/1085134944350
+[debug] [2026-01-12T09:14:24.747Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/eventarc.googleapis.com [none]
+[debug] [2026-01-12T09:14:24.747Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/eventarc.googleapis.com x-goog-quota-user=projects/1085134944350
+[debug] [2026-01-12T09:14:24.748Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/pubsub.googleapis.com [none]
+[debug] [2026-01-12T09:14:24.748Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/pubsub.googleapis.com x-goog-quota-user=projects/1085134944350
+[debug] [2026-01-12T09:14:24.750Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/storage.googleapis.com [none]
+[debug] [2026-01-12T09:14:24.750Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/storage.googleapis.com x-goog-quota-user=projects/1085134944350
+[debug] [2026-01-12T09:14:25.736Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/eventarc.googleapis.com 200
+[debug] [2026-01-12T09:14:25.736Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/eventarc.googleapis.com [omitted]
+[warn] ⚠  functions: missing required API eventarc.googleapis.com. Enabling now... 
+[debug] [2026-01-12T09:14:25.736Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:25.736Z] Checked if tokens are valid: true, expires at: 1768211912670
+[debug] [2026-01-12T09:14:25.737Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/1085134944350/services/eventarc.googleapis.com:enable [none]
+[debug] [2026-01-12T09:14:25.737Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/1085134944350/services/eventarc.googleapis.com:enable x-goog-quota-user=projects/1085134944350
+[debug] [2026-01-12T09:14:25.751Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/pubsub.googleapis.com 200
+[debug] [2026-01-12T09:14:25.751Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/pubsub.googleapis.com [omitted]
+[info] ✔  functions: required API pubsub.googleapis.com is enabled 
+[debug] [2026-01-12T09:14:25.758Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/run.googleapis.com 200
+[debug] [2026-01-12T09:14:25.758Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/run.googleapis.com [omitted]
+[info] ✔  functions: required API run.googleapis.com is enabled 
+[debug] [2026-01-12T09:14:25.763Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/storage.googleapis.com 200
+[debug] [2026-01-12T09:14:25.763Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/1085134944350/services/storage.googleapis.com [omitted]
+[info] ✔  functions: required API storage.googleapis.com is enabled 
+[debug] [2026-01-12T09:14:26.823Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/1085134944350/services/eventarc.googleapis.com:enable 200
+[debug] [2026-01-12T09:14:26.823Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/1085134944350/services/eventarc.googleapis.com:enable [omitted]

@@ -24,9 +24,13 @@ import { COLORS, formatDate, formatNumber } from '../../types';
 const { width } = Dimensions.get('window');
 
 type FilterType = 'day' | 'week' | 'month' | 'year';
-type ReportTab = 'overview' | 'sales' | 'expenses' | 'debts';
+export type ReportTab = 'overview' | 'sales' | 'expenses' | 'debts';
 
-export default function ReportDashboard() {
+interface ReportDashboardProps {
+  initialTab?: ReportTab;
+}
+
+export default function ReportDashboard({ initialTab = 'overview' }: ReportDashboardProps) {
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [debts, setDebts] = useState<any[]>([]);
@@ -34,7 +38,12 @@ export default function ReportDashboard() {
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [activeTab, setActiveTab] = useState<ReportTab>('overview');
+  
+  const [activeTab, setActiveTab] = useState<ReportTab>(initialTab);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const [filteredSales, setFilteredSales] = useState<any[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<any[]>([]);

@@ -270,7 +270,13 @@ export default function App() {
             />
         );
         case 'expense': return <ExpenseScreen />;
-        case 'report': case 'history': return <ReportDashboard />;
+        
+        // 🟢 ຖ້າກົດ "ລາຍງານ" -> ເປີດ Overview
+        case 'report': return <ReportDashboard initialTab="overview" />;
+        
+        // 🟢 ຖ້າກົດ "ປະຫວັດການຂາຍ" -> ເປີດ Sales
+        case 'history': return <ReportDashboard initialTab="sales" />;
+        
         case 'orders': return <OrderTrackingScreen />; 
         case 'shifts': case 'shift': return <ShiftScreen />; 
         case 'customers': return <CustomerScreen />;
@@ -281,7 +287,6 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 🟢 Header ສະບັບແກ້ໄຂ: ລຶບ salesHistory ແລະ products ອອກ */}
       <Header 
         onMenuPress={() => toggleMenu(true)} 
         shopName={shopInfo.name}

@@ -1,58 +1,58 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-// @ts-ignore
-import * as FileSystem from 'expo-file-system/legacy';
-import { printToFileAsync } from 'expo-print';
-import { shareAsync } from 'expo-sharing';
-import { onValue, ref, remove } from 'firebase/database';
+import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    FlatList,
-    Image,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
 
-const { width } = Dimensions.get('window');
+const DEBT_CATEGORIES = ['ເງິນກູ້', 'ບັດເຄດິດ', 'ຢືມເພື່ອນ', 'ຜ່ອນສິນຄ້າ', 'ອື່ນໆ'];
 
-type FilterType = 'day' | 'week' | 'month' | 'year';
-export type ReportTab = 'overview' | 'sales';
-
-interface ReportDashboardProps {
-  initialTab?: ReportTab;
+interface DebtItem {
+  id: string;
+  title: string;
+  category: string;
+  totalAmount: number;
+  paidAmount: number;
+  interestRate: number;
+  monthlyPayment: number;
+  dueDate: string;
+  history?: Record<string, any>;
 }
 
-export default function ReportDashboard({ initialTab = 'overview' }: ReportDashboardProps) {
-  const [sales, setSales] = useState<any[]>([]);
+export default function DebtScreen() {
+  const [debts, setDebts] = useState<DebtItem[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   
-  const [filterType, setFilterType] = useState<FilterType>('day');
-  const [currentDate, setCurrentDate] = useState(new Date());
+  // Form States
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState(DEBT_CATEGORIES[0]);
+  const [totalAmount, setTotalAmount] = useState('');
+  const [interestRate, setInterestRate] = useState('');
+  const [monthlyPayment, setMonthlyPayment] = useState('');
+  const [dueDate, setDueDate] = useState(new Date());
+  
   const [showDatePicker, setShowDatePicker] = useState(false);
-  
-  const [activeTab, setActiveTab] = useState<ReportTab>(initialTab);
+  const [dateMode, setDateMode] = useState<'due' | 'payment'>('due');
 
-  useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
-
-  const [filteredSales, setFilteredSales] = useState<any[]>([]);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [totalOrders, setTotalOrders] = useState(0);
-  
-  const [topProducts, setTopProducts] = useState<any[]>([]);
-  const [salesByCategory, setSalesByCategory] = useState<any[]>([]);
-
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedDebt, setSelectedDebt] = useState<DebtItem | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState(new Date());
 
   const parseCurrency = (value: any) => {
       if (value === undefined || value === null || value === '') return 0;
@@ -61,447 +61,497 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
       return isNaN(num) ? 0 : num;
   };
 
+  // 1. ດຶງຂໍ້ມູນຈາກ Firebase
   useEffect(() => {
-    const fetchData = () => {
-      onValue(ref(db, 'sales'), (snapshot) => {
+    const debtRef = ref(db, 'debts');
+    const unsubscribe = onValue(debtRef, (snapshot) => {
+      if (snapshot.exists()) {
         const data = snapshot.val();
-        if (data) setSales(Object.keys(data).map(key => ({ id: key, ...data[key] })));
-        else setSales([]);
-      });
-    };
-    fetchData();
+        
+        const list = Object.keys(data).map(key => {
+            const item = data[key];
+            
+            const total = parseCurrency(item.originalAmount || item.totalAmount || item.amount);
+            const remaining = parseCurrency(item.remainingBalance);
+            
+            let paid = parseCurrency(item.paidAmount || item.paid);
+            if (paid === 0 && total > 0 && item.remainingBalance !== undefined) {
+                paid = total - remaining;
+            }
+
+            return { 
+                id: key, 
+                ...item,
+                title: item.name || item.title || 'ບໍ່ລະບຸຊື່',
+                category: item.category || 'ອື່ນໆ',
+                totalAmount: total,
+                paidAmount: paid,
+                interestRate: parseCurrency(item.interestRate),
+                monthlyPayment: parseCurrency(item.monthlyPayment),
+                dueDate: item.dueDate || new Date().toISOString()
+            };
+        });
+        setDebts(list.reverse() as DebtItem[]);
+      } else {
+        setDebts([]);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    const start = new Date(currentDate);
-    const end = new Date(currentDate);
-    start.setHours(0, 0, 0, 0);
-    end.setHours(23, 59, 59, 999);
-
-    if (filterType === 'week') {
-      const day = start.getDay();
-      const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-      start.setDate(diff);
-      end.setDate(start.getDate() + 6);
-    } else if (filterType === 'month') {
-      start.setDate(1);
-      end.setMonth(start.getMonth() + 1, 0);
-    } else if (filterType === 'year') {
-      start.setMonth(0, 1);
-      end.setMonth(11, 31);
+  // 2. ບັນທຶກ (Add/Edit)
+  const handleSaveDebt = async () => {
+    if (!title || !totalAmount) {
+      Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນ');
+      return;
     }
 
-    const fSales = sales.filter(item => {
-        const d = new Date(item.date);
-        return d >= start && d <= end;
-    });
-    setFilteredSales(fSales);
-    setTotalRevenue(fSales.reduce((sum, s) => sum + parseCurrency(s.total || s.amountReceived), 0));
-    setTotalOrders(fSales.length);
+    const amountNum = parseCurrency(totalAmount);
 
-    // Stats Logic
-    const productStats: any = {};
-    const catStats: any = {};
+    const debtData = {
+      name: title,
+      title: title,
+      category,
+      originalAmount: amountNum,
+      totalAmount: amountNum,
+      remainingBalance: amountNum,
+      paidAmount: 0,
+      interestRate: parseCurrency(interestRate),
+      monthlyPayment: parseCurrency(monthlyPayment),
+      dueDate: dueDate.toISOString(),
+      updatedAt: new Date().toISOString()
+    };
 
-    fSales.forEach(sale => {
-        if (sale.items && Array.isArray(sale.items)) {
-            sale.items.forEach((item: any) => {
-                if (!productStats[item.name]) {
-                    productStats[item.name] = { ...item, totalSold: 0, totalAmount: 0 };
-                }
-                productStats[item.name].totalSold += item.quantity;
-                productStats[item.name].totalAmount += (item.price * item.quantity);
-
-                const catName = item.category || 'ທົ່ວໄປ';
-                if (!catStats[catName]) catStats[catName] = 0;
-                catStats[catName] += (item.price * item.quantity);
-            });
-        }
-    });
-
-    const sortedProducts = Object.values(productStats).sort((a: any, b: any) => b.totalSold - a.totalSold).slice(0, 5);
-    setTopProducts(sortedProducts);
-
-    const sortedSalesCat = Object.keys(catStats)
-        .map(key => ({ label: key, value: catStats[key] }))
-        .sort((a, b) => b.value - a.value);
-    setSalesByCategory(sortedSalesCat);
-
-  }, [sales, filterType, currentDate]);
-
-  const handleNavigateDate = (dir: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
-    const val = dir === 'next' ? 1 : -1;
-    if (filterType === 'day') newDate.setDate(newDate.getDate() + val);
-    else if (filterType === 'week') newDate.setDate(newDate.getDate() + (val * 7));
-    else if (filterType === 'month') newDate.setMonth(newDate.getMonth() + val);
-    else if (filterType === 'year') newDate.setFullYear(newDate.getFullYear() + val);
-    setCurrentDate(newDate);
+    try {
+      if (currentId) {
+          const oldDebt = debts.find(d => d.id === currentId);
+          const oldPaid = oldDebt?.paidAmount || 0;
+          const newRemaining = amountNum - oldPaid;
+          
+          await update(ref(db, `debts/${currentId}`), {
+              ...debtData,
+              remainingBalance: newRemaining,
+              paidAmount: oldPaid
+          });
+          Alert.alert('ສຳເລັດ', 'ແກ້ໄຂຂໍ້ມູນຮຽບຮ້ອຍ');
+      } else {
+          await push(ref(db, 'debts'), { ...debtData, createdAt: new Date().toISOString() });
+          Alert.alert('ສຳເລັດ', 'ບັນທຶກໜີ້ສິນໃໝ່ຮຽບຮ້ອຍ');
+      }
+      setModalVisible(false);
+      resetForm();
+    } catch (error) {
+      Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້');
+    }
   };
 
-  // 🟢 ຟັງຊັນປ່ຽນວັນທີ (ປັບປຸງໃໝ່)
-  const onDateChange = (event: any, date?: Date) => {
-    if (Platform.OS === 'android') setShowDatePicker(false);
-    if (date) setCurrentDate(date);
+  const openEditModal = (item: DebtItem) => {
+      setCurrentId(item.id);
+      setTitle(item.title);
+      setCategory(item.category);
+      setTotalAmount(item.totalAmount.toString());
+      setInterestRate(item.interestRate.toString());
+      setMonthlyPayment(item.monthlyPayment.toString());
+      setDueDate(new Date(item.dueDate));
+      setModalVisible(true);
+  };
+
+  // 3. ບັນທຶກການຊຳລະ
+  const handlePayment = async () => {
+    if (!selectedDebt || !payAmount) return;
+    const amount = parseCurrency(payAmount);
+    
+    const currentDebt = debts.find(d => d.id === selectedDebt.id) || selectedDebt;
+    const newPaidAmount = (currentDebt.paidAmount || 0) + amount;
+    const newRemaining = currentDebt.totalAmount - newPaidAmount;
+    
+    if (newPaidAmount > currentDebt.totalAmount) {
+        Alert.alert('ຜິດພາດ', 'ຍອດຊຳລະເກີນກວ່າໜີ້ທີ່ຄ້າງຢູ່');
+        return;
+    }
+
+    const paymentRecord = {
+        amount,
+        date: paymentDate.toISOString(),
+        type: 'PAYMENT'
+    };
+
+    try {
+        await update(ref(db, `debts/${currentDebt.id}`), { 
+            paidAmount: newPaidAmount,
+            remainingBalance: newRemaining
+        });
+        await push(ref(db, `debts/${currentDebt.id}/history`), paymentRecord);
+        setPaymentModalVisible(false);
+        setPayAmount('');
+        setPaymentDate(new Date());
+        Alert.alert('ສຳເລັດ', 'ບັນທຶກການຊຳລະຮຽບຮ້ອຍ');
+    } catch (error) {
+        Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດ');
+    }
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('ຢືນຢັນການລຶບ', 'ທ່ານຕ້ອງການລຶບປະຫວັດການຂາຍນີ້ແທ້ບໍ່? ຂໍ້ມູນຈະຫາຍໄປຖາວອນ.', [
+    Alert.alert('ຢືນຢັນ', 'ຕ້ອງການລຶບລາຍການນີ້ບໍ່?', [
         { text: 'ຍົກເລີກ', style: 'cancel' },
-        { text: 'ລຶບ', style: 'destructive', onPress: async () => await remove(ref(db, `sales/${id}`)) }
+        { text: 'ລຶບ', style: 'destructive', onPress: async () => await remove(ref(db, `debts/${id}`)) }
     ]);
   };
 
-  const generateExcel = async () => {
-      let csvContent = "Date,Bill ID,Source,Payment,Amount\n";
-      filteredSales.forEach(s => {
-          csvContent += `${new Date(s.date).toLocaleDateString()},#${s.id ? s.id.slice(-4) : '-'},${s.source || 'Shop'},${s.paymentMethod},${parseCurrency(s.total)}\n`;
-      });
-
-      try {
-          const docDir = FileSystem.documentDirectory;
-          const fileName = `${docDir}sales_report_${new Date().getTime()}.csv`;
-          
-          await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
-          await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
-      } catch (error) {
-          Alert.alert("Error", "ບໍ່ສາມາດ Export Excel ໄດ້: " + error);
-      }
+  const resetForm = () => {
+    setCurrentId(null);
+    setTitle('');
+    setCategory(DEBT_CATEGORIES[0]);
+    setTotalAmount('');
+    setInterestRate('');
+    setMonthlyPayment('');
+    setDueDate(new Date());
   };
 
-  const generatePDF = async () => {
-    const html = `
-      <html>
-        <head>
-          <style>
-            body { font-family: 'Helvetica', sans-serif; padding: 20px; }
-            h1 { color: ${COLORS.primary}; text-align: center; }
-            .summary { display: flex; justify-content: space-between; margin-bottom: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: ${COLORS.primary}; color: white; }
-            .money { text-align: right; }
-          </style>
-        </head>
-        <body>
-          <h1>ລາຍງານຍອດຂາຍ (Soudaphone POS)</h1>
-          <p>ວັນທີ: ${formatDate(currentDate)} (${filterType})</p>
-          <div class="summary">
-            <div><b>ຈຳນວນອໍເດີ:</b> ${totalOrders}</div>
-            <div><b>ຍອດຂາຍລວມ:</b> ${formatNumber(totalRevenue)} ₭</div>
-          </div>
-          <h3>ລາຍການຂາຍ</h3>
-          <table>
-            <tr><th>ວັນທີ</th><th>ແຫຼ່ງຂາຍ</th><th>ຊຳລະ</th><th class="money">ຍອດເງິນ</th></tr>
-            ${filteredSales.map(s => `<tr>
-                <td>${new Date(s.date).toLocaleDateString()}</td>
-                <td>${s.source || 'ໜ້າຮ້ານ'}</td>
-                <td>${s.paymentMethod}</td>
-                <td class="money">${formatNumber(s.total)}</td>
-            </tr>`).join('')}
-          </table>
-        </body>
-      </html>
-    `;
-    const { uri } = await printToFileAsync({ html });
-    await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+  const onDateChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (date) {
+        if (dateMode === 'due') setDueDate(date);
+        else setPaymentDate(date);
+    }
   };
 
-  const SummaryCard = ({ label, amount, color, icon }: any) => (
-    <View style={[styles.card, { borderLeftColor: color, borderLeftWidth: 5 }]}>
-      <View>
-        <Text style={styles.cardLabel}>{label}</Text>
-        <Text style={[styles.cardAmount, { color: color }]}>{amount}</Text>
-      </View>
-      <View style={[styles.iconCircle, { backgroundColor: color + '20' }]}>
-        <Ionicons name={icon} size={24} color={color} />
-      </View>
-    </View>
-  );
-
-  const CategoryChart = ({ title, data, color }: { title: string, data: any[], color: string }) => {
-      const maxValue = Math.max(...data.map(d => d.value)) || 1;
-      if (data.length === 0) return null;
-      return (
-          <View style={styles.chartBox}>
-              <Text style={styles.chartTitle}>{title}</Text>
-              {data.map((item, index) => (
-                  <View key={index} style={styles.chartRow}>
-                      <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
-                          <Text style={styles.chartLabel}>{item.label}</Text>
-                          <Text style={[styles.chartValue, {color}]}>{formatNumber(item.value)} ₭</Text>
-                      </View>
-                      <View style={styles.chartTrack}>
-                          <View style={[styles.chartBar, { width: `${(item.value / maxValue) * 100}%`, backgroundColor: color }]} />
-                      </View>
-                  </View>
-              ))}
-          </View>
-      );
+  const openPaymentModal = (item: DebtItem) => {
+      setSelectedDebt(item);
+      setPayAmount('');
+      setPaymentDate(new Date());
+      setPaymentModalVisible(true);
   };
 
-  const keyExtractor = (item: any, index: number) => item.id ? item.id.toString() : index.toString();
+  const renderItem = ({ item }: { item: DebtItem }) => {
+    const total = item.totalAmount > 0 ? item.totalAmount : 1;
+    const paid = item.paidAmount || 0;
+    const progress = paid / total;
+    const remaining = total - paid;
 
-  const DashboardContent = () => (
-    <View>
-        <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 15}}>
-            <View style={{flex: 1}}>
-                <SummaryCard label="ຍອດຂາຍລວມ" amount={`${formatNumber(totalRevenue)} ₭`} color={COLORS.primary} icon="cash" />
-            </View>
-            <View style={{flex: 1}}>
-                <SummaryCard label="ຈຳນວນອໍເດີ" amount={`${totalOrders} ບິນ`} color={COLORS.secondary} icon="receipt" />
-            </View>
-        </View>
-        
-        {topProducts.length > 0 && (
-            <View style={styles.topProductsCard}>
-                <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionHeader}>🏆 5 ອັນດັບສິນຄ້າຂາຍດີ</Text>
+    return (
+        <View style={styles.card}>
+            {/* Header */}
+            <View style={styles.cardHeader}>
+                <View style={{flex: 1}}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.categoryBadge}>{item.category}</Text>
                 </View>
-                {topProducts.map((prod, index) => (
-                    <View key={index} style={styles.topProductRow}>
-                        <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
-                            <View style={[styles.rankBadge, index === 0 ? {backgroundColor: '#FFD700'} : index === 1 ? {backgroundColor: '#C0C0C0'} : index === 2 ? {backgroundColor: '#CD7F32'} : {}]}>
-                                <Text style={[styles.rankText, index < 3 ? {color: 'white'} : {}]}>{index + 1}</Text>
-                            </View>
-                            <Image source={prod.imageUrl ? { uri: prod.imageUrl } : { uri: 'https://via.placeholder.com/50' }} style={styles.prodImage} />
-                            <View style={{marginLeft: 10}}>
-                                <Text style={styles.prodName} numberOfLines={1}>{prod.name}</Text>
-                                <Text style={styles.prodSold}>ຂາຍອອກ: {prod.totalSold} ໜ່ວຍ</Text>
-                            </View>
-                        </View>
-                        <Text style={styles.prodAmount}>{formatNumber(prod.totalAmount)}</Text>
-                    </View>
-                ))}
-            </View>
-        )}
-
-        <CategoryChart title="💰 ຍອດຂາຍແຍກຕາມໝວດໝູ່" data={salesByCategory} color={COLORS.primary} />
-    </View>
-  );
-
-  const HeaderComponent = () => (
-    <View>
-        <View style={styles.header}>
-            <Text style={styles.headerTitle}>ລາຍງານ (Reports)</Text>
-            <View style={{flexDirection: 'row', gap: 5}}>
-                <TouchableOpacity style={[styles.exportBtn, {backgroundColor: COLORS.primary}]} onPress={generateExcel}>
-                    <Ionicons name="document-text-outline" size={16} color="white" />
-                    <Text style={styles.exportText}>Excel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.exportBtn} onPress={generatePDF}>
-                    <Ionicons name="print-outline" size={16} color="white" />
-                    <Text style={styles.exportText}>PDF</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-
-        <View style={styles.filterBar}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginRight: 10}}>
-                {['day', 'week', 'month', 'year'].map((t) => (
-                    <TouchableOpacity 
-                        key={t} 
-                        style={[styles.filterChip, filterType === t && styles.activeFilter]}
-                        onPress={() => setFilterType(t as FilterType)}
-                    >
-                        <Text style={[styles.filterText, filterType === t && {color: 'white'}]}>
-                            {t === 'day' ? 'ມື້' : t === 'week' ? 'ອາທິດ' : t === 'month' ? 'ເດືອນ' : 'ປີ'}
-                        </Text>
+                
+                <View style={styles.headerActions}>
+                    <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
+                        <Ionicons name="pencil" size={18} color={COLORS.primary} />
                     </TouchableOpacity>
-                ))}
-            </ScrollView>
-            <View style={styles.dateNav}>
-                <TouchableOpacity onPress={() => handleNavigateDate('prev')}><Ionicons name="chevron-back" size={20} color="#666" /></TouchableOpacity>
-                {/* 🟢 ເປີດ Modal ປະຕິທິນທັນທີທີ່ກົດ */}
-                <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-                    <Text style={styles.dateLabel}>{formatDate(currentDate)}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleNavigateDate('next')}><Ionicons name="chevron-forward" size={20} color="#666" /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.iconBtn}>
+                        <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            <View style={styles.amountRow}>
+                <Text style={styles.label}>ຍອດກູ້ຢືມ:</Text>
+                <Text style={styles.amountTotal}>{formatNumber(item.totalAmount)} ກີບ</Text>
+            </View>
+
+            <View style={styles.progressContainer}>
+                <View style={[styles.progressBar, { width: `${Math.min(progress * 100, 100)}%` }]} />
+            </View>
+            <View style={styles.progressInfo}>
+                <Text style={styles.progressText}>ຊຳລະແລ້ວ ({Math.round(progress * 100)}%)</Text>
+                <Text style={styles.remainingText}>{formatNumber(remaining)} ກີບ</Text>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.detailsGrid}>
+                <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>ດອກເບ້ຍ (%)</Text>
+                    <Text style={styles.detailValue}>{item.interestRate}% / ປີ</Text>
+                </View>
+                <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>ຜ່ອນ/ເດືອນ</Text>
+                    <Text style={styles.detailValue}>{formatNumber(item.monthlyPayment)} ກີບ</Text>
+                </View>
+            </View>
+            
+            <View style={styles.footerRow}>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
+                    <Ionicons name="calendar-outline" size={14} color="#666" />
+                    <Text style={styles.dueDateText}>ກຳນົດຈ່າຍ: {formatDate(new Date(item.dueDate))}</Text>
+                </View>
+                
+                <View style={styles.actionButtons}>
+                    <TouchableOpacity style={styles.historyBtn}>
+                        <Ionicons name="time-outline" size={16} color="#555" />
+                        <Text style={styles.historyText}>ປະຫວັດ</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.payBtn} onPress={() => openPaymentModal(item)}>
+                        <Ionicons name="wallet-outline" size={16} color="white" />
+                        <Text style={styles.payBtnText}>ຊຳລະ</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
-
-        <View style={styles.tabs}>
-            <TouchableOpacity style={[styles.tab, activeTab === 'overview' && styles.activeTab]} onPress={() => setActiveTab('overview')}><Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>ພາບລວມ</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.tab, activeTab === 'sales' && styles.activeTab]} onPress={() => setActiveTab('sales')}><Text style={[styles.tabText, activeTab === 'sales' && styles.activeTabText]}>ລາຍການຂາຍ</Text></TouchableOpacity>
-        </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {activeTab === 'overview' ? (
-          <FlatList
-            data={[]} 
-            renderItem={null}
-            ListHeaderComponent={
-                <>
-                    <HeaderComponent />
-                    <View style={styles.content}>
-                        <DashboardContent />
-                    </View>
-                </>
-            }
-            contentContainerStyle={{paddingBottom: 50}}
-          />
-      ) : (
-          <FlatList 
-            data={filteredSales}
-            keyExtractor={keyExtractor}
-            ListHeaderComponent={<HeaderComponent />}
-            contentContainerStyle={{paddingBottom: 50}}
-            renderItem={({item}) => {
-                const isExpanded = expandedId === item.id;
-                return (
-                    <View style={[styles.listItem, { marginHorizontal: 15 }]}>
-                        {/* Header ຂອງບິນ */}
-                        <TouchableOpacity style={styles.itemHeader} onPress={() => setExpandedId(isExpanded ? null : item.id)}>
-                            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                                <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
-                                    <View style={[styles.iconBox, {backgroundColor: item.paymentMethod === 'CASH' ? '#E8F5E9' : '#E3F2FD'}]}>
-                                        <Ionicons name={item.paymentMethod === 'CASH' ? 'cash' : 'qr-code'} size={20} color={item.paymentMethod === 'CASH' ? COLORS.success : COLORS.primary} />
-                                    </View>
-                                    <View>
-                                        <Text style={styles.listTitle}>ບິນ #{item.id ? item.id.slice(-4) : '-'}</Text>
-                                        <Text style={styles.listSub}>{new Date(item.date).toLocaleTimeString('lo-LA', {hour: '2-digit', minute:'2-digit'})}</Text>
-                                    </View>
-                                </View>
-                                <View style={{alignItems: 'flex-end'}}>
-                                    <Text style={styles.listAmount}>{formatNumber(parseCurrency(item.total))}</Text>
-                                    <View style={styles.badge}>
-                                        <Text style={styles.badgeText}>{item.source || 'ໜ້າຮ້ານ'}</Text>
-                                    </View>
-                                </View>
-                            </View>
-                        </TouchableOpacity>
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}>ຕິດຕາມໜີ້ສິນ (Loans)</Text>
+        <Text style={styles.headerSub}>ຈັດການເງິນກູ້, ດອກເບ້ຍ ແລະ ການຜ່ອນຊຳລະ</Text>
+      </View>
 
-                        {/* ລາຍລະອຽດສິນຄ້າ (ສະແດງເມື່ອກົດ) */}
-                        {isExpanded && (
-                            <View style={styles.itemDetails}>
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoText}>📍 ແຫຼ່ງ: {item.source || 'ໜ້າຮ້ານ'}</Text>
-                                    <Text style={styles.infoText}>💰 ຊຳລະ: {item.paymentMethod}</Text>
-                                </View>
-                                <View style={styles.divider} />
-                                {item.items && item.items.map((prod: any, idx: number) => (
-                                    <View key={idx} style={styles.prodRow}>
-                                        <Text style={styles.prodName}>{prod.name} x{prod.quantity}</Text>
-                                        <Text style={styles.prodPrice}>{formatNumber(prod.price * prod.quantity)}</Text>
-                                    </View>
-                                ))}
-                                <View style={styles.divider} />
-                                {/* ປຸ່ມລຶບສີສົ້ມ */}
-                                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
-                                    <Ionicons name="trash-outline" size={18} color="#F57C00" />
-                                    <Text style={[styles.deleteText, {color: '#F57C00'}]}>ລຶບບິນນີ້</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
+      <FlatList
+        data={debts}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
+        ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+                <Ionicons name="document-text-outline" size={60} color="#ddd" />
+                <Text style={styles.emptyText}>ບໍ່ມີລາຍການໜີ້ສິນ</Text>
+            </View>
+        }
+      />
+
+      <TouchableOpacity style={styles.fab} onPress={() => { resetForm(); setModalVisible(true); }}>
+        <Ionicons name="add" size={24} color="white" />
+        <Text style={styles.fabText}>ເພີ່ມໜີ້ໃໝ່</Text>
+      </TouchableOpacity>
+
+      {/* Add/Edit Modal */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>{currentId ? 'ແກ້ໄຂຂໍ້ມູນ' : 'ເພີ່ມໜີ້ສິນໃໝ່'}</Text>
+                    <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false}>
+                    <Text style={styles.inputLabel}>ຊື່ໜີ້ສິນ *</Text>
+                    <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="ເງິນກູ້ທະນາຄານ..." />
+
+                    <Text style={styles.inputLabel}>ໝວດໝູ່ *</Text>
+                    <View style={styles.categoryRow}>
+                        {DEBT_CATEGORIES.map((cat) => (
+                            <TouchableOpacity 
+                                key={cat} 
+                                style={[styles.catChip, category === cat && styles.activeCatChip]}
+                                onPress={() => setCategory(cat)}
+                            >
+                                <Text style={[styles.catText, category === cat && {color: 'white'}]}>{cat}</Text>
+                            </TouchableOpacity>
+                        ))}
                     </View>
-                );
-            }}
-            ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນການຂາຍ</Text>}
-          />
-      )}
+
+                    <Text style={styles.inputLabel}>ຈຳນວນເງິນຕົ້ນ *</Text>
+                    <TextInput style={styles.input} value={totalAmount} onChangeText={setTotalAmount} keyboardType="numeric" placeholder="0" />
+
+                    <View style={{flexDirection: 'row', gap: 10}}>
+                        <View style={{flex: 1}}>
+                            <Text style={styles.inputLabel}>ດອກເບ້ຍ (%)</Text>
+                            <TextInput style={styles.input} value={interestRate} onChangeText={setInterestRate} keyboardType="numeric" placeholder="0" />
+                        </View>
+                        <View style={{flex: 1}}>
+                            <Text style={styles.inputLabel}>ຜ່ອນ/ເດືອນ</Text>
+                            <TextInput style={styles.input} value={monthlyPayment} onChangeText={setMonthlyPayment} keyboardType="numeric" placeholder="0" />
+                        </View>
+                    </View>
+
+                    <Text style={styles.inputLabel}>ກຳນົດຊຳລະ</Text>
+                    <TouchableOpacity style={styles.dateInput} onPress={() => { setDateMode('due'); setShowDatePicker(true); }}>
+                        <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                        <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(dueDate)}</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.modalActions}>
+                        <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
+                            <Text style={styles.cancelBtnText}>ຍົກເລີກ</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.saveBtn} onPress={handleSaveDebt}>
+                            <Text style={styles.saveBtnText}>ບັນທຶກ</Text>
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+            </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Payment Modal */}
+      <Modal visible={paymentModalVisible} animationType="fade" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>ບັນທຶກການຊຳລະໜີ້</Text>
+                    <TouchableOpacity onPress={() => setPaymentModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
+                </View>
+
+                <ScrollView contentContainerStyle={{flexGrow: 1}} showsVerticalScrollIndicator={false}>
+                    {selectedDebt && (
+                        <View style={{marginBottom: 20}}>
+                            <Text style={{fontFamily: 'Lao-Regular', color: '#666', fontSize: 14}}>
+                                ບັນທຶກການຊຳລະສຳລັບ: <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{selectedDebt.title}</Text>
+                            </Text>
+                            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8}}>
+                                <Text style={{fontFamily: 'Lao-Regular', color: '#666'}}>ຍອດຄົງເຫຼືອ:</Text>
+                                <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text, fontSize: 16}}>
+                                    {formatNumber(selectedDebt.totalAmount - selectedDebt.paidAmount)} ກີບ
+                                </Text>
+                            </View>
+                            <View style={{height: 1, backgroundColor: '#eee', marginVertical: 15}} />
+                        </View>
+                    )}
+
+                    <Text style={styles.inputLabel}>ວັນທີຊຳລະ *</Text>
+                    <TouchableOpacity style={styles.dateInput} onPress={() => { setDateMode('payment'); setShowDatePicker(true); }}>
+                        <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                        <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(paymentDate)}</Text>
+                    </TouchableOpacity>
+
+                    <Text style={styles.inputLabel}>ຈຳນວນເງິນຊຳລະ (ເງິນຕົ້ນ) *</Text>
+                    <TextInput 
+                        style={[styles.inputLarge, { color: COLORS.primary }]} 
+                        value={payAmount} 
+                        onChangeText={(t) => setPayAmount(formatNumber(t.replace(/,/g, '')))} 
+                        keyboardType="numeric" 
+                        placeholder="0" 
+                    />
+
+                    <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 20}}>
+                        <Text style={{fontFamily: 'Lao-Bold', fontSize: 16, color: '#333'}}>ຍອດຊຳລະທັງໝົດ</Text>
+                        <Text style={{fontFamily: 'Lao-Bold', fontSize: 20, color: COLORS.primary}}>{payAmount || '0'} ກີບ</Text>
+                    </View>
+
+                    <View style={styles.modalActions}>
+                        <TouchableOpacity style={styles.cancelBtn} onPress={() => setPaymentModalVisible(false)}>
+                            <Text style={styles.cancelBtnText}>ຍົກເລີກ</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.saveBtn, {backgroundColor: COLORS.primary}]} onPress={handlePayment}>
+                            <Text style={styles.saveBtnText}>ບັນທຶກການຊຳລະ</Text>
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+            </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
       {showDatePicker && (
-          Platform.OS === 'ios' ? (
-              <Modal visible={true} transparent={true} animationType="fade">
-                  <View style={styles.modalOverlay}>
-                      <View style={styles.iosDatePickerContainer}>
-                          <DateTimePicker 
-                              value={currentDate} 
-                              mode="date" 
-                              display="inline" 
-                              onChange={onDateChange} 
-                              style={{ height: 320, width: '100%', backgroundColor: 'white' }} 
-                              textColor="black" 
-                              themeVariant="light"
-                          />
-                          <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
-                              <Text style={styles.iosDateDoneText}>ຕົກລົງ</Text>
-                          </TouchableOpacity>
-                      </View>
-                  </View>
-              </Modal>
-          ) : (
-              <DateTimePicker value={currentDate} mode="date" display="default" onChange={onDateChange} />
-          )
+        Platform.OS === 'ios' ? (
+            <Modal visible={true} transparent={true} animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.iosDatePickerContainer}>
+                        <DateTimePicker 
+                            value={dateMode === 'due' ? dueDate : paymentDate} 
+                            mode="date" 
+                            display="inline" 
+                            onChange={onDateChange} 
+                            style={{ height: 320, width: '100%', backgroundColor: 'white' }} 
+                            textColor="black" 
+                            themeVariant="light"
+                        />
+                        <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
+                            <Text style={styles.iosDateDoneText}>ຕົກລົງ</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        ) : (
+            <DateTimePicker 
+              value={dateMode === 'due' ? dueDate : paymentDate} 
+              mode="date" 
+              display="default" 
+              onChange={onDateChange} 
+            />
+        )
       )}
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { padding: 20, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee' },
+  
+  headerContainer: { backgroundColor: 'white', padding: 20, paddingBottom: 15, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 2 },
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text },
-  exportBtn: { flexDirection: 'row', backgroundColor: '#F57C00', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, alignItems: 'center', gap: 3 },
-  exportText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 11 },
-  filterBar: { flexDirection: 'row', backgroundColor: 'white', padding: 10, alignItems: 'center', justifyContent: 'space-between', elevation: 1 },
-  filterChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 15, backgroundColor: '#f0f0f0', marginRight: 5 },
-  activeFilter: { backgroundColor: COLORS.primary },
-  filterText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
-  dateNav: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f9f9f9', padding: 5, borderRadius: 10 },
-  dateLabel: { fontFamily: 'Lao-Bold', fontSize: 13, color: COLORS.text },
-  tabs: { flexDirection: 'row', padding: 10, gap: 10 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: 'white', borderRadius: 10, elevation: 1 },
-  activeTab: { backgroundColor: COLORS.primary },
-  tabText: { fontFamily: 'Lao-Regular', color: '#666' },
-  activeTabText: { color: 'white', fontFamily: 'Lao-Bold' },
-  content: { flex: 1, padding: 15 },
+  headerSub: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
+
+  card: { 
+    backgroundColor: 'white', 
+    borderRadius: 8, 
+    marginBottom: 15, 
+    padding: 15, 
+    elevation: 2, 
+    borderTopWidth: 5, 
+    borderTopColor: COLORS.primary,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 
+  },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 },
+  cardTitle: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text, flex: 1 },
+  categoryBadge: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#888', marginTop: 2 },
+  headerActions: { flexDirection: 'row', gap: 10 },
+  iconBtn: { padding: 5 },
+
+  amountRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 5 },
+  label: { fontSize: 13, fontFamily: 'Lao-Regular', color: '#666' },
+  amountTotal: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
+
+  progressContainer: { height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden', marginVertical: 5 },
+  progressBar: { height: '100%', backgroundColor: COLORS.primary }, 
+  progressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
+  progressText: { fontSize: 11, color: COLORS.primary, fontFamily: 'Lao-Bold' },
+  remainingText: { fontSize: 12, color: '#F57C00', fontFamily: 'Lao-Bold' },
+
+  divider: { height: 1, backgroundColor: '#f5f5f5', marginBottom: 10 },
+
+  detailsGrid: { backgroundColor: '#F9FAFB', padding: 12, borderRadius: 6, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
+  detailItem: { flex: 1 },
+  detailLabel: { fontSize: 11, color: '#888', fontFamily: 'Lao-Regular' },
+  detailValue: { fontSize: 13, color: '#333', fontFamily: 'Lao-Bold', marginTop: 2 },
+
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12 },
+  dueDateText: { fontSize: 12, color: '#666', fontFamily: 'Lao-Regular' },
   
-  // Card & Charts
-  card: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, elevation: 2 },
-  cardLabel: { fontSize: 12, color: '#888', fontFamily: 'Lao-Regular' },
-  cardAmount: { fontSize: 18, fontFamily: 'Lao-Bold', marginTop: 2 },
-  iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  actionButtons: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  historyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, backgroundColor: '#f5f5f5', borderRadius: 8 },
+  historyText: { fontSize: 12, color: '#555', fontFamily: 'Lao-Regular' },
+  deleteBtn: { padding: 8, backgroundColor: '#FFEBEE', borderRadius: 8 },
   
-  chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
-  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 15 },
-  chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
-  chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
-  chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-  chartBar: { height: '100%', borderRadius: 4 },
-  chartRow: { marginBottom: 10 },
+  payBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.primary, paddingVertical: 8, paddingHorizontal: 15, borderRadius: 8 },
+  payBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 13 },
+
+  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, elevation: 5 },
+  fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 8 },
+
+  emptyContainer: { alignItems: 'center', marginTop: 80 },
+  emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, elevation: 5, maxHeight: '80%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
   
-  // List Item Styles
-  listItem: { backgroundColor: 'white', borderRadius: 12, marginBottom: 10, elevation: 1, overflow: 'hidden' },
-  itemHeader: { padding: 15 },
-  listTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
-  listSub: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#999' },
-  listAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
-  iconBox: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  badge: { backgroundColor: '#f0f0f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, alignSelf: 'flex-end', marginTop: 4 },
-  badgeText: { fontSize: 10, fontFamily: 'Lao-Bold', color: '#666' },
+  inputLabel: { fontSize: 13, fontFamily: 'Lao-Bold', color: '#555', marginBottom: 5, marginTop: 10 },
+  input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Bold' },
+  inputLarge: { backgroundColor: '#f9f9f9', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Bold', fontSize: 20, textAlign: 'right' },
+
+  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  catChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#eee' },
+  activeCatChip: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  catText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
   
-  // Item Details
-  itemDetails: { paddingHorizontal: 15, paddingBottom: 15, backgroundColor: '#FAFAFA' },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  infoText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
-  prodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  prodName: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
-  prodPrice: { fontFamily: 'Lao-Bold', fontSize: 13, color: '#333' },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 5 },
-  deleteText: { fontFamily: 'Lao-Bold', fontSize: 12 },
-  emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
+  dateInput: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
   
-  // Top Products
-  topProductsCard: { backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
-  sectionHeaderRow: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 10, marginBottom: 10 },
-  sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
-  topProductRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  rankBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  rankText: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#666' },
-  prodImage: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#f0f0f0' },
-  // 🟢 ເພີ່ມ styles ທີ່ຂາດໄປ
-  prodNameText: { fontFamily: 'Lao-Bold', fontSize: 13, color: COLORS.text }, 
-  prodSold: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#666' },
-  prodAmount: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.primary },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 30, marginBottom: 20 },
+  cancelBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: '#f5f5f5' },
+  cancelBtnText: { color: '#666', fontFamily: 'Lao-Bold' },
+  saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
+  saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
 
   // 🟢 iOS Date Picker Styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
   iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
   iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 }

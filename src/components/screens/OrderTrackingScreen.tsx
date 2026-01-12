@@ -5,6 +5,7 @@ import { onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   Alert, FlatList, Image,
+  Keyboard,
   Modal,
   Platform,
   SafeAreaView,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, CustomerOrder, OrderItem, formatDate, formatNumber } from '../../types';
+import CurrencyInput from '../ui/CurrencyInput'; // 🟢 Import Component ໃໝ່
 
 const SOURCES = ['ຈີນ', 'ຫວຽດ', 'ໄທ', 'ອື່ນໆ'];
 const STATUSES = ['ຮັບອໍເດີ້', 'ສັ່ງເຄື່ອງແລ້ວ', 'ເຄື່ອງຮອດແລ້ວ', 'ຈັດສົ່ງສຳເລັດ'];
@@ -101,7 +103,12 @@ export default function OrderTrackingScreen() {
     return COLORS.primary;
   };
 
-  // 🟢 Date Change Handler (ແກ້ໄຂ Dark Mode)
+  // 🟢 ເປີດປະຕິທິນທັນທີ ແລະ ປິດ Keyboard
+  const openDatePicker = () => {
+      Keyboard.dismiss();
+      setShowDatePicker(true);
+  };
+
   const onDateChange = (event: any, date?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
     if (date) setSelectedDate(date);
@@ -169,8 +176,8 @@ export default function OrderTrackingScreen() {
             <TextInput style={styles.input} value={customerName} onChangeText={setCustomerName} placeholder="ປ້ອນຊື່ລູກຄ້າ..." />
 
             <Text style={styles.label}>ວັນທີ *</Text>
-            {/* 🟢 ກົດປຸ່ມແລ້ວເປີດ Date Picker ທັນທີ */}
-            <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
+            {/* 🟢 ໃຊ້ openDatePicker */}
+            <TouchableOpacity style={styles.dateInput} onPress={openDatePicker}>
               <Text style={styles.inputText}>{formatDate(selectedDate)}</Text>
               <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
             </TouchableOpacity>
@@ -202,18 +209,36 @@ export default function OrderTrackingScreen() {
                   </View>
                   <View style={{flex: 0.5, marginLeft: 10}}>
                     <Text style={styles.subLabel}>ຈຳນວນ *</Text>
-                    <TextInput style={styles.input} keyboardType="numeric" value={item.quantity.toString()} onChangeText={(v) => updateItemValue(item.id, 'quantity', v)} />
+                    {/* 🟢 ໃຊ້ CurrencyInput */}
+                    <CurrencyInput 
+                        style={styles.input} 
+                        value={item.quantity.toString()} 
+                        onChangeValue={(v) => updateItemValue(item.id, 'quantity', v)} 
+                        placeholder="0"
+                    />
                   </View>
                 </View>
 
                 <View style={styles.row}>
                   <View style={{flex: 1}}>
                     <Text style={styles.subLabel}>ລາຄາສັ່ງ (ຕົ້ນທຶນ)</Text>
-                    <TextInput style={styles.input} keyboardType="numeric" value={item.costPrice.toString()} onChangeText={(v) => updateItemValue(item.id, 'costPrice', v)} />
+                    {/* 🟢 ໃຊ້ CurrencyInput */}
+                    <CurrencyInput 
+                        style={styles.input} 
+                        value={item.costPrice.toString()} 
+                        onChangeValue={(v) => updateItemValue(item.id, 'costPrice', v)} 
+                        placeholder="0"
+                    />
                   </View>
                   <View style={{flex: 1, marginLeft: 10}}>
                     <Text style={styles.subLabel}>ລາຄາຂາຍ (₭)</Text>
-                    <TextInput style={styles.input} keyboardType="numeric" value={item.salePrice.toString()} onChangeText={(v) => updateItemValue(item.id, 'salePrice', v)} />
+                    {/* 🟢 ໃຊ້ CurrencyInput */}
+                    <CurrencyInput 
+                        style={styles.input} 
+                        value={item.salePrice.toString()} 
+                        onChangeValue={(v) => updateItemValue(item.id, 'salePrice', v)} 
+                        placeholder="0"
+                    />
                   </View>
                 </View>
 
@@ -248,7 +273,7 @@ export default function OrderTrackingScreen() {
           </ScrollView>
         </SafeAreaView>
 
-        {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
+        {/* 🟢 iOS Date Picker Modal */}
         {showDatePicker && (
             Platform.OS === 'ios' ? (
                 <Modal visible={true} transparent={true} animationType="fade">

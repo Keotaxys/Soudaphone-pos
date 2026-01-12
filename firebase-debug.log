@@ -1,0 +1,38 @@
+[debug] [2026-01-12T10:05:05.995Z] ----------------------------------------------------------------------
+[debug] [2026-01-12T10:05:05.998Z] Command:       /nix/store/6ljnnmh7di4dyalyhb08jk6zvh05pk79-nodejs-20.19.5/bin/node /home/user/.global_modules/bin/firebase deploy --only functions
+[debug] [2026-01-12T10:05:05.998Z] CLI Version:   15.2.1
+[debug] [2026-01-12T10:05:05.998Z] Platform:      linux
+[debug] [2026-01-12T10:05:05.999Z] Node Version:  v20.19.5
+[debug] [2026-01-12T10:05:05.999Z] Time:          Mon Jan 12 2026 10:05:05 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-01-12T10:05:05.999Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-01-12T10:05:07.146Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:05:07.147Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:05:07.149Z] >>> [apiv2][query] GET https://monospace-pa.googleapis.com/v1/workspaces/pos-app-91717833 [none]
+[debug] [2026-01-12T10:05:08.233Z] <<< [apiv2][status] GET https://monospace-pa.googleapis.com/v1/workspaces/pos-app-91717833 200
+[debug] [2026-01-12T10:05:08.234Z] <<< [apiv2][body] GET https://monospace-pa.googleapis.com/v1/workspaces/pos-app-91717833 {"workspaceId":"pos-app-91717833","name":"POS App","workspaceRedirectUrl":"firebase-pos-app-1767708895237.cluster-bg6uurscprhn6qxr6xwtrhvkf6.cloudworkstations.dev","status":"WORKSPACE_STATUS_RUNNING","lastAccessDatetime":"2026-01-12T09:23:34.149566Z","workspaceTemplate":"WORKSPACE_TEMPLATE_FLUTTER","owner":"SELF","serviceAccountEmail":"msp-1093350999001435185@monospace-per-ws-sa-9.iam.gserviceaccount.com","enableNix":true,"ownerEmail":"Keota.mar@gmail.com","workspaceImageUrl":"https://www.gstatic.com/monospace/231115/logo_react.svg","templateArgs":"{\"openIn\":\"go\"}","templateRepoUrl":"github:monogramdesign/idx-react-native","workstationAccessToken":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2Nsb3VkLmdvb2dsZS5jb20vd29ya3N0YXRpb25zIiwiYXVkIjoiZmlyZWJhc2UtcG9zLWFwcC0xNzY3NzA4ODk1MjM3LmNsdXN0ZXItYmc2dXVyc2NwcmhuNnF4cjZ4d3RyaHZrZjYuY2xvdWR3b3Jrc3RhdGlvbnMuZGV2IiwiaWF0IjoxNzY4MjEyMzA4LCJleHAiOjE3NjgyOTg3MDd9.ZGPZXGD1MLS7eCsFYFEpGolm68R9_pVWcX0R-fhf921iR5YdlEGSUZu2myHPm70sD-uiTqqdBRwe0h6grDJcj4yi4kI5sntrsvEaOm18-aLh-baxNlgLeW7RxKTn9uAZYKDuQx7AM45DEuUsTAexonPi03J3uXyaaDi3oZ7jE4_-veU3KQx2BHMwo6GBzNNxihAq8zyOn1uPpHnZBgi1TviqsrWQBJAvM-dq3ZbocSau3Kf5i7v22Xe6eYnDg_uKyoFBZ8uXziAetg03FnYpCMTf3KrZeXbq5WuJ062zpXDqH5lJmkFddq45aeNXvpbJ9r0ZgJhKADD_8gdNCO-uuQ","firebaseProjectId":"studio-7834307833-10afa"}
+[debug] [2026-01-12T10:05:08.235Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-01-12T10:05:08.236Z] > authorizing via signed-in user (keota.mar@gmail.com)
+[debug] [2026-01-12T10:05:08.236Z] [iam] checking project studio-7834307833-10afa for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-01-12T10:05:08.237Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:05:08.237Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:05:08.237Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions [none]
+[debug] [2026-01-12T10:05:08.237Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions x-goog-quota-user=projects/studio-7834307833-10afa
+[debug] [2026-01-12T10:05:08.237Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-01-12T10:05:09.001Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions 200
+[debug] [2026-01-12T10:05:09.001Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-01-12T10:05:09.002Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:05:09.002Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:05:09.002Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/studio-7834307833-10afa/serviceAccounts/studio-7834307833-10afa@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-01-12T10:05:09.002Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/studio-7834307833-10afa/serviceAccounts/studio-7834307833-10afa@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-01-12T10:05:10.006Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/studio-7834307833-10afa/serviceAccounts/studio-7834307833-10afa@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-01-12T10:05:10.006Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/studio-7834307833-10afa/serviceAccounts/studio-7834307833-10afa@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'studio-7834307833-10afa'...
+[info] 
+[info] i  deploying functions 
+[info] Running command: npm --prefix "$RESOURCE_DIR" run build
+[info] ✔  functions: Finished running predeploy script. 
+[debug] [2026-01-12T10:05:17.943Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:05:17.943Z] Checked if tokens are valid: true, expires at: 1768214705072
+[debug] [2026-01-12T10:05:17.944Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/studio-7834307833-10afa [none]

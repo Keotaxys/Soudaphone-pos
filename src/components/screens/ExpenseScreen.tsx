@@ -21,7 +21,7 @@ import {
 import { db } from '../../firebase';
 import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
 
-// ສີສົ້ມ (ໃຊ້ສະເພາະບາງຈຸດ)
+// ສີສົ້ມ (ໃຊ້ສະເພາະບາງຈຸດທີ່ຍັງຕ້ອງການ)
 const ORANGE_COLOR = '#F57C00';
 const ORANGE_BG = '#FFF3E0';
 
@@ -65,6 +65,7 @@ export default function ExpenseScreen() {
         return () => unsubscribe();
     }, []);
 
+    // Functions...
     const handleDownloadTemplate = async () => {
         const csvContent = "Category,Amount,Description,Date(YYYY-MM-DD)\nຄ່າເຊົ່າ,500000,ຈ່າຍຄ່າເຊົ່າຮ້ານ,2024-01-01\n";
         const fileName = `${FileSystem.documentDirectory}expense_template.csv`;
@@ -168,8 +169,9 @@ export default function ExpenseScreen() {
         if (date) setSelectedDate(date);
     };
 
-    return (
-        <View style={styles.container}>
+    // 🟢 ສ່ວນ Header ທີ່ຈະຢູ່ໃນ List (ເພື່ອໃຫ້ເລື່ອນໄປພ້ອມກັນ)
+    const renderListHeader = () => (
+        <View>
             <View style={styles.formCard}>
                 <View style={styles.actionRowTop}>
                     <Text style={styles.headerTitle}>{id ? '✏️ ແກ້ໄຂ' : '➕ ເພີ່ມລາຍຈ່າຍ'}</Text>
@@ -219,38 +221,42 @@ export default function ExpenseScreen() {
                 </View>
             </View>
 
-            <View style={styles.listContainer}>
-                <Text style={styles.listHeader}>📜 ປະຫວັດລາຍຈ່າຍ</Text>
-                <FlatList
-                    data={expenses}
-                    keyExtractor={item => item.id!}
-                    contentContainerStyle={{ paddingBottom: 100 }}
-                    renderItem={({ item }) => (
-                        <View style={styles.expenseItem}>
-                            <View style={styles.dateBox}>
-                                <Text style={styles.dayText}>{new Date(item.date).getDate()}</Text>
-                                <Text style={styles.monthText}>{new Date(item.date).getMonth() + 1}/{new Date(item.date).getFullYear().toString().substr(2)}</Text>
-                            </View>
-                            <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                                <Text style={styles.itemCategory}>{item.category}</Text>
-                                <Text style={styles.itemDesc} numberOfLines={1}>{item.description}</Text>
-                            </View>
-                            <View style={{ alignItems: 'flex-end' }}>
-                                <Text style={[styles.itemAmount, {color: ORANGE_COLOR}]}>- {formatNumber(item.amount)}</Text>
-                                <View style={{ flexDirection: 'row', gap: 10, marginTop: 5 }}>
-                                    <TouchableOpacity onPress={() => handleEdit(item)}>
-                                        {/* 🟢 ປ່ຽນສີໄອຄອນສໍ ເປັນສີ Teal (COLORS.primary) */}
-                                        <Ionicons name="pencil" size={18} color={COLORS.primary} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => handleDelete(item.id!)}>
-                                        <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
-                                    </TouchableOpacity>
-                                </View>
+            <Text style={styles.listHeader}>📜 ປະຫວັດລາຍຈ່າຍ</Text>
+        </View>
+    );
+
+    return (
+        <View style={styles.container}>
+            {/* 🟢 FlatList ກວມເອົາທັງໝົດ */}
+            <FlatList
+                data={expenses}
+                keyExtractor={item => item.id!}
+                ListHeaderComponent={renderListHeader} // 🟢 ເອົາຟອມມາໄວ້ທີ່ນີ້
+                contentContainerStyle={{ paddingBottom: 100 }}
+                renderItem={({ item }) => (
+                    <View style={styles.expenseItem}>
+                        <View style={styles.dateBox}>
+                            <Text style={styles.dayText}>{new Date(item.date).getDate()}</Text>
+                            <Text style={styles.monthText}>{new Date(item.date).getMonth() + 1}/{new Date(item.date).getFullYear().toString().substr(2)}</Text>
+                        </View>
+                        <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                            <Text style={styles.itemCategory}>{item.category}</Text>
+                            <Text style={styles.itemDesc} numberOfLines={1}>{item.description}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={[styles.itemAmount, {color: ORANGE_COLOR}]}>- {formatNumber(item.amount)}</Text>
+                            <View style={{ flexDirection: 'row', gap: 10, marginTop: 5 }}>
+                                <TouchableOpacity onPress={() => handleEdit(item)}>
+                                    <Ionicons name="pencil" size={18} color={COLORS.primary} />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => handleDelete(item.id!)}>
+                                    <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
+                                </TouchableOpacity>
                             </View>
                         </View>
-                    )}
-                />
-            </View>
+                    </View>
+                )}
+            />
 
             {showDatePicker && (<DateTimePicker value={selectedDate} mode="date" display="default" onChange={onDateChange} />)}
 
@@ -281,7 +287,7 @@ export default function ExpenseScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    formCard: { backgroundColor: 'white', margin: 15, padding: 15, borderRadius: 15, elevation: 3, shadowColor: COLORS.primary, shadowOpacity: 0.1 },
+    formCard: { backgroundColor: 'white', margin: 15, marginBottom: 5, padding: 15, borderRadius: 15, elevation: 3, shadowColor: COLORS.primary, shadowOpacity: 0.1 },
     actionRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     headerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primaryDark },
     iconBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
@@ -298,9 +304,11 @@ const styles = StyleSheet.create({
     saveBtn: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
     cancelBtn: { width: 50, backgroundColor: '#eee', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    listContainer: { flex: 1, paddingHorizontal: 15 },
-    listHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: '#666', marginBottom: 10 },
-    expenseItem: { flexDirection: 'row', backgroundColor: 'white', padding: 12, borderRadius: 12, marginBottom: 10, alignItems: 'center' },
+    
+    // Header ຂອງ List
+    listHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: '#666', marginTop: 15, marginBottom: 10, marginHorizontal: 15 },
+    
+    expenseItem: { flexDirection: 'row', backgroundColor: 'white', padding: 12, borderRadius: 12, marginBottom: 10, marginHorizontal: 15, alignItems: 'center', elevation: 1 },
     dateBox: { backgroundColor: '#f0f0f0', padding: 8, borderRadius: 8, alignItems: 'center', minWidth: 50 },
     dayText: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primary },
     monthText: { fontSize: 10, color: '#888' },

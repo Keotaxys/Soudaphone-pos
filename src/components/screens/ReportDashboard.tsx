@@ -366,10 +366,6 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
                         {/* ລາຍລະອຽດສິນຄ້າ (ສະແດງເມື່ອກົດ) */}
                         {isExpanded && (
                             <View style={styles.itemDetails}>
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoText}>📍 ແຫຼ່ງ: {item.source || 'ໜ້າຮ້ານ'}</Text>
-                                    <Text style={styles.infoText}>💰 ຊຳລະ: {item.paymentMethod}</Text>
-                                </View>
                                 <View style={styles.divider} />
                                 {item.items && item.items.map((prod: any, idx: number) => (
                                     <View key={idx} style={styles.prodRow}>
@@ -378,10 +374,9 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
                                     </View>
                                 ))}
                                 <View style={styles.divider} />
-                                {/* 🟢 ປຸ່ມລຶບສີສົ້ມ */}
                                 <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
-                                    <Ionicons name="trash-outline" size={18} color="#F57C00" />
-                                    <Text style={[styles.deleteText, {color: '#F57C00'}]}>ລຶບບິນນີ້</Text>
+                                    <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+                                    <Text style={styles.deleteText}>ລຶບບິນນີ້</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -421,6 +416,7 @@ const styles = StyleSheet.create({
   cardLabel: { fontSize: 12, color: '#888', fontFamily: 'Lao-Regular' },
   cardAmount: { fontSize: 18, fontFamily: 'Lao-Bold', marginTop: 2 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  
   chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
   chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 15 },
   chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
@@ -429,7 +425,7 @@ const styles = StyleSheet.create({
   chartBar: { height: '100%', borderRadius: 4 },
   chartRow: { marginBottom: 10 },
   
-  // List Item
+  // List Item Styles
   listItem: { backgroundColor: 'white', borderRadius: 12, marginBottom: 10, elevation: 1, overflow: 'hidden' },
   itemHeader: { padding: 15 },
   listTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
@@ -439,16 +435,14 @@ const styles = StyleSheet.create({
   badge: { backgroundColor: '#f0f0f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, alignSelf: 'flex-end', marginTop: 4 },
   badgeText: { fontSize: 10, fontFamily: 'Lao-Bold', color: '#666' },
   
-  // Details
+  // Item Details
   itemDetails: { paddingHorizontal: 15, paddingBottom: 15, backgroundColor: '#FAFAFA' },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  infoText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
   prodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
   prodName: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
   prodPrice: { fontFamily: 'Lao-Bold', fontSize: 13, color: '#333' },
   divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
   deleteBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 5 },
-  deleteText: { fontFamily: 'Lao-Bold', fontSize: 12 },
+  deleteText: { fontFamily: 'Lao-Bold', color: COLORS.danger, fontSize: 12 },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
   
   // Top Products
@@ -459,5 +453,8 @@ const styles = StyleSheet.create({
   rankBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   rankText: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#666' },
   prodImage: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#f0f0f0' },
-  prodNameText: { fontFamily: 'Lao-Bold', fontSize: 13, color: COLORS.text }
+  // 🟢 ເພີ່ມ styles ທີ່ຂາດໄປ
+  prodNameText: { fontFamily: 'Lao-Bold', fontSize: 13, color: COLORS.text }, 
+  prodSold: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#666' },
+  prodAmount: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.primary }
 });

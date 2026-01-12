@@ -20,9 +20,9 @@ import {
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
-// 🟢 Import ໃຫ້ຖືກຕ້ອງ
-import CurrencyInput from '../ui/CurrencyInput';
+import CurrencyInput from '../ui/CurrencyInput'; // 🟢 Import Component ໃໝ່
 
+// ສີສົ້ມ (ໃຊ້ສະເພາະບາງຈຸດທີ່ຍັງຕ້ອງການ)
 const ORANGE_COLOR = '#F57C00';
 const ORANGE_BG = '#FFF3E0';
 
@@ -39,7 +39,7 @@ export default function ExpenseScreen() {
     const [loading, setLoading] = useState(true);
 
     const [id, setId] = useState<string | null>(null);
-    const [amount, setAmount] = useState('');
+    const [amount, setAmount] = useState(''); // 🟢 ເກັບຄ່າເປັນ String ຕົວເລກລ້ວນ (ບໍ່ມີຈຸດ)
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('ສັ່ງສິນຄ້າ'); 
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -66,6 +66,7 @@ export default function ExpenseScreen() {
         return () => unsubscribe();
     }, []);
 
+    // Functions...
     const handleDownloadTemplate = async () => {
         const csvContent = "Category,Amount,Description,Date(YYYY-MM-DD)\nຄ່າເຊົ່າ,500000,ຈ່າຍຄ່າເຊົ່າຮ້ານ,2024-01-01\n";
         const fileName = `${FileSystem.documentDirectory}expense_template.csv`;
@@ -125,6 +126,7 @@ export default function ExpenseScreen() {
             date: selectedDate.toISOString(),
             category,
             description,
+            // 🟢 ແປງ String ທີ່ມີຈຸດໃຫ້ເປັນ Number (ປ້ອງກັນໄວ້ກ່ອນ)
             amount: parseFloat(amount.replace(/,/g, '')),
             createdAt: new Date().toISOString()
         };
@@ -150,6 +152,7 @@ export default function ExpenseScreen() {
 
     const handleEdit = (item: ExpenseRecord) => {
         setId(item.id!);
+        // 🟢 ແປງ Number ເປັນ String ເພື່ອໄປສະແດງໃນ Input
         setAmount(item.amount.toString());
         setDescription(item.description);
         setCategory(item.category);
@@ -169,6 +172,7 @@ export default function ExpenseScreen() {
         if (date) setSelectedDate(date);
     };
 
+    // 🟢 ສ່ວນ Header ທີ່ຈະຢູ່ໃນ List (ເພື່ອໃຫ້ເລື່ອນໄປພ້ອມກັນ)
     const renderListHeader = () => (
         <View>
             <View style={styles.formCard}>
@@ -202,7 +206,8 @@ export default function ExpenseScreen() {
 
                 <View style={styles.amountContainer}>
                     <Text style={[styles.currencyLabel, {color: ORANGE_COLOR}]}>₭</Text>
-                    {/* 🟢 ໃຊ້ CurrencyInput ທີ່ນີ້ */}
+                    
+                    {/* 🟢 ໃຊ້ CurrencyInput ຢ່າງຖືກຕ້ອງ: ສົ່ງຄ່າ amount ໂດຍກົງ */}
                     <CurrencyInput 
                         style={[styles.amountInput, {color: ORANGE_COLOR}]} 
                         placeholder="0" 
@@ -232,6 +237,7 @@ export default function ExpenseScreen() {
 
     return (
         <View style={styles.container}>
+            {/* FlatList ກວມເອົາທັງໝົດ */}
             <FlatList
                 data={expenses}
                 keyExtractor={item => item.id!}
@@ -262,6 +268,7 @@ export default function ExpenseScreen() {
                 )}
             />
 
+            {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
             {showDatePicker && (
                 Platform.OS === 'ios' ? (
                     <Modal visible={true} transparent={true} animationType="fade">

@@ -7,21 +7,23 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Keyboard,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Keyboard,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
+// 🟢 Import CurrencyInput
+import CurrencyInput from '../ui/CurrencyInput';
 
-// ສີສົ້ມ (ໃຊ້ສະເພາະບາງຈຸດທີ່ຍັງຕ້ອງການ)
 const ORANGE_COLOR = '#F57C00';
 const ORANGE_BG = '#FFF3E0';
 
@@ -37,8 +39,9 @@ export default function ExpenseScreen() {
     const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Form States
     const [id, setId] = useState<string | null>(null);
-    const [amount, setAmount] = useState(''); // ເກັບເປັນ String ທີ່ມີຈຸດໄດ້
+    const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('ສັ່ງສິນຄ້າ'); 
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -64,18 +67,6 @@ export default function ExpenseScreen() {
         });
         return () => unsubscribe();
     }, []);
-
-    // 🟢 ຟັງຊັນຈັດ Format ເງິນ (ໃສ່ຈຸດ)
-    const handleAmountChange = (text: string) => {
-        // ລຶບຈຸດອອກກ່ອນ
-        const rawValue = text.replace(/,/g, '');
-        // ກວດສອບວ່າເປັນຕົວເລກບໍ່
-        if (/^\d*$/.test(rawValue)) {
-            // ໃສ່ຈຸດຄືນ
-            const formatted = rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-            setAmount(formatted);
-        }
-    };
 
     const handleDownloadTemplate = async () => {
         const csvContent = "Category,Amount,Description,Date(YYYY-MM-DD)\nຄ່າເຊົ່າ,500000,ຈ່າຍຄ່າເຊົ່າຮ້ານ,2024-01-01\n";
@@ -136,8 +127,7 @@ export default function ExpenseScreen() {
             date: selectedDate.toISOString(),
             category,
             description,
-            // 🟢 ແປງກັບເປັນ Number ກ່ອນບັນທຶກ
-            amount: parseFloat(amount.replace(/,/g, '')),
+            amount: parseFloat(amount), // CurrencyInput ສົ່ງມາເປັນ String ຕົວເລກລ້ວນແລ້ວ
             createdAt: new Date().toISOString()
         };
         try {
@@ -162,8 +152,7 @@ export default function ExpenseScreen() {
 
     const handleEdit = (item: ExpenseRecord) => {
         setId(item.id!);
-        // 🟢 ໃສ່ຈຸດໃຫ້ເລີຍຕອນໂຫຼດມາແກ້ໄຂ
-        setAmount(formatNumber(item.amount));
+        setAmount(item.amount.toString());
         setDescription(item.description);
         setCategory(item.category);
         setSelectedDate(new Date(item.date));
@@ -177,83 +166,83 @@ export default function ExpenseScreen() {
         setSelectedDate(new Date());
     };
 
+    // 🟢 ເປີດປະຕິທິນທັນທີ ແລະ ປິດ Keyboard
+    const openDatePicker = () => {
+        Keyboard.dismiss();
+        setShowDatePicker(true);
+    };
+
     const onDateChange = (event: any, date?: Date) => {
         if (Platform.OS === 'android') setShowDatePicker(false);
         if (date) setSelectedDate(date);
     };
 
-    const renderListHeader = () => (
-        <View>
-            <View style={styles.formCard}>
-                <View style={styles.actionRowTop}>
-                    <Text style={styles.headerTitle}>{id ? '✏️ ແກ້ໄຂ' : '➕ ເພີ່ມລາຍຈ່າຍ'}</Text>
-                    <View style={{flexDirection: 'row', gap: 5}}>
-                        <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}>
-                            <Ionicons name="download-outline" size={18} color={COLORS.primary} />
+    return (
+        <SafeAreaView style={styles.container}>
+            {/* 🟢 ໃຊ້ ScrollView ແທນ FlatList ເພື່ອແກ້ບັນຫາ Keyboard ເດັ້ງ */}
+            <ScrollView contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
+                
+                {/* ສ່ວນຟອມ (Header ເດີມ) */}
+                <View style={styles.formCard}>
+                    <View style={styles.actionRowTop}>
+                        <Text style={styles.headerTitle}>{id ? '✏️ ແກ້ໄຂ' : '➕ ເພີ່ມລາຍຈ່າຍ'}</Text>
+                        <View style={{flexDirection: 'row', gap: 5}}>
+                            <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}>
+                                <Ionicons name="download-outline" size={18} color={COLORS.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.iconBtn} onPress={handleImport}>
+                                <Ionicons name="cloud-upload-outline" size={18} color={COLORS.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.iconBtn} onPress={handleExport}>
+                                <Ionicons name="share-outline" size={18} color={COLORS.primary} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                    
+                    <View style={styles.row}>
+                        <TouchableOpacity style={styles.dateBtn} onPress={openDatePicker}>
+                            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                            <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.iconBtn} onPress={handleImport}>
-                            <Ionicons name="cloud-upload-outline" size={18} color={COLORS.primary} />
+                        <TouchableOpacity style={styles.categoryBtn} onPress={() => setShowCategoryPicker(true)}>
+                            <Text style={styles.categoryText} numberOfLines={1}>{category}</Text>
+                            <Ionicons name="chevron-down" size={16} color="#666" />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.iconBtn} onPress={handleExport}>
-                            <Ionicons name="share-outline" size={18} color={COLORS.primary} />
+                    </View>
+
+                    <TextInput style={styles.input} placeholder="ລາຍລະອຽດ (ຕົວຢ່າງ: ສັ່ງເຄື່ອງຈາກຈີນ)" value={description} onChangeText={setDescription} />
+
+                    <View style={styles.amountContainer}>
+                        <Text style={[styles.currencyLabel, {color: ORANGE_COLOR}]}>₭</Text>
+                        {/* 🟢 ໃຊ້ CurrencyInput */}
+                        <CurrencyInput 
+                            style={[styles.amountInput, {color: ORANGE_COLOR}]} 
+                            placeholder="0" 
+                            value={amount} 
+                            onChangeValue={setAmount} 
+                        />
+                    </View>
+
+                    <View style={styles.actionRow}>
+                        {id && (
+                            <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
+                                <Ionicons name="close" size={24} color="white" />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity 
+                            style={[styles.saveBtn, { backgroundColor: id ? COLORS.secondary : COLORS.primary }]} 
+                            onPress={handleSave}
+                        >
+                            <Text style={styles.saveBtnText}>{id ? 'ອັບເດດລາຍຈ່າຍ' : 'ບັນທຶກລາຍຈ່າຍ'}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
-                
-                <View style={styles.row}>
-                    <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
-                        <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
-                        <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.categoryBtn} onPress={() => setShowCategoryPicker(true)}>
-                        <Text style={styles.categoryText} numberOfLines={1}>{category}</Text>
-                        <Ionicons name="chevron-down" size={16} color="#666" />
-                    </TouchableOpacity>
-                </View>
 
-                <TextInput style={styles.input} placeholder="ລາຍລະອຽດ (ຕົວຢ່າງ: ສັ່ງເຄື່ອງຈາກຈີນ)" value={description} onChangeText={setDescription} />
+                <Text style={styles.listHeader}>📜 ປະຫວັດລາຍຈ່າຍ</Text>
 
-                <View style={styles.amountContainer}>
-                    <Text style={[styles.currencyLabel, {color: ORANGE_COLOR}]}>₭</Text>
-                    {/* 🟢 ກັບມາໃຊ້ TextInput ແບບເດີມ ແຕ່ໃສ່ Logic Format ເອງ */}
-                    <TextInput 
-                        style={[styles.amountInput, {color: ORANGE_COLOR}]} 
-                        placeholder="0" 
-                        value={amount} 
-                        onChangeText={handleAmountChange} 
-                        keyboardType="number-pad"
-                    />
-                </View>
-
-                <View style={styles.actionRow}>
-                    {id && (
-                        <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
-                            <Ionicons name="close" size={24} color="white" />
-                        </TouchableOpacity>
-                    )}
-                    <TouchableOpacity 
-                        style={[styles.saveBtn, { backgroundColor: id ? COLORS.secondary : COLORS.primary }]} 
-                        onPress={handleSave}
-                    >
-                        <Text style={styles.saveBtnText}>{id ? 'ອັບເດດລາຍຈ່າຍ' : 'ບັນທຶກລາຍຈ່າຍ'}</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            <Text style={styles.listHeader}>📜 ປະຫວັດລາຍຈ່າຍ</Text>
-        </View>
-    );
-
-    return (
-        <View style={styles.container}>
-            {/* FlatList ກວມເອົາທັງໝົດ */}
-            <FlatList
-                data={expenses}
-                keyExtractor={item => item.id!}
-                ListHeaderComponent={renderListHeader}
-                contentContainerStyle={{ paddingBottom: 100 }}
-                renderItem={({ item }) => (
-                    <View style={styles.expenseItem}>
+                {/* 🟢 Render List ດ້ວຍ Map ແທນ FlatList (ພາຍໃນ ScrollView) */}
+                {expenses.map((item) => (
+                    <View key={item.id} style={styles.expenseItem}>
                         <View style={styles.dateBox}>
                             <Text style={styles.dayText}>{new Date(item.date).getDate()}</Text>
                             <Text style={styles.monthText}>{new Date(item.date).getMonth() + 1}/{new Date(item.date).getFullYear().toString().substr(2)}</Text>
@@ -274,8 +263,9 @@ export default function ExpenseScreen() {
                             </View>
                         </View>
                     </View>
-                )}
-            />
+                ))}
+
+            </ScrollView>
 
             {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
             {showDatePicker && (
@@ -307,24 +297,21 @@ export default function ExpenseScreen() {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>ເລືອກໝວດໝູ່</Text>
-                        <FlatList
-                            data={EXPENSE_CATEGORIES}
-                            keyExtractor={(item) => item}
-                            showsVerticalScrollIndicator={false}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity style={styles.categoryItem} onPress={() => { setCategory(item); setShowCategoryPicker(false); }}>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            {EXPENSE_CATEGORIES.map((item) => (
+                                <TouchableOpacity key={item} style={styles.categoryItem} onPress={() => { setCategory(item); setShowCategoryPicker(false); }}>
                                     <Text style={[styles.categoryItemText, category === item && {color: COLORS.primary, fontFamily: 'Lao-Bold'}]}>{item}</Text>
                                     {category === item && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
                                 </TouchableOpacity>
-                            )}
-                        />
+                            ))}
+                        </ScrollView>
                         <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowCategoryPicker(false)}>
                             <Text style={{color: '#666', fontFamily: 'Lao-Bold'}}>ປິດ</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -365,7 +352,7 @@ const styles = StyleSheet.create({
     categoryItemText: { fontFamily: 'Lao-Regular', fontSize: 16, color: '#333' },
     closeModalBtn: { marginTop: 15, padding: 10, alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10 },
     
-    // 🟢 iOS Date Picker Styles
+    // iOS Date Picker Styles
     iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
     iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
     iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 }

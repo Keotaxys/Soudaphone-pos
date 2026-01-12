@@ -4,7 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import { onValue, ref, remove } from 'firebase/database';
+import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
@@ -24,7 +24,7 @@ import { COLORS, formatDate, formatNumber } from '../../types';
 const { width } = Dimensions.get('window');
 
 type FilterType = 'day' | 'week' | 'month' | 'year';
-export type ReportTab = 'overview' | 'sales'; // 🟢 ເຫຼືອແຕ່ 2 ແຖບ
+export type ReportTab = 'overview' | 'sales' | 'expenses' | 'debts';
 
 interface ReportDashboardProps {
   initialTab?: ReportTab;
@@ -32,6 +32,8 @@ interface ReportDashboardProps {
 
 export default function ReportDashboard({ initialTab = 'overview' }: ReportDashboardProps) {
   const [sales, setSales] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [debts, setDebts] = useState<any[]>([]);
   
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -44,13 +46,15 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
   }, [initialTab]);
 
   const [filteredSales, setFilteredSales] = useState<any[]>([]);
+  const [filteredExpenses, setFilteredExpenses] = useState<any[]>([]);
+  
   const [totalRevenue, setTotalRevenue] = useState(0);
-  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalExpense, setTotalExpense] = useState(0);
+  const [totalDebt, setTotalDebt] = useState(0);
   
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [salesByCategory, setSalesByCategory] = useState<any[]>([]);
-
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expensesByCategory, setExpensesByCategory] = useState<any[]>([]);
 
   const parseCurrency = (value: any) => {
       if (value === undefined || value === null || value === '') return 0;
@@ -65,6 +69,30 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
         const data = snapshot.val();
         if (data) setSales(Object.keys(data).map(key => ({ id: key, ...data[key] })));
         else setSales([]);
+      });
+      onValue(ref(db, 'expenses'), (snapshot) => {
+        const data = snapshot.val();
+        if (data) setExpenses(Object.keys(data).map(key => ({ id: key, ...data[key] })));
+        else setExpenses([]);
+      });
+      onValue(ref(db, 'debts'), (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            const list = Object.keys(data).map(key => {
+                const item = data[key];
+                const total = parseCurrency(item.originalAmount || item.totalAmount || item.amount);
+                const paid = parseCurrency(item.paidAmount || item.paid);
+                let remaining = parseCurrency(item.remainingBalance);
+                if (remaining === 0 && total > 0) remaining = total - paid;
+                return { ...item, id: key, remainingBalance: remaining };
+            });
+            setDebts(list);
+            const debtSum = list.reduce((sum, item: any) => sum + item.remainingBalance, 0);
+            setTotalDebt(debtSum);
+        } else {
+            setDebts([]);
+            setTotalDebt(0);
+        }
       });
     };
     fetchData();
@@ -95,7 +123,6 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
     });
     setFilteredSales(fSales);
     setTotalRevenue(fSales.reduce((sum, s) => sum + parseCurrency(s.total || s.amountReceived), 0));
-    setTotalOrders(fSales.length);
 
     // Stats
     const productStats: any = {};
@@ -125,7 +152,26 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
         .sort((a, b) => b.value - a.value);
     setSalesByCategory(sortedSalesCat);
 
-  }, [sales, filterType, currentDate]);
+    const fExpenses = expenses.filter(item => {
+        const d = new Date(item.date);
+        return d >= start && d <= end;
+    });
+    setFilteredExpenses(fExpenses);
+    setTotalExpense(fExpenses.reduce((sum, e) => sum + parseCurrency(e.amount), 0));
+
+    const expCatStats: any = {};
+    fExpenses.forEach(exp => {
+        const catName = exp.category || 'ອື່ນໆ';
+        if (!expCatStats[catName]) expCatStats[catName] = 0;
+        expCatStats[catName] += parseCurrency(exp.amount);
+    });
+
+    const sortedExpCat = Object.keys(expCatStats)
+        .map(key => ({ label: key, value: expCatStats[key] }))
+        .sort((a, b) => b.value - a.value);
+    setExpensesByCategory(sortedExpCat);
+
+  }, [sales, expenses, filterType, currentDate]);
 
   const handleNavigateDate = (dir: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
@@ -137,22 +183,18 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
     setCurrentDate(newDate);
   };
 
-  const handleDelete = (id: string) => {
-    Alert.alert('ຢືນຢັນການລຶບ', 'ທ່ານຕ້ອງການລຶບປະຫວັດການຂາຍນີ້ແທ້ບໍ່? ຂໍ້ມູນຈະຫາຍໄປຖາວອນ.', [
-        { text: 'ຍົກເລີກ', style: 'cancel' },
-        { text: 'ລຶບ', style: 'destructive', onPress: async () => await remove(ref(db, `sales/${id}`)) }
-    ]);
-  };
-
   const generateExcel = async () => {
-      let csvContent = "Date,Bill ID,Source,Payment,Amount\n";
+      let csvContent = "Date,Type,Category,Description,Amount\n";
       filteredSales.forEach(s => {
-          csvContent += `${new Date(s.date).toLocaleDateString()},#${s.id ? s.id.slice(-4) : '-'},${s.source || 'Shop'},${s.paymentMethod},${parseCurrency(s.total)}\n`;
+          csvContent += `${new Date(s.date).toLocaleDateString()},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
+      });
+      filteredExpenses.forEach(e => {
+          csvContent += `${new Date(e.date).toLocaleDateString()},Expense,${e.category},${e.note || '-'},-${parseCurrency(e.amount)}\n`;
       });
 
       try {
           const docDir = FileSystem.documentDirectory;
-          const fileName = `${docDir}sales_report_${new Date().getTime()}.csv`;
+          const fileName = `${docDir}report_${new Date().getTime()}.csv`;
           
           await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
           await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
@@ -176,21 +218,17 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
           </style>
         </head>
         <body>
-          <h1>ລາຍງານຍອດຂາຍ (Soudaphone POS)</h1>
+          <h1>ລາຍງານສະຫຼຸບ (Soudaphone POS)</h1>
           <p>ວັນທີ: ${formatDate(currentDate)} (${filterType})</p>
           <div class="summary">
-            <div><b>ຈຳນວນອໍເດີ:</b> ${totalOrders}</div>
-            <div><b>ຍອດຂາຍລວມ:</b> ${formatNumber(totalRevenue)} ₭</div>
+            <div><b>ຍອດຂາຍ:</b> ${formatNumber(totalRevenue)} ₭</div>
+            <div><b>ລາຍຈ່າຍ:</b> ${formatNumber(totalExpense)} ₭</div>
+            <div><b>ກຳໄລ:</b> ${formatNumber(totalRevenue - totalExpense)} ₭</div>
           </div>
-          <h3>ລາຍການຂາຍ</h3>
+          <h3>ສິນຄ້າຂາຍດີ 5 ອັນດັບ</h3>
           <table>
-            <tr><th>ວັນທີ</th><th>ແຫຼ່ງຂາຍ</th><th>ຊຳລະ</th><th class="money">ຍອດເງິນ</th></tr>
-            ${filteredSales.map(s => `<tr>
-                <td>${new Date(s.date).toLocaleDateString()}</td>
-                <td>${s.source || 'ໜ້າຮ້ານ'}</td>
-                <td>${s.paymentMethod}</td>
-                <td class="money">${formatNumber(s.total)}</td>
-            </tr>`).join('')}
+            <tr><th>ຊື່ສິນຄ້າ</th><th>ຈຳນວນຂາຍ</th><th>ຍອດເງິນ</th></tr>
+            ${topProducts.map(p => `<tr><td>${p.name}</td><td>${p.totalSold}</td><td class="money">${formatNumber(p.totalAmount)}</td></tr>`).join('')}
           </table>
         </body>
       </html>
@@ -199,17 +237,22 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
     await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
   };
 
-  const SummaryCard = ({ label, amount, color, icon }: any) => (
-    <View style={[styles.card, { borderLeftColor: color, borderLeftWidth: 5 }]}>
-      <View>
-        <Text style={styles.cardLabel}>{label}</Text>
-        <Text style={[styles.cardAmount, { color: color }]}>{amount}</Text>
-      </View>
-      <View style={[styles.iconCircle, { backgroundColor: color + '20' }]}>
-        <Ionicons name={icon} size={24} color={color} />
-      </View>
-    </View>
-  );
+  const SummaryCard = ({ label, amount, color, icon, isProfit = false }: any) => {
+    const displayColor = isProfit && amount < 0 ? '#F57C00' : color;
+    return (
+        <View style={[styles.card, { borderLeftColor: displayColor, borderLeftWidth: 5 }]}>
+        <View>
+            <Text style={styles.cardLabel}>{label}</Text>
+            <Text style={[styles.cardAmount, { color: displayColor }]}>
+                {isProfit && amount > 0 ? '+' : ''}{formatNumber(amount)} ₭
+            </Text>
+        </View>
+        <View style={[styles.iconCircle, { backgroundColor: displayColor + '20' }]}>
+            <Ionicons name={icon} size={24} color={displayColor} />
+        </View>
+        </View>
+    );
+  };
 
   const CategoryChart = ({ title, data, color }: { title: string, data: any[], color: string }) => {
       const maxValue = Math.max(...data.map(d => d.value)) || 1;
@@ -232,19 +275,51 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
       );
   };
 
+  const HorizontalChart = () => {
+    const maxVal = Math.max(totalRevenue, totalExpense) || 1;
+    return (
+        <View style={styles.chartBox}>
+            <Text style={styles.chartTitle}>ປຽບທຽບ ລາຍຮັບ vs ລາຍຈ່າຍ</Text>
+            
+            {/* Income */}
+            <View style={styles.hChartRow}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
+                    <Text style={styles.chartLabel}>ລາຍຮັບ</Text>
+                    <Text style={[styles.chartValue, {color: COLORS.primary}]}>{formatNumber(totalRevenue)} ₭</Text>
+                </View>
+                <View style={styles.chartTrack}>
+                    <View style={[styles.chartBar, { width: `${(totalRevenue / maxVal) * 100}%`, backgroundColor: COLORS.primary }]} />
+                </View>
+            </View>
+
+            {/* Expense */}
+            <View style={styles.hChartRow}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
+                    <Text style={styles.chartLabel}>ລາຍຈ່າຍ</Text>
+                    <Text style={[styles.chartValue, {color: '#F57C00'}]}>{formatNumber(totalExpense)} ₭</Text>
+                </View>
+                <View style={styles.chartTrack}>
+                    <View style={[styles.chartBar, { width: `${(totalExpense / maxVal) * 100}%`, backgroundColor: '#F57C00' }]} />
+                </View>
+            </View>
+        </View>
+    );
+  };
+
   const keyExtractor = (item: any, index: number) => item.id ? item.id.toString() : index.toString();
 
   const DashboardContent = () => (
     <View>
         <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 15}}>
-            <View style={{flex: 1}}>
-                <SummaryCard label="ຍອດຂາຍລວມ" amount={`${formatNumber(totalRevenue)} ₭`} color={COLORS.primary} icon="cash" />
+            <View style={{width: '100%'}}>
+                <SummaryCard label="ກຳໄລສຸດທິ" amount={totalRevenue - totalExpense} color={COLORS.primary} icon="trending-up" isProfit={true} />
             </View>
-            <View style={{flex: 1}}>
-                <SummaryCard label="ຈຳນວນອໍເດີ" amount={`${totalOrders} ບິນ`} color={COLORS.secondary} icon="receipt" />
-            </View>
+            <View style={{flex: 1}}><SummaryCard label="ຍອດຂາຍລວມ" amount={totalRevenue} color={COLORS.primary} icon="cash" /></View>
+            <View style={{flex: 1}}><SummaryCard label="ລາຍຈ່າຍ" amount={totalExpense} color="#F57C00" icon="wallet" /></View>
         </View>
         
+        <HorizontalChart />
+
         {topProducts.length > 0 && (
             <View style={styles.topProductsCard}>
                 <View style={styles.sectionHeaderRow}>
@@ -268,7 +343,14 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
             </View>
         )}
 
-        <CategoryChart title="💰 ຍອດຂາຍແຍກຕາມໝວດໝູ່" data={salesByCategory} color={COLORS.primary} />
+        <CategoryChart title="💰 ລາຍຮັບແຍກຕາມໝວດໝູ່" data={salesByCategory} color={COLORS.primary} />
+        <CategoryChart title="💸 ລາຍຈ່າຍແຍກຕາມໝວດໝູ່" data={expensesByCategory} color="#F57C00" />
+
+        <View style={styles.debtCard}>
+            <Text style={styles.debtTitle}>ສະຖານະໜີ້ສິນລວມ</Text>
+            <Text style={styles.debtAmount}>{formatNumber(totalDebt)} ₭</Text>
+            <Text style={styles.debtSub}>ທີ່ຍັງຄ້າງຊຳລະ</Text>
+        </View>
     </View>
   );
 
@@ -311,7 +393,9 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
 
         <View style={styles.tabs}>
             <TouchableOpacity style={[styles.tab, activeTab === 'overview' && styles.activeTab]} onPress={() => setActiveTab('overview')}><Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>ພາບລວມ</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.tab, activeTab === 'sales' && styles.activeTab]} onPress={() => setActiveTab('sales')}><Text style={[styles.tabText, activeTab === 'sales' && styles.activeTabText]}>ລາຍການຂາຍ</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, activeTab === 'sales' && styles.activeTab]} onPress={() => setActiveTab('sales')}><Text style={[styles.tabText, activeTab === 'sales' && styles.activeTabText]}>ການຂາຍ</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, activeTab === 'expenses' && styles.activeTab]} onPress={() => setActiveTab('expenses')}><Text style={[styles.tabText, activeTab === 'expenses' && styles.activeTabText]}>ລາຍຈ່າຍ</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, activeTab === 'debts' && styles.activeTab]} onPress={() => setActiveTab('debts')}><Text style={[styles.tabText, activeTab === 'debts' && styles.activeTabText]}>ໜີ້ສິນ</Text></TouchableOpacity>
         </View>
     </View>
   );
@@ -334,54 +418,47 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
           />
       ) : (
           <FlatList 
-            data={filteredSales}
+            data={activeTab === 'sales' ? filteredSales : activeTab === 'expenses' ? filteredExpenses : debts}
             keyExtractor={keyExtractor}
             ListHeaderComponent={<HeaderComponent />}
             contentContainerStyle={{paddingBottom: 50}}
             renderItem={({item}) => {
-                const isExpanded = expandedId === item.id;
-                return (
-                    <View style={[styles.listItem, { marginHorizontal: 15 }]}>
-                        <TouchableOpacity style={styles.itemHeader} onPress={() => setExpandedId(isExpanded ? null : item.id)}>
-                            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                                <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
-                                    <View style={[styles.iconBox, {backgroundColor: item.paymentMethod === 'CASH' ? '#E8F5E9' : '#E3F2FD'}]}>
-                                        <Ionicons name={item.paymentMethod === 'CASH' ? 'cash' : 'qr-code'} size={20} color={item.paymentMethod === 'CASH' ? COLORS.success : COLORS.primary} />
-                                    </View>
-                                    <View>
-                                        <Text style={styles.listTitle}>ບິນ #{item.id ? item.id.slice(-4) : '-'}</Text>
-                                        <Text style={styles.listSub}>{new Date(item.date).toLocaleTimeString('lo-LA', {hour: '2-digit', minute:'2-digit'})}</Text>
-                                    </View>
-                                </View>
-                                <View style={{alignItems: 'flex-end'}}>
-                                    <Text style={styles.listAmount}>{formatNumber(parseCurrency(item.total))}</Text>
-                                    <View style={styles.badge}>
-                                        <Text style={styles.badgeText}>{item.source || 'ໜ້າຮ້ານ'}</Text>
-                                    </View>
-                                </View>
+                if (activeTab === 'sales') {
+                    return (
+                        <View style={[styles.listItem, { marginHorizontal: 15 }]}>
+                            <View>
+                                <Text style={styles.listTitle}>ບິນ #{item.id ? item.id.slice(-4) : '-'}</Text>
+                                <Text style={styles.listSub}>{new Date(item.date).toLocaleString('lo-LA')}</Text>
                             </View>
-                        </TouchableOpacity>
-
-                        {isExpanded && (
-                            <View style={styles.itemDetails}>
-                                <View style={styles.divider} />
-                                {item.items && item.items.map((prod: any, idx: number) => (
-                                    <View key={idx} style={styles.prodRow}>
-                                        <Text style={styles.prodName}>{prod.name} x{prod.quantity}</Text>
-                                        <Text style={styles.prodPrice}>{formatNumber(prod.price * prod.quantity)}</Text>
-                                    </View>
-                                ))}
-                                <View style={styles.divider} />
-                                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
-                                    <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
-                                    <Text style={styles.deleteText}>ລຶບບິນນີ້</Text>
-                                </TouchableOpacity>
+                            <Text style={styles.listAmount}>+{formatNumber(parseCurrency(item.total))}</Text>
+                        </View>
+                    );
+                } else if (activeTab === 'expenses') {
+                    return (
+                        <View style={[styles.listItem, { marginHorizontal: 15 }]}>
+                            <View>
+                                <Text style={styles.listTitle}>{item.category}</Text>
+                                <Text style={styles.listSub}>{item.note || 'ບໍ່ມີໝາຍເຫດ'}</Text>
                             </View>
-                        )}
-                    </View>
-                );
+                            <Text style={[styles.listAmount, {color: '#F57C00'}]}>-{formatNumber(parseCurrency(item.amount))}</Text>
+                        </View>
+                    );
+                } else {
+                    return (
+                        <View style={[styles.listItem, { marginHorizontal: 15 }]}>
+                            <View>
+                                <Text style={styles.listTitle}>{item.title}</Text>
+                                <Text style={styles.listSub}>ກຳນົດ: {formatDate(new Date(item.dueDate))}</Text>
+                            </View>
+                            <View style={{alignItems: 'flex-end'}}>
+                                <Text style={[styles.listAmount, {color: '#F57C00'}]}>{formatNumber(item.remainingBalance)}</Text>
+                                <Text style={{fontSize: 10, color: '#999'}}>ຍັງເຫຼືອ</Text>
+                            </View>
+                        </View>
+                    );
+                }
             }}
-            ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນການຂາຍ</Text>}
+            ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນ</Text>}
           />
       )}
 
@@ -416,27 +493,21 @@ const styles = StyleSheet.create({
   // Chart Styles
   chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
   chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 15 },
+  hChartRow: { marginBottom: 15 },
   chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
   chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
   chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
   chartBar: { height: '100%', borderRadius: 4 },
   chartRow: { marginBottom: 10 },
 
-  listItem: { backgroundColor: 'white', borderRadius: 12, marginBottom: 10, elevation: 1, overflow: 'hidden' },
-  itemHeader: { padding: 15 },
+  debtCard: { backgroundColor: '#FFF3E0', padding: 15, borderRadius: 12, alignItems: 'center', borderLeftWidth: 5, borderLeftColor: COLORS.secondary },
+  debtTitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#E65100' },
+  debtAmount: { fontSize: 24, fontFamily: 'Lao-Bold', color: '#E65100', marginVertical: 5 },
+  debtSub: { fontSize: 12, color: '#EF6C00' },
+  listItem: { backgroundColor: 'white', padding: 15, borderRadius: 10, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   listTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
   listSub: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#999' },
   listAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.primary },
-  iconBox: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  badge: { backgroundColor: '#f0f0f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, alignSelf: 'flex-end', marginTop: 4 },
-  badgeText: { fontSize: 10, fontFamily: 'Lao-Bold', color: '#666' },
-  itemDetails: { paddingHorizontal: 15, paddingBottom: 15, backgroundColor: '#FAFAFA' },
-  prodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  prodName: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
-  prodPrice: { fontFamily: 'Lao-Bold', fontSize: 13, color: '#333' },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 5 },
-  deleteText: { fontFamily: 'Lao-Bold', color: COLORS.danger, fontSize: 12 },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
   
   topProductsCard: { backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },

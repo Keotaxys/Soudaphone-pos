@@ -3,17 +3,17 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { printAsync } from 'expo-print'; // 🟢 Import Print
 import React, { useEffect, useState } from 'react';
 import {
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
 import { CartItem, COLORS, Product } from '../../types';
@@ -115,19 +115,16 @@ export default function POSScreen({
           baseTotalLAK: finalAmountLAK
       };
 
-      // 🟢 1. ບັນທຶກລົງ Firebase
       onCheckout(orderDetails);
 
-      // 🟢 2. ເກັບຂໍ້ມູນໄວ້ເພື່ອພິມ ແລະ ສະແດງ Modal
       setLastOrder(orderDetails);
       setCartModalVisible(false);
       setCustomTotal('');
       
-      // 🟢 3. ເປີດ Modal ຖາມພິມໃບບິນ
       setTimeout(() => setShowSuccessModal(true), 500); 
   };
 
-  // 🟢 ຟັງຊັນສ້າງ HTML ສຳລັບພິມໃບບິນ
+  // 🟢 ຟັງຊັນສ້າງ HTML ສຳລັບພິມໃບບິນ (ອັບເດດເປັນ 5 ຄໍລ້ຳ)
   const printReceipt = async () => {
     if (!lastOrder) return;
 
@@ -135,43 +132,67 @@ export default function POSScreen({
       <html>
         <head>
           <style>
-            body { font-family: 'Helvetica', sans-serif; font-size: 12px; }
+            body { font-family: 'Helvetica', sans-serif; font-size: 12px; padding: 5px; }
             .header { text-align: center; margin-bottom: 10px; }
-            .title { font-size: 18px; font-weight: bold; }
+            .title { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
             .line { border-bottom: 1px dashed #000; margin: 5px 0; }
-            .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
-            .total { font-weight: bold; font-size: 14px; margin-top: 5px; }
-            .footer { text-align: center; margin-top: 10px; font-size: 10px; }
+            
+            /* Table Styles using Flexbox */
+            .row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; font-size: 11px; }
+            .header-row { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 5px; }
+            
+            /* Columns Configuration */
+            .col-1 { width: 8%; text-align: center; } /* ລ/ດ */
+            .col-2 { width: 37%; } /* ລາຍການ */
+            .col-3 { width: 20%; text-align: right; } /* ລາຄາ */
+            .col-4 { width: 10%; text-align: center; } /* ຈຳນວນ */
+            .col-5 { width: 25%; text-align: right; } /* ລວມເງິນ */
+
+            .total-section { margin-top: 10px; text-align: right; }
+            .total-row { font-size: 16px; font-weight: bold; margin-top: 5px; }
+            .footer { text-align: center; margin-top: 20px; font-size: 10px; }
           </style>
         </head>
         <body>
           <div class="header">
             <div class="title">ຮ້ານ ສຸດາພອນ</div>
-            <div>ເສື້ອຜ້າເດັກນ້ອຍ</div>
+            <div>ຈຳໜ່າຍເສື້ອຜ້າເດັກນ້ອຍ</div>
             <div>ໂທ: 020 9999 8888</div>
-            <div>ວັນທີ: ${new Date(lastOrder.date).toLocaleString('lo-LA')}</div>
+            <div style="margin-top: 5px;">ວັນທີ: ${new Date(lastOrder.date).toLocaleString('lo-LA')}</div>
+            <div>No: #${new Date(lastOrder.date).getTime().toString().slice(-6)}</div>
           </div>
+          
           <div class="line"></div>
           
-          ${lastOrder.items.map((item: any) => `
+          <div class="row header-row">
+            <div class="col-1">ລ/ດ</div>
+            <div class="col-2">ລາຍການ</div>
+            <div class="col-3">ລາຄາ</div>
+            <div class="col-4">ຈນ</div>
+            <div class="col-5">ລວມ</div>
+          </div>
+          
+          ${lastOrder.items.map((item: any, index: number) => `
             <div class="row">
-              <div style="flex: 2;">${item.name}</div>
-              <div style="flex: 1; text-align: right;">x${item.quantity}</div>
-              <div style="flex: 1; text-align: right;">${formatNumber(item.price)}</div>
+              <div class="col-1">${index + 1}</div>
+              <div class="col-2">${item.name}</div>
+              <div class="col-3">${formatNumber(item.price)}</div>
+              <div class="col-4">${item.quantity}</div>
+              <div class="col-5">${formatNumber(item.price * item.quantity)}</div>
             </div>
           `).join('')}
           
           <div class="line"></div>
-          <div class="row total">
-            <div>ລວມທັງໝົດ:</div>
-            <div>${formatNumber(lastOrder.totalPaid)} ${lastOrder.currency === 'LAK' ? '₭' : '฿'}</div>
-          </div>
-          <div class="row">
-            <div>ຊຳລະໂດຍ:</div>
-            <div>${lastOrder.paymentMethod}</div>
+          
+          <div class="total-section">
+            <div>ຊຳລະໂດຍ: ${lastOrder.paymentMethod}</div>
+            <div class="total-row">
+              ລວມທັງໝົດ: ${formatNumber(lastOrder.totalPaid)} ${lastOrder.currency === 'LAK' ? '₭' : '฿'}
+            </div>
           </div>
           
           <div class="footer">
+            <div class="line"></div>
             ຂອບໃຈທີ່ອຸດໜູນ<br/>Thank You
           </div>
         </body>
@@ -192,8 +213,10 @@ export default function POSScreen({
       setCheckoutDate(currentDate);
   };
 
+  // Header Component (Search + Actions + Filter)
   const ListHeader = () => (
     <View style={styles.headerContainer}>
+        {/* Search Bar */}
         <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#999" />
             <TextInput
@@ -209,6 +232,7 @@ export default function POSScreen({
             )}
         </View>
 
+        {/* Action Buttons */}
         <View style={styles.actionRow}>
             <TouchableOpacity style={styles.scanBtn} onPress={openScanner}>
                 <Ionicons name="barcode-outline" size={24} color="white" />
@@ -220,6 +244,7 @@ export default function POSScreen({
             </TouchableOpacity>
         </View>
 
+        {/* Category Filter Chips */}
         <View style={styles.categoryContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal: 10}}>
                 {categories.map((cat, index) => (
@@ -247,6 +272,7 @@ export default function POSScreen({
   return (
     <View style={styles.container}>
       
+      {/* FlatList with Header */}
       <FlatList
         data={filteredProducts}
         keyExtractor={item => item.id!}
@@ -563,7 +589,7 @@ const styles = StyleSheet.create({
   iosDateDoneBtn: { padding: 15, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
   iosDateDoneText: { color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 18 },
 
-  // 🟢 Success Modal Styles
+  // Success Modal Styles
   successCard: { backgroundColor: 'white', width: '80%', padding: 20, borderRadius: 20, alignItems: 'center', elevation: 5 },
   successIcon: { marginBottom: 10 },
   successTitle: { fontSize: 22, fontFamily: 'Lao-Bold', color: COLORS.success, marginBottom: 5 },

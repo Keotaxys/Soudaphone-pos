@@ -57,7 +57,7 @@ export default function POSScreen({
   const [checkoutDate, setCheckoutDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   
-  // 🟢 Custom Total & Change Logic
+  // Custom Total & Change Logic
   const [receivedAmount, setReceivedAmount] = useState(''); // ເງິນທີ່ຮັບມາ
   const [customTotal, setCustomTotal] = useState<string>(''); // ຍອດລວມທີ່ແກ້ໄຂໄດ້
   const [isEditingTotal, setIsEditingTotal] = useState(false);
@@ -322,7 +322,9 @@ export default function POSScreen({
                     {formatNumber(item.price)} {item.priceCurrency === 'LAK' ? '₭' : '฿'}
                 </Text>
             </View>
-            <TouchableOpacity style={[styles.addIcon, { backgroundColor: item.priceCurrency === 'LAK' ? COLORS.primary : COLORS.secondary }]} onPress={() => addToCart(item)}>
+            
+            {/* 🟢 ປ່ຽນເປັນສີ Teal (COLORS.primary) ທັງໝົດ */}
+            <TouchableOpacity style={[styles.addIcon, { backgroundColor: COLORS.primary }]} onPress={() => addToCart(item)}>
                 <Ionicons name="add" size={20} color="white" />
             </TouchableOpacity>
           </TouchableOpacity>

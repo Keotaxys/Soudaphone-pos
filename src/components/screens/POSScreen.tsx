@@ -1,26 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { printAsync } from 'expo-print';
-import { onValue, ref } from 'firebase/database';
+import { onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import QRCode from 'react-native-qrcode-svg'; // 🟢 Import QRCode
+// 🟢 Import QRCode
+import QRCode from 'react-native-qrcode-svg';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
 import { db } from '../../firebase';
-import { CartItem, COLORS, Product } from '../../types';
+import { CartItem, COLORS, formatNumber, Product } from '../../types';
 import CurrencyInput from '../ui/CurrencyInput';
 
 interface POSScreenProps {
@@ -132,33 +133,44 @@ export default function POSScreen({
           setReceivedAmount('');
           setCartModalVisible(false);
           setCheckoutDate(new Date());
-          setPaymentMethod('CASH'); // Reset payment method
+          setPaymentMethod('CASH');
       }
   }, [cart]);
 
-  // 🟢 ຟັງຊັນເລີ່ມຕົ້ນການຈ່າຍເງິນ (ແຍກລະຫວ່າງ ເງິນສົດ ແລະ QR)
+  // 🟢 1. ຟັງຊັນເລີ່ມການຊຳລະ (ແຍກກໍລະນີ QR)
   const initiateCheckout = () => {
       if (paymentMethod === 'QR') {
-          // 1. ສ້າງ QR Code (ໃນອະນາຄົດຕ້ອງເອີ້ນ API ຂອງ BCEL ບ່ອນນີ້)
-          // ຕົວຢ່າງ: ສ້າງ String ສຳລັບທົດສອບ
-          const simulatedOnePayString = `ONEPAY_DEMO:${finalTotal}:${paymentCurrency}`;
-          setQrCodeValue(simulatedOnePayString);
-          
-          // 2. ເປີດ Modal QR
+          // ສ້າງ QR String (ຈຳລອງ) - ຂອງແທ້ຕ້ອງເອີ້ນ API OnePay
+          // Format: ONEPAY|SHOP_ID|AMOUNT|CURRENCY|REF
+          const refId = `POS-${Date.now()}`;
+          const qrData = `ONEPAY:${billSettings.shopName}:${finalTotal}:${paymentCurrency}:${refId}`;
+          setQrCodeValue(qrData);
           setShowQRModal(true);
       } else {
-          // ຖ້າເປັນເງິນສົດ ໃຫ້ຈົບການຂາຍເລີຍ
+          // ເງິນສົດ: ບັນທຶກເລີຍ
           completeOrder();
       }
   };
 
-  // 🟢 ຟັງຊັນຈົບການຂາຍ (ບັນທຶກລົງ Database)
+  // 🟢 2. ຟັງຊັນກວດສອບການຊຳລະ (Simulate)
+  const checkPaymentStatus = () => {
+      setIsProcessingQR(true);
+      // ຈຳລອງການໂຫຼດ 2 ວິນາທີ
+      setTimeout(() => {
+          setIsProcessingQR(false);
+          setShowQRModal(false);
+          completeOrder(); // ບັນທຶກອໍເດີ
+      }, 2000);
+  };
+
+  // 🟢 3. ຟັງຊັນບັນທຶກອໍເດີລົງ Firebase
   const completeOrder = () => {
       const finalAmountLAK = paymentCurrency === 'LAK' ? finalTotal : Math.ceil(finalTotal * currentRate);
       
       const orderDetails = {
           items: [...cart], 
           paymentMethod,
+          // ຖ້າເປັນ QR ຖືວ່າຮັບເຕັມ, ຖ້າເງິນສົດເອົາຕາມທີ່ປ້ອນ
           amountReceived: paymentMethod === 'QR' ? finalAmountLAK : parseFloat(receivedAmount.replace(/,/g, '') || '0'), 
           change: paymentMethod === 'QR' ? 0 : (changeAmount > 0 ? changeAmount : 0),
           date: checkoutDate.toISOString(),
@@ -171,26 +183,12 @@ export default function POSScreen({
       onCheckout(orderDetails);
       setLastOrder(orderDetails);
       
-      // ປິດທຸກ Modals
       setCartModalVisible(false);
-      setShowQRModal(false);
-      
-      // Reset ຄ່າຕ່າງໆ
       setCustomTotal('');
       setReceivedAmount('');
       
-      // ສະແດງ Modal ສຳເລັດ
+      // ເປີດ Modal ສຳເລັດ
       setTimeout(() => setShowSuccessModal(true), 500); 
-  };
-
-  // 🟢 ຟັງຊັນຈຳລອງການກວດສອບການຊຳລະເງິນ (OnePay Callback Simulation)
-  const checkPaymentStatus = () => {
-      setIsProcessingQR(true);
-      // ຈຳລອງການລໍຖ້າ API 2 ວິນາທີ
-      setTimeout(() => {
-          setIsProcessingQR(false);
-          completeOrder(); // ຖືວ່າຊຳລະສຳເລັດ
-      }, 2000);
   };
 
   const printReceipt = async () => {
@@ -480,7 +478,7 @@ export default function POSScreen({
                           </View>
                       </View>
 
-                      {/* ເງິນສົດ: ສະແດງຊ່ອງຮັບເງິນ / OnePay: ເຊື່ອງໄວ້ */}
+                      {/* 🟢 ເງິນສົດ: ສະແດງຊ່ອງຮັບເງິນ / QR: ເຊື່ອງ */}
                       {paymentMethod === 'CASH' && (
                           <View style={styles.receivedRow}>
                               <View style={{flex: 1}}>
@@ -574,8 +572,6 @@ export default function POSScreen({
                         <QRCode
                             value={qrCodeValue}
                             size={200}
-                            logo={require('../../../assets/onepay_logo.png')} // ໃສ່ຮູບ Logo OnePay ຖ້າມີ
-                            logoSize={40}
                             logoBackgroundColor='white'
                         />
                     </View>
@@ -696,6 +692,7 @@ const styles = StyleSheet.create({
   totalValue: { fontFamily: 'Lao-Bold', fontSize: 24 },
   totalInput: { fontFamily: 'Lao-Bold', fontSize: 24, borderBottomWidth: 1, borderBottomColor: '#ccc', minWidth: 100, textAlign: 'right' },
 
+  // Received & Change Styles
   receivedRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 15 },
   receivedLabel: { fontSize: 14, color: '#666', fontFamily: 'Lao-Bold', marginBottom: 5 },
   receivedInput: { backgroundColor: 'white', borderRadius: 10, borderWidth: 1, borderColor: '#ccc', padding: 10, fontSize: 18, fontFamily: 'Lao-Bold', textAlign: 'right' },

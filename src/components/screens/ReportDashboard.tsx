@@ -10,7 +10,6 @@ import {
     Alert,
     Dimensions,
     FlatList,
-    Image,
     Modal,
     Platform,
     SafeAreaView,
@@ -27,32 +26,19 @@ const { width } = Dimensions.get('window');
 const ORANGE_COLOR = '#F57C00';
 
 type FilterType = 'day' | 'week' | 'month' | 'year';
-export type ReportTab = 'overview' | 'sales';
 
-interface ReportDashboardProps {
-  initialTab?: ReportTab;
-}
-
-export default function ReportDashboard({ initialTab = 'overview' }: ReportDashboardProps) {
+// 🟢 ບໍ່ຈຳເປັນຕ້ອງມີ Props initialTab ແລ້ວ ເພາະມີໜ້າດຽວ
+export default function ReportDashboard() {
   const [sales, setSales] = useState<any[]>([]);
   
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   
-  const [activeTab, setActiveTab] = useState<ReportTab>(initialTab);
-
-  useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
-
   const [filteredSales, setFilteredSales] = useState<any[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0);
   
-  const [topProducts, setTopProducts] = useState<any[]>([]);
-  const [salesByCategory, setSalesByCategory] = useState<any[]>([]);
-
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const parseCurrency = (value: any) => {
@@ -96,37 +82,10 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
         const d = new Date(item.date);
         return d >= start && d <= end;
     });
-    setFilteredSales(fSales);
+    // ລຽງລຳດັບຈາກໃໝ່ໄປເກົ່າ
+    setFilteredSales(fSales.reverse());
     setTotalRevenue(fSales.reduce((sum, s) => sum + parseCurrency(s.total || s.amountReceived), 0));
     setTotalOrders(fSales.length);
-
-    // Stats Logic
-    const productStats: any = {};
-    const catStats: any = {};
-
-    fSales.forEach(sale => {
-        if (sale.items && Array.isArray(sale.items)) {
-            sale.items.forEach((item: any) => {
-                if (!productStats[item.name]) {
-                    productStats[item.name] = { ...item, totalSold: 0, totalAmount: 0 };
-                }
-                productStats[item.name].totalSold += item.quantity;
-                productStats[item.name].totalAmount += (item.price * item.quantity);
-
-                const catName = item.category || 'ທົ່ວໄປ';
-                if (!catStats[catName]) catStats[catName] = 0;
-                catStats[catName] += (item.price * item.quantity);
-            });
-        }
-    });
-
-    const sortedProducts = Object.values(productStats).sort((a: any, b: any) => b.totalSold - a.totalSold).slice(0, 5);
-    setTopProducts(sortedProducts);
-
-    const sortedSalesCat = Object.keys(catStats)
-        .map(key => ({ label: key, value: catStats[key] }))
-        .sort((a, b) => b.value - a.value);
-    setSalesByCategory(sortedSalesCat);
 
   }, [sales, filterType, currentDate]);
 
@@ -207,83 +166,11 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
     await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
   };
 
-  const SummaryCard = ({ label, amount, color, icon }: any) => (
-    <View style={[styles.card, { borderLeftColor: color, borderLeftWidth: 5 }]}>
-      <View>
-        <Text style={styles.cardLabel}>{label}</Text>
-        <Text style={[styles.cardAmount, { color: color }]}>{amount}</Text>
-      </View>
-      <View style={[styles.iconCircle, { backgroundColor: color + '20' }]}>
-        <Ionicons name={icon} size={24} color={color} />
-      </View>
-    </View>
-  );
-
-  const CategoryChart = ({ title, data, color }: { title: string, data: any[], color: string }) => {
-      const maxValue = Math.max(...data.map(d => d.value)) || 1;
-      if (data.length === 0) return null;
-      return (
-          <View style={styles.chartBox}>
-              <Text style={styles.chartTitle}>{title}</Text>
-              {data.map((item, index) => (
-                  <View key={index} style={styles.chartRow}>
-                      <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
-                          <Text style={styles.chartLabel}>{item.label}</Text>
-                          <Text style={[styles.chartValue, {color}]}>{formatNumber(item.value)} ₭</Text>
-                      </View>
-                      <View style={styles.chartTrack}>
-                          <View style={[styles.chartBar, { width: `${(item.value / maxValue) * 100}%`, backgroundColor: color }]} />
-                      </View>
-                  </View>
-              ))}
-          </View>
-      );
-  };
-
-  const keyExtractor = (item: any, index: number) => item.id ? item.id.toString() : index.toString();
-
-  const DashboardContent = () => (
-    <View>
-        <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 15}}>
-            <View style={{flex: 1}}>
-                <SummaryCard label="ຍອດຂາຍລວມ" amount={`${formatNumber(totalRevenue)} ₭`} color={COLORS.primary} icon="cash" />
-            </View>
-            <View style={{flex: 1}}>
-                <SummaryCard label="ຈຳນວນອໍເດີ" amount={`${totalOrders} ບິນ`} color={COLORS.secondary} icon="receipt" />
-            </View>
-        </View>
-        
-        {topProducts.length > 0 && (
-            <View style={styles.topProductsCard}>
-                <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionHeader}>🏆 5 ອັນດັບສິນຄ້າຂາຍດີ</Text>
-                </View>
-                {topProducts.map((prod, index) => (
-                    <View key={index} style={styles.topProductRow}>
-                        <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
-                            <View style={[styles.rankBadge, index === 0 ? {backgroundColor: '#FFD700'} : index === 1 ? {backgroundColor: '#C0C0C0'} : index === 2 ? {backgroundColor: '#CD7F32'} : {}]}>
-                                <Text style={[styles.rankText, index < 3 ? {color: 'white'} : {}]}>{index + 1}</Text>
-                            </View>
-                            <Image source={prod.imageUrl ? { uri: prod.imageUrl } : { uri: 'https://via.placeholder.com/50' }} style={styles.prodImage} />
-                            <View style={{marginLeft: 10}}>
-                                <Text style={styles.prodName} numberOfLines={1}>{prod.name}</Text>
-                                <Text style={styles.prodSold}>ຂາຍອອກ: {prod.totalSold} ໜ່ວຍ</Text>
-                            </View>
-                        </View>
-                        <Text style={styles.prodAmount}>{formatNumber(prod.totalAmount)}</Text>
-                    </View>
-                ))}
-            </View>
-        )}
-
-        <CategoryChart title="💰 ຍອດຂາຍແຍກຕາມໝວດໝູ່" data={salesByCategory} color={COLORS.primary} />
-    </View>
-  );
-
+  // 🟢 Header Component (Filters & Summary)
   const HeaderComponent = () => (
     <View>
         <View style={styles.header}>
-            <Text style={styles.headerTitle}>ລາຍງານ (Reports)</Text>
+            <Text style={styles.headerTitle}>ປະຫວັດການຂາຍ</Text>
             <View style={{flexDirection: 'row', gap: 5}}>
                 <TouchableOpacity style={[styles.exportBtn, {backgroundColor: COLORS.primary}]} onPress={generateExcel}>
                     <Ionicons name="document-text-outline" size={16} color="white" />
@@ -317,87 +204,93 @@ export default function ReportDashboard({ initialTab = 'overview' }: ReportDashb
             </View>
         </View>
 
-        <View style={styles.tabs}>
-            <TouchableOpacity style={[styles.tab, activeTab === 'overview' && styles.activeTab]} onPress={() => setActiveTab('overview')}><Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>ພາບລວມ</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.tab, activeTab === 'sales' && styles.activeTab]} onPress={() => setActiveTab('sales')}><Text style={[styles.tabText, activeTab === 'sales' && styles.activeTabText]}>ລາຍການຂາຍ</Text></TouchableOpacity>
+        {/* 🟢 Summary Box (ແທນທີ່ Overview Tab) */}
+        <View style={{flexDirection: 'row', padding: 15, gap: 10, paddingBottom: 5}}>
+            <View style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>ຍອດຂາຍລວມ</Text>
+                <Text style={styles.summaryAmount}>{formatNumber(totalRevenue)} ₭</Text>
+            </View>
+            <View style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>ຈຳນວນອໍເດີ</Text>
+                <Text style={[styles.summaryAmount, {color: COLORS.secondary}]}>{totalOrders}</Text>
+            </View>
         </View>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      {activeTab === 'overview' ? (
-          <FlatList
-            data={[]} 
-            renderItem={null}
-            ListHeaderComponent={
-                <>
-                    <HeaderComponent />
-                    <View style={styles.content}>
-                        <DashboardContent />
-                    </View>
-                </>
-            }
-            contentContainerStyle={{paddingBottom: 50}}
-          />
-      ) : (
-          <FlatList 
-            data={filteredSales}
-            keyExtractor={keyExtractor}
-            ListHeaderComponent={<HeaderComponent />}
-            contentContainerStyle={{paddingBottom: 50}}
-            renderItem={({item}) => {
-                const isExpanded = expandedId === item.id;
-                return (
-                    <View style={[styles.listItem, { marginHorizontal: 15 }]}>
-                        <TouchableOpacity style={styles.itemHeader} onPress={() => setExpandedId(isExpanded ? null : item.id)}>
-                            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                                <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
-                                    <View style={[styles.iconBox, {backgroundColor: item.paymentMethod === 'CASH' ? '#E8F5E9' : '#E3F2FD'}]}>
-                                        <Ionicons name={item.paymentMethod === 'CASH' ? 'cash' : 'qr-code'} size={20} color={item.paymentMethod === 'CASH' ? COLORS.success : COLORS.primary} />
-                                    </View>
-                                    <View>
-                                        <Text style={styles.listTitle}>ບິນ #{item.id ? item.id.slice(-4) : '-'}</Text>
-                                        <Text style={styles.listSub}>{new Date(item.date).toLocaleTimeString('lo-LA', {hour: '2-digit', minute:'2-digit'})}</Text>
-                                    </View>
+      <FlatList 
+        data={filteredSales}
+        keyExtractor={item => item.id!}
+        ListHeaderComponent={<HeaderComponent />}
+        contentContainerStyle={{paddingBottom: 50}}
+        renderItem={({item}) => {
+            const isExpanded = expandedId === item.id;
+            return (
+                <View style={[styles.listItem, { marginHorizontal: 15 }]}>
+                    {/* 🟢 Header Item */}
+                    <TouchableOpacity style={styles.itemHeader} onPress={() => setExpandedId(isExpanded ? null : item.id)}>
+                        <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
+                                <View style={[styles.iconBox, {backgroundColor: item.paymentMethod === 'CASH' ? '#E8F5E9' : '#E3F2FD'}]}>
+                                    <Ionicons name={item.paymentMethod === 'CASH' ? 'cash' : 'qr-code'} size={20} color={item.paymentMethod === 'CASH' ? COLORS.success : COLORS.primary} />
                                 </View>
-                                <View style={{alignItems: 'flex-end'}}>
-                                    <Text style={styles.listAmount}>{formatNumber(parseCurrency(item.total))}</Text>
-                                    <View style={styles.badge}>
-                                        <Text style={styles.badgeText}>{item.source || 'ໜ້າຮ້ານ'}</Text>
-                                    </View>
+                                <View>
+                                    <Text style={styles.listTitle}>ບິນ #{item.id ? item.id.slice(-4) : '-'}</Text>
+                                    <Text style={styles.listSub}>{new Date(item.date).toLocaleTimeString('lo-LA', {hour: '2-digit', minute:'2-digit'})}</Text>
                                 </View>
                             </View>
-                        </TouchableOpacity>
-
-                        {isExpanded && (
-                            <View style={styles.itemDetails}>
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoText}>📍 ແຫຼ່ງ: {item.source || 'ໜ້າຮ້ານ'}</Text>
-                                    <Text style={styles.infoText}>💰 ຊຳລະ: {item.paymentMethod}</Text>
+                            <View style={{alignItems: 'flex-end'}}>
+                                <Text style={styles.listAmount}>{formatNumber(parseCurrency(item.total))}</Text>
+                                <View style={styles.badge}>
+                                    {/* 🟢 ສະແດງແຫຼ່ງຂາຍ */}
+                                    <Text style={styles.badgeText}>{item.source || 'ໜ້າຮ້ານ'}</Text>
                                 </View>
-                                <View style={styles.divider} />
-                                {item.items && item.items.map((prod: any, idx: number) => (
-                                    <View key={idx} style={styles.prodRow}>
-                                        <Text style={styles.prodName}>{prod.name} x{prod.quantity}</Text>
-                                        <Text style={styles.prodPrice}>{formatNumber(prod.price * prod.quantity)}</Text>
-                                    </View>
-                                ))}
-                                <View style={styles.divider} />
-                                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
-                                    <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
-                                    <Text style={styles.deleteText}>ລຶບບິນນີ້</Text>
-                                </TouchableOpacity>
                             </View>
-                        )}
-                    </View>
-                );
-            }}
-            ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນການຂາຍ</Text>}
-          />
-      )}
+                        </View>
+                    </TouchableOpacity>
 
-      {/* 🟢 iOS Date Picker (Fix Dark Mode) */}
+                    {/* 🟢 ລາຍລະອຽດ (ສະແດງເມື່ອກົດ) */}
+                    {isExpanded && (
+                        <View style={styles.itemDetails}>
+                            {/* 🟢 ສະແດງແຫຼ່ງ ແລະ ວິທີຊຳລະ */}
+                            <View style={styles.infoRow}>
+                                <View style={styles.infoChip}>
+                                    <Ionicons name="storefront-outline" size={14} color="#666" />
+                                    <Text style={styles.infoText}>{item.source || 'ໜ້າຮ້ານ'}</Text>
+                                </View>
+                                <View style={styles.infoChip}>
+                                    <Ionicons name="card-outline" size={14} color="#666" />
+                                    <Text style={styles.infoText}>{item.paymentMethod}</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.divider} />
+                            
+                            {item.items && item.items.map((prod: any, idx: number) => (
+                                <View key={idx} style={styles.prodRow}>
+                                    <Text style={styles.prodName}>{prod.name} x{prod.quantity}</Text>
+                                    <Text style={styles.prodPrice}>{formatNumber(prod.price * prod.quantity)}</Text>
+                                </View>
+                            ))}
+                            
+                            <View style={styles.divider} />
+                            
+                            {/* 🟢 ປຸ່ມລຶບສີສົ້ມເຂັ້ມ */}
+                            <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
+                                <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
+                                <Text style={[styles.deleteText, {color: ORANGE_COLOR}]}>ລຶບບິນນີ້</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+            );
+        }}
+        ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນການຂາຍ</Text>}
+      />
+
+      {/* Date Picker Modal */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
             <Modal visible={true} transparent={true} animationType="fade">
@@ -443,28 +336,11 @@ const styles = StyleSheet.create({
   filterText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
   dateNav: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f9f9f9', padding: 5, borderRadius: 10 },
   dateLabel: { fontFamily: 'Lao-Bold', fontSize: 13, color: COLORS.text },
-  tabs: { flexDirection: 'row', padding: 10, gap: 10 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: 'white', borderRadius: 10, elevation: 1 },
-  activeTab: { backgroundColor: COLORS.primary },
-  tabText: { fontFamily: 'Lao-Regular', color: '#666' },
-  activeTabText: { color: 'white', fontFamily: 'Lao-Bold' },
-  content: { flex: 1, padding: 15 },
   
-  // Card & Charts
-  card: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, elevation: 2 },
-  cardLabel: { fontSize: 12, color: '#888', fontFamily: 'Lao-Regular' },
-  cardAmount: { fontSize: 18, fontFamily: 'Lao-Bold', marginTop: 2 },
-  iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  
-  chartBox: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
-  chartTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 15 },
-  chartLabel: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
-  chartValue: { fontFamily: 'Lao-Bold', fontSize: 13 },
-  chartTrack: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-  chartBar: { height: '100%', borderRadius: 4 },
-  chartRow: { marginBottom: 10 },
-  
-  // List Item Styles
+  summaryCard: { flex: 1, backgroundColor: 'white', padding: 15, borderRadius: 10, alignItems: 'center', elevation: 1 },
+  summaryLabel: { fontSize: 12, color: '#888', fontFamily: 'Lao-Regular' },
+  summaryAmount: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.primary, marginTop: 5 },
+
   listItem: { backgroundColor: 'white', borderRadius: 12, marginBottom: 10, elevation: 1, overflow: 'hidden' },
   itemHeader: { padding: 15 },
   listTitle: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
@@ -473,32 +349,21 @@ const styles = StyleSheet.create({
   iconBox: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   badge: { backgroundColor: '#f0f0f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, alignSelf: 'flex-end', marginTop: 4 },
   badgeText: { fontSize: 10, fontFamily: 'Lao-Bold', color: '#666' },
-  
-  // Item Details
+
   itemDetails: { paddingHorizontal: 15, paddingBottom: 15, backgroundColor: '#FAFAFA' },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  infoRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  infoChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 15, borderWidth: 1, borderColor: '#eee' },
   infoText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
+  
   prodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
   prodName: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
   prodPrice: { fontFamily: 'Lao-Bold', fontSize: 13, color: '#333' },
+  
   divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
   deleteBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 5 },
-  deleteText: { fontFamily: 'Lao-Bold', color: ORANGE_COLOR, fontSize: 12 },
+  deleteText: { fontFamily: 'Lao-Bold', fontSize: 12 },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
-  
-  // Top Products
-  topProductsCard: { backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
-  sectionHeaderRow: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 10, marginBottom: 10 },
-  sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
-  topProductRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  rankBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  rankText: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#666' },
-  prodImage: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#f0f0f0' },
-  prodNameText: { fontFamily: 'Lao-Bold', fontSize: 13, color: COLORS.text }, 
-  prodSold: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#666' },
-  prodAmount: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.primary },
 
-  // iOS Date Picker Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
   iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },

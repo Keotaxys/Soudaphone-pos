@@ -10,7 +10,7 @@ import {
   View
 } from 'react-native';
 import { COLORS } from '../../types';
-import BillSettingsModal from '../modals/BillSettingsModal'; // 🟢 Import Modal
+import BillSettingsModal from '../modals/BillSettingsModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,18 +25,20 @@ interface SidebarProps {
 const MENU_ITEMS = [
   { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' },
   { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart-outline' },
+  // 🟢 ກູ້ຄືນ "ປະຫວັດການຂາຍ" (ໃຊ້ id: history ເພື່ອບໍ່ໃຫ້ຊ້ຳກັບ report)
+  { id: 'history', label: 'ປະຫວັດການຂາຍ', icon: 'time-outline' }, 
   { id: 'products', label: 'ຈັດການສິນຄ້າ', icon: 'cube-outline' },
   { id: 'expense', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet-outline' },
   { id: 'orders', label: 'ຕິດຕາມຄຳສັ່ງຊື້', icon: 'cube-outline' },
   { id: 'customers', label: 'ຂໍ້ມູນລູກຄ້າ', icon: 'people-outline' },
-  { id: 'debts', label: 'ຕິດໜີ້', icon: 'document-text-outline' },
+  // 🟢 ປ່ຽນຊື່ຈາກ "ຕິດໜີ້" -> "ໜີ້ສິນ"
+  { id: 'debts', label: 'ໜີ້ສິນ', icon: 'document-text-outline' },
   { id: 'report', label: 'ລາຍງານ', icon: 'bar-chart-outline' },
   { id: 'shifts', label: 'ປິດກະລາຍວັນ', icon: 'time-outline' },
 ];
 
 export default function Sidebar({ visible, onClose, slideAnim, currentTab, onNavigate }: SidebarProps) {
   
-  // 🟢 State ສຳລັບເປີດ Modal ຕັ້ງຄ່າ
   const [showBillSettings, setShowBillSettings] = useState(false);
 
   if (!visible) return null;
@@ -69,7 +71,6 @@ export default function Sidebar({ visible, onClose, slideAnim, currentTab, onNav
 
           <View style={styles.divider} />
 
-          {/* 🟢 ເພີ່ມປຸ່ມຕັ້ງຄ່າໃບບິນ */}
           <TouchableOpacity 
             style={styles.menuItem}
             onPress={() => setShowBillSettings(true)}
@@ -80,7 +81,6 @@ export default function Sidebar({ visible, onClose, slideAnim, currentTab, onNav
 
         </View>
         
-        {/* 🟢 ໃສ່ Modal ໄວ້ບ່ອນນີ້ */}
         <BillSettingsModal visible={showBillSettings} onClose={() => setShowBillSettings(false)} />
 
       </Animated.View>

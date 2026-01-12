@@ -7,19 +7,21 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Keyboard,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Keyboard,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
+// 🟢 Import CurrencyInput
+import CurrencyInput from '../ui/CurrencyInput';
 
 // ສີສົ້ມ (ໃຊ້ສະເພາະບາງຈຸດທີ່ຍັງຕ້ອງການ)
 const ORANGE_COLOR = '#F57C00';
@@ -203,7 +205,13 @@ export default function ExpenseScreen() {
 
                 <View style={styles.amountContainer}>
                     <Text style={[styles.currencyLabel, {color: ORANGE_COLOR}]}>₭</Text>
-                    <TextInput style={[styles.amountInput, {color: ORANGE_COLOR}]} placeholder="0" keyboardType="numeric" value={formatNumber(amount)} onChangeText={(t) => setAmount(t.replace(/,/g, ''))} />
+                    {/* 🟢 ໃຊ້ CurrencyInput */}
+                    <CurrencyInput 
+                        style={[styles.amountInput, {color: ORANGE_COLOR}]} 
+                        placeholder="0" 
+                        value={amount} 
+                        onChangeValue={setAmount} 
+                    />
                 </View>
 
                 <View style={styles.actionRow}>

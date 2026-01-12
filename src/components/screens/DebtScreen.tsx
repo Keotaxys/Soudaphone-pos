@@ -437,13 +437,35 @@ export default function DebtScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
       {showDatePicker && (
-          <DateTimePicker 
-            value={dateMode === 'due' ? dueDate : paymentDate} 
-            mode="date" 
-            display="default" 
-            onChange={onDateChange} 
-          />
+        Platform.OS === 'ios' ? (
+            <Modal visible={true} transparent={true} animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.iosDatePickerContainer}>
+                        <DateTimePicker 
+                            value={dateMode === 'due' ? dueDate : paymentDate} 
+                            mode="date" 
+                            display="inline" 
+                            onChange={onDateChange} 
+                            style={{ height: 320, width: '100%', backgroundColor: 'white' }} 
+                            textColor="black" 
+                            themeVariant="light"
+                        />
+                        <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
+                            <Text style={styles.iosDateDoneText}>ຕົກລົງ</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        ) : (
+            <DateTimePicker 
+              value={dateMode === 'due' ? dueDate : paymentDate} 
+              mode="date" 
+              display="default" 
+              onChange={onDateChange} 
+            />
+        )
       )}
 
     </SafeAreaView>
@@ -463,7 +485,6 @@ const styles = StyleSheet.create({
     marginBottom: 15, 
     padding: 15, 
     elevation: 2, 
-    // 🟢 ປ່ຽນເປັນ Border Top
     borderTopWidth: 5, 
     borderTopColor: COLORS.primary,
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 
@@ -528,5 +549,10 @@ const styles = StyleSheet.create({
   cancelBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: '#f5f5f5' },
   cancelBtnText: { color: '#666', fontFamily: 'Lao-Bold' },
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
-  saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' }
+  saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
+
+  // 🟢 iOS Date Picker Styles
+  iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
+  iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
+  iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 }
 });

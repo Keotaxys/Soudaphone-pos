@@ -1,86 +1,139 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useState } from 'react';
 import {
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { COLORS } from '../../types';
 
 interface EditShopModalProps {
   visible: boolean;
   onClose: () => void;
-  shopName: string;
-  setShopName: (text: string) => void;
-  shopId: string;
-  setShopId: (text: string) => void;
-  shopLogo: string;
-  onPickImage: () => void;
-  onSave: () => void;
+  initialData: { name: string; id: string; logo: string | null };
+  onSave: (name: string, id: string, logo: string | null) => void;
 }
 
-export default function EditShopModal({
-  visible, onClose, shopName, setShopName, shopId, setShopId, shopLogo, onPickImage, onSave
-}: EditShopModalProps) {
-  return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>ແກ້ໄຂຂໍ້ມູນຮ້ານ</Text>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
-          </View>
+export default function EditShopModal({ visible, onClose, initialData, onSave }: EditShopModalProps) {
+  const [name, setName] = useState('');
+  const [shopId, setShopId] = useState('');
+  const [logo, setLogo] = useState<string | null>(null);
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Logo Picker */}
-            <TouchableOpacity style={styles.imagePicker} onPress={onPickImage}>
-              {shopLogo ? (
-                <Image source={{ uri: shopLogo }} style={styles.previewImage} />
+  // ໂຫຼດຂໍ້ມູນເກົ່າມາສະແດງຕອນເປີດ Modal
+  useEffect(() => {
+    if (visible) {
+      setName(initialData.name);
+      setShopId(initialData.id);
+      setLogo(initialData.logo);
+    }
+  }, [visible, initialData]);
+
+  // ຟັງຊັນເລືອກຮູບ
+  const pickImage = async () => {
+    // ຂໍອະນຸຍາດເຂົ້າເຖິງຮູບ
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Error', 'ຕ້ອງການສິດເຂົ້າເຖິງຮູບພາບ');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1], // ບັງຄັບຕັດຮູບເປັນ 4 ຫຼ່ຽມ
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      setLogo(result.assets[0].uri);
+    }
+  };
+
+  const handleSave = () => {
+    onSave(name, shopId, logo);
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.overlay}>
+        <View style={styles.container}>
+          <Text style={styles.title}>ແກ້ໄຂຂໍ້ມູນຮ້ານ</Text>
+
+          {/* ສ່ວນເລືອກຮູບໂລໂກ້ */}
+          <View style={styles.logoSection}>
+            <TouchableOpacity onPress={pickImage} style={styles.logoWrapper}>
+              {logo ? (
+                <Image source={{ uri: logo }} style={styles.logo} />
               ) : (
-                <View style={styles.placeholderImage}>
-                  <Ionicons name="camera" size={30} color="#ccc" />
-                  <Text style={styles.uploadText}>ປ່ຽນໂລໂກ້</Text>
+                <View style={styles.placeholder}>
+                  <Text style={styles.placeholderText}>{name ? name.charAt(0) : 'S'}</Text>
                 </View>
               )}
+              <View style={styles.cameraIcon}>
+                <Ionicons name="camera" size={20} color="white" />
+              </View>
             </TouchableOpacity>
+            <Text style={styles.hint}>ກົດເພື່ອປ່ຽນໂລໂກ້</Text>
+          </View>
 
-            <Text style={styles.label}>ຊື່ຮ້ານ *</Text>
-            <TextInput style={styles.input} value={shopName} onChangeText={setShopName} placeholder="ຊື່ຮ້ານຂອງທ່ານ..." />
+          {/* ຊ່ອງປ້ອນຂໍ້ມູນ */}
+          <Text style={styles.label}>ຊື່ຮ້ານ:</Text>
+          <TextInput 
+            style={styles.input} 
+            value={name} 
+            onChangeText={setName} 
+            placeholder="ໃສ່ຊື່ຮ້ານ..." 
+          />
 
-            <Text style={styles.label}>ລະຫັດຮ້ານ (ID) *</Text>
-            <TextInput style={styles.input} value={shopId} onChangeText={setShopId} placeholder="ID: 8888..." />
+          <Text style={styles.label}>ລະຫັດຮ້ານ / ID:</Text>
+          <TextInput 
+            style={styles.input} 
+            value={shopId} 
+            onChangeText={setShopId} 
+            placeholder="ໃສ່ ID ຮ້ານ..." 
+          />
 
-            <TouchableOpacity style={styles.saveBtn} onPress={onSave}>
-              <Text style={styles.saveBtnText}>ບັນທຶກການແກ້ໄຂ</Text>
+          {/* ປຸ່ມ Action */}
+          <View style={styles.btnRow}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+              <Text style={styles.cancelText}>ຍົກເລີກ</Text>
             </TouchableOpacity>
-          </ScrollView>
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+              <Text style={styles.saveText}>ບັນທຶກ</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, elevation: 5 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  container: { width: '85%', backgroundColor: 'white', borderRadius: 20, padding: 25, elevation: 5 },
+  title: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text, textAlign: 'center', marginBottom: 20 },
   
-  imagePicker: { alignSelf: 'center', marginBottom: 20 },
-  placeholderImage: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
-  previewImage: { width: 100, height: 100, borderRadius: 50 },
-  uploadText: { fontSize: 12, color: '#999', marginTop: 5, fontFamily: 'Lao-Regular' },
+  logoSection: { alignItems: 'center', marginBottom: 20 },
+  logoWrapper: { position: 'relative' },
+  logo: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#eee' },
+  placeholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#E0F2F1', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#eee' },
+  placeholderText: { fontSize: 40, fontFamily: 'Lao-Bold', color: COLORS.primary },
+  cameraIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.primary, width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'white' },
+  hint: { fontSize: 12, color: '#999', marginTop: 8, fontFamily: 'Lao-Regular' },
 
-  label: { fontSize: 14, fontFamily: 'Lao-Bold', color: COLORS.text, marginBottom: 5, marginTop: 10 },
-  input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Regular' },
-  
-  saveBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 30 },
-  saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 }
+  label: { fontSize: 14, fontFamily: 'Lao-Bold', color: '#666', marginBottom: 5 },
+  input: { backgroundColor: '#f9f9f9', borderWidth: 1, borderColor: '#eee', borderRadius: 10, padding: 12, fontSize: 16, marginBottom: 15, fontFamily: 'Lao-Regular' },
+
+  btnRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 10 },
+  cancelBtn: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#f5f5f5', alignItems: 'center' },
+  saveBtn: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: COLORS.primary, alignItems: 'center' },
+  cancelText: { color: '#666', fontFamily: 'Lao-Bold' },
+  saveText: { color: 'white', fontFamily: 'Lao-Bold' }
 });

@@ -36,13 +36,29 @@ export interface SaleRecord {
 }
 
 // 🟢 4. ExpenseRecord Interface (ລາຍຈ່າຍ)
+// * ແກ້ໄຂ: ເພີ່ມ note ເພື່ອໃຫ້ຕົງກັບໜ້າ Report
 export interface ExpenseRecord {
   id?: string;
   date: string;
   category: string;
-  description: string;
+  description?: string; // ເຮັດເປັນ optional
+  note?: string;        // ໃຊ້ໂຕນີ້ໃນ ReportDashboard
   amount: number;
   createdAt: string;
+}
+
+// 🟢 [ເພີ່ມໃໝ່] DebtRecord Interface (ບັນທຶກໜີ້ສິນ)
+export interface DebtRecord {
+  id?: string;
+  customerName: string;
+  description?: string;
+  totalAmount: number;     // ຍອດໜີ້ທັງໝົດ
+  paidAmount: number;      // ຈ່າຍໄປແລ້ວ
+  remainingBalance: number;// ຍັງເຫຼືອ
+  dueDate: string;         // ກຳນົດຈ່າຍ
+  status: 'PENDING' | 'PAID' | 'OVERDUE';
+  createdAt: string;
+  history?: { date: string; amount: number; note: string }[]; // ປະຫວັດການຜ່ອນຈ່າຍ
 }
 
 // 🟢 5. OrderItem Interface (ລາຍຊື່ສິນຄ້າຍ່ອຍໃນອໍເດີ Online)
@@ -55,22 +71,20 @@ export interface OrderItem {
   salePrice: number;
   link?: string;
   imageUrl?: string;
-  status: 'ຮັບອໍເດີ້' | 'ສັ່ງເຄື່ອງແລ້ວ' | 'ເຄື່ອງຮອດແລ້ວ' | 'ຈັດສົ່ງສຳເລັດ'; // ສະຖານະແຍກແຕ່ລະຊິ້ນ
+  status: 'ຮັບອໍເດີ້' | 'ສັ່ງເຄື່ອງແລ້ວ' | 'ເຄື່ອງຮອດແລ້ວ' | 'ຈັດສົ່ງສຳເລັດ';
 }
 
 // 🟢 6. CustomerOrder Interface (ຕິດຕາມຄຳສັ່ງຊື້ລວມ)
-// (ອັນນີ້ໃຊ້ສຳລັບ OrderTrackingScreen)
 export interface CustomerOrder {
   id?: string;
   customerName: string;
   date: string;
-  items: OrderItem[]; // ຮອງຮັບ 1 ລູກຄ້າສັ່ງຫຼາຍຢ່າງ
+  items: OrderItem[];
   totalAmount: number;
   createdAt: string;
 }
 
-// 🟢 [ເພີ່ມໃໝ່] 7. Customer Interface (ຂໍ້ມູນລູກຄ້າ)
-// (ຈຳເປັນຕ້ອງມີ ເພາະ index.tsx ມີການ import Customer)
+// 🟢 7. Customer Interface (ຂໍ້ມູນລູກຄ້າ)
 export interface Customer {
   id: string;
   name: string;
@@ -79,21 +93,15 @@ export interface Customer {
   createdAt?: string;
 }
 
-// 🟢 [ເພີ່ມໃໝ່] 8. Order Interface (Alias ຫຼື Interface ລວມ)
-// (ຈຳເປັນຕ້ອງມີ ເພາະ index.tsx ມີການ import Order)
-// ໃນທີ່ນີ້ໃຫ້ມັນໃຊ້ຮ່ວມກັບ CustomerOrder ຫຼືສ້າງໃໝ່ກໍໄດ້
+// 🟢 8. Order Interface (Alias)
 export type Order = CustomerOrder; 
 
 // 🟢 9. COLORS (Theme Teal + Orange)
 export const COLORS = {
-  // ສີ Teal ຕາມ PMS 320 2X
   primary: '#008B94',      
   primaryDark: '#006064',
-  
-  // ສີສົ້ມພາສເທວສຳລັບຈຸດເນັ້ນ
   secondary: '#FFB300',    
   secondaryDark: '#FF8F00',
-  
   background: '#F5F9FA',
   text: '#37474F',
   textLight: '#90A4AE',
@@ -106,15 +114,14 @@ export const COLORS = {
 export const SIDEBAR_WIDTH = 250;
 
 // 🟢 10. Helper Functions
-// ຟັງຊັນຈັດຮູບແບບຕົວເລກ (Noto Sans Lao)
 export const formatNumber = (num: number | string | undefined) => {
   if (num === undefined || num === null || num === '') return '0';
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const n = typeof num === 'string' ? parseFloat(num) : num;
+  return isNaN(n) ? '0' : n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
-// ຟັງຊັນຈັດຮູບແບບວັນທີ
-export const formatDate = (date: Date) => {
-    const d = new Date(date);
+export const formatDate = (date: Date | string) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
     const day = `0${d.getDate()}`.slice(-2);
     const month = `0${d.getMonth() + 1}`.slice(-2);
     const year = d.getFullYear();

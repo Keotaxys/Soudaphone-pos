@@ -25,8 +25,7 @@ import Sidebar from '../../src/components/ui/Sidebar';
 // Modals
 import ProductModal from '../../src/components/modals/ProductModal';
 
-// 🔥🔥🔥 Force Cast Components to 'any' 🔥🔥🔥
-// ເພື່ອໃຫ້ຜ່ານ Type Checking ໂດຍບໍ່ຕ້ອງແກ້ໄຂໄຟລ໌ Component ຕົ້ນທາງ
+// 🔥 Force Cast Components
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -36,7 +35,17 @@ const FooterAny = Footer as any;
 const ProductModalAny = ProductModal as any;
 const LoginScreenAny = LoginScreen as any;
 
-// ✅ ຕ້ອງມີ export default function App() ຢູ່ບ່ອນນີ້
+// 🟢 Default Product (ຄ່າເລີ່ມຕົ້ນສຳລັບການເພີ່ມໃໝ່)
+const emptyProduct: Product = {
+  id: '', 
+  name: '', 
+  price: 0, 
+  stock: 0, 
+  priceCurrency: 'LAK', 
+  category: '', 
+  barcode: ''
+};
+
 export default function App() {
   // --- 1. State Management ---
   const [activeTab, setActiveTab] = useState<string>('Home');
@@ -48,9 +57,9 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
   
-  // Modal States
+  // 🟢 Modal States (ແກ້ໄຂສ່ວນນີ້)
   const [isProductModalVisible, setProductModalVisible] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
+  const [tempProduct, setTempProduct] = useState<Product>(emptyProduct); // ສ້າງ State ໄວ້ຮອງຮັບຂໍ້ມູນໃນ Modal
 
   // --- 2. Initial Dummy Data ---
   useEffect(() => {
@@ -92,7 +101,6 @@ export default function App() {
 
   const handleCheckout = (paymentDetails: any) => {
     const { paymentMethod, amountReceived, discount = 0 } = paymentDetails || {};
-
     const subTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = subTotal - (discount || 0);
 
@@ -120,27 +128,40 @@ export default function App() {
   // Product Handlers
   const handleAddProduct = (newProduct: Product) => {
     setProducts(prev => [...prev, { ...newProduct, id: Date.now().toString() }]);
-    setProductModalVisible(false);
   };
 
   const handleEditProduct = (updatedProduct: Product) => {
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-    setProductModalVisible(false);
-    setEditingProduct(undefined);
   };
 
   const handleDeleteProduct = (productId: string) => {
     setProducts(prev => prev.filter(p => p.id !== productId));
   };
 
+  // 🟢 ຟັງຊັນເປີດ Modal (ແກ້ໄຂ)
   const openAddProductModal = () => {
-    setEditingProduct(undefined);
+    setTempProduct(emptyProduct); // Reset ຂໍ້ມູນເປັນຄ່າວ່າງ
     setProductModalVisible(true);
   };
 
   const openEditProductModal = (product: Product) => {
-    setEditingProduct(product);
+    setTempProduct(product); // ດຶງຂໍ້ມູນເກົ່າໃສ່ State
     setProductModalVisible(true);
+  };
+
+  // 🟢 ຟັງຊັນບັນທຶກຈາກ Modal
+  const onSaveProductFromModal = () => {
+    if (!tempProduct.name || !tempProduct.price) {
+      Alert.alert("Error", "ກະລຸນາໃສ່ຂໍ້ມູນໃຫ້ຄົບ");
+      return;
+    }
+
+    if (tempProduct.id) {
+      handleEditProduct(tempProduct);
+    } else {
+      handleAddProduct(tempProduct);
+    }
+    setProductModalVisible(false);
   };
 
   // --- 4. Render Screen Logic ---
@@ -167,8 +188,8 @@ export default function App() {
         return (
           <ProductsScreenAny 
             products={products}
-            onAddProduct={openAddProductModal}
-            onEditProduct={openEditProductModal}
+            onAddProduct={openAddProductModal} // ໃຊ້ຟັງຊັນໃໝ່
+            onEditProduct={openEditProductModal} // ໃຊ້ຟັງຊັນໃໝ່
             onDeleteProduct={handleDeleteProduct}
           />
         );
@@ -194,37 +215,30 @@ export default function App() {
     <SafeAreaView className="flex-1 bg-gray-100">
       <StatusBar style="dark" />
       
-      {/* Header */}
-      <HeaderAny 
-        toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
-        user={{ name: 'Admin', role: 'Manager' }} 
-      />
+      <HeaderAny toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} user={{ name: 'Admin', role: 'Manager' }} />
 
       <View className="flex-1 flex-row">
-        {/* Sidebar */}
         {isSidebarOpen && (
-          <SidebarAny 
-            activeTab={activeTab}
-            onTabChange={(tab: string) => setActiveTab(tab)} 
-            tabs={TABS}
-          />
+          <SidebarAny activeTab={activeTab} onTabChange={(tab: string) => setActiveTab(tab)} tabs={TABS} />
         )}
 
-        {/* Main Content */}
         <View className="flex-1 bg-white m-2 rounded-lg shadow-sm overflow-hidden">
           {renderScreen()}
         </View>
       </View>
 
-      {/* Footer */}
       <FooterAny status="Online" version="1.0.0" />
 
-      {/* Global Modals */}
+      {/* 🟢 Global Modals (ແກ້ໄຂໃຫ້ຕົງກັບ ProductModal ຂອງທ່ານ) */}
       <ProductModalAny 
         visible={isProductModalVisible}
         onClose={() => setProductModalVisible(false)}
-        onSubmit={editingProduct ? handleEditProduct : handleAddProduct}
-        initialData={editingProduct}
+        // ສົ່ງ Props ໃຫ້ຖືກຕ້ອງຕາມທີ່ ProductModal ຕ້ອງການ:
+        product={tempProduct}
+        setProduct={setTempProduct}
+        onSave={onSaveProductFromModal}
+        onPickImage={() => Alert.alert("Coming Soon", "ຟັງຊັນອັບໂຫລດຮູບ")}
+        onScan={() => Alert.alert("Coming Soon", "ຟັງຊັນສະແກນບາໂຄດ")}
       />
     </SafeAreaView>
   );

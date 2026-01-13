@@ -2,10 +2,10 @@ import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
-// 🟢 ໃຊ້ @ts-ignore ເພື່ອບໍ່ໃຫ້ມັນຟ້ອງ Error ເສັ້ນແດງ
-// ແລະ Import ຈາກ path ນີ້ເທົ່ານັ້ນ ຈຶ່ງຈະມີ getReactNativePersistence
+// 🟢 ແກ້ໄຂບ່ອນນີ້: ລຶບ /react-native ອອກ
+// ຕອນນີ້ເຮົາມີ metro.config.js ແລ້ວ, ການ import ແບບນີ້ຈະເຮັດວຽກໄດ້ສົມບູນ 100%
 // @ts-ignore
-import { getReactNativePersistence, initializeAuth } from 'firebase/auth/react-native';
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",

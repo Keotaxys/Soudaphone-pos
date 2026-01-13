@@ -131,19 +131,29 @@ const styles = StyleSheet.create({
   
   logoSection: { alignItems: 'center', marginBottom: 40 },
   logoCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  appTitle: { fontSize: 28, fontWeight: 'bold', color: 'white' },
-  appSubTitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
+  
+  // 🟢 ປັບ Font ຫົວຂໍ້
+  appTitle: { fontSize: 28, fontFamily: 'Lao-Bold', color: 'white' },
+  appSubTitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontFamily: 'Lao-Regular' },
 
   formContainer: { backgroundColor: 'white', borderRadius: 20, padding: 25, elevation: 5 },
-  loginText: { fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 20, textAlign: 'center' },
+  
+  // 🟢 ປັບ Font ຂໍ້ຄວາມ Login
+  loginText: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333', marginBottom: 20, textAlign: 'center' },
   
   inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: 12, paddingHorizontal: 15, marginBottom: 15, borderWidth: 1, borderColor: '#eee', height: 55 },
   inputIcon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 16, height: '100%' },
+  
+  // 🟢 ປັບ Font Input
+  input: { flex: 1, fontSize: 16, height: '100%', fontFamily: 'Lao-Regular' },
   
   loginBtn: { backgroundColor: COLORS?.primary || '#008B94', borderRadius: 12, height: 55, justifyContent: 'center', alignItems: 'center', marginTop: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
-  loginBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
+  
+  // 🟢 ປັບ Font ປຸ່ມ
+  loginBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },
   
   footer: { marginTop: 20, alignItems: 'center' },
-  footerText: { color: '#999', fontSize: 12 }
+  
+  // 🟢 ປັບ Font Footer
+  footerText: { color: '#999', fontSize: 12, fontFamily: 'Lao-Regular' }
 });

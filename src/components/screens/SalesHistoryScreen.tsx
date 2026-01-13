@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 // @ts-ignore
-import * as FileSystem from 'expo-file-system/legacy';
 import { onValue, ref, remove } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
@@ -21,6 +20,9 @@ import { COLORS, formatNumber } from '../../types';
 const ORANGE_COLOR = '#FF8F00';
 type FilterType = 'day' | 'week' | 'month' | 'year';
 
+// ອັດຕາແລກປ່ຽນຄົງທີ່ສຳລັບຄຳນວນຍ້ອນຫຼັງ (ຖ້າໃນບິນບໍ່ໄດ້ບັນທຶກໄວ້)
+const FIXED_EXCHANGE_RATE = 680;
+
 const formatDateLao = (date: Date) => {
   return date.toLocaleDateString('lo-LA', { day: 'numeric', month: 'long', year: 'numeric' });
 };
@@ -33,13 +35,11 @@ export default function SalesHistoryScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // ດຶງຂໍ້ມູນຈາກ Firebase
   useEffect(() => {
     const salesRef = ref(db, 'sales');
     const unsubscribe = onValue(salesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // ແປງຂໍ້ມູນ ແລະ sort ຈາກໃໝ່ -> ເກົ່າ
         const list = Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse();
         setSales(list);
       } else {
@@ -49,7 +49,6 @@ export default function SalesHistoryScreen() {
     return () => unsubscribe();
   }, []);
 
-  // Filter ຂໍ້ມູນຕາມວັນທີ
   useEffect(() => {
     const start = new Date(currentDate);
     const end = new Date(currentDate);
@@ -93,11 +92,43 @@ export default function SalesHistoryScreen() {
     setCurrentDate(newDate);
   };
 
-  // 🟢 Render Card
-  const renderItem = ({ item }: { item: any }) => {
-    // ກວດສອບສະກຸນເງິນຂອງບິນນັ້ນ (LAK ຫຼື THB)
-    const currencySymbol = item.currency === 'THB' ? '฿' : '₭';
+  // 🟢 ຟັງຊັນຄຳນວນເງິນໃໝ່ (Recalculate Total)
+  const getCorrectTotalLAK = (item: any) => {
+    // 1. ຄຳນວນລາຄາສິນຄ້າທັງໝົດເປັນ ກີບ
+    let subTotalLAK = 0;
     
+    if (item.items && Array.isArray(item.items)) {
+        item.items.forEach((prod: any) => {
+            if (prod.priceCurrency === 'THB') {
+                // ຖ້າເປັນບາດ ໃຫ້ຄູນ 680 (ຫຼື Rate ທີ່ບັນທຶກໄວ້)
+                const rate = item.exchangeRateUsed || FIXED_EXCHANGE_RATE;
+                subTotalLAK += (prod.price * prod.quantity * rate);
+            } else {
+                // ຖ້າເປັນກີບ ບວກເລີຍ
+                subTotalLAK += (prod.price * prod.quantity);
+            }
+        });
+    }
+
+    // 2. ລົບສ່ວນຫຼຸດ
+    const discount = item.discount || 0;
+    const finalTotal = subTotalLAK - discount;
+
+    return finalTotal;
+  };
+
+  const renderItem = ({ item }: { item: any }) => {
+    // ຄຳນວນຍອດເງິນທີ່ຖືກຕ້ອງ
+    const correctTotalLAK = getCorrectTotalLAK(item);
+    
+    // ກວດສອບວ່າບິນນີ້ຈ່າຍເປັນສະກຸນເງິນຫຍັງ
+    // ຖ້າຈ່າຍເປັນ THB ເຮົາຈະເອົາ TotalLAK ຫານ Rate
+    const displayTotal = item.currency === 'THB' 
+        ? Math.ceil(correctTotalLAK / (item.exchangeRateUsed || FIXED_EXCHANGE_RATE)) 
+        : correctTotalLAK;
+
+    const currencySymbol = item.currency === 'THB' ? '฿' : '₭';
+
     return (
       <View style={styles.card}>
         <TouchableOpacity style={styles.cardHeader} onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}>
@@ -106,48 +137,61 @@ export default function SalesHistoryScreen() {
                 <Text style={styles.dateText}>{new Date(item.date).toLocaleTimeString('lo-LA')}</Text>
             </View>
             <View style={{alignItems: 'flex-end'}}>
-                {/* ສະແດງຍອດເງິນ ແລະ ສະກຸນເງິນໃຫ້ຖືກຕ້ອງ */}
-                <Text style={styles.amountText}>+{formatNumber(item.total)} {currencySymbol}</Text>
+                {/* 🟢 ສະແດງຍອດເງິນທີ່ຄຳນວນໃໝ່ຖືກຕ້ອງ */}
+                <Text style={styles.amountText}>+{formatNumber(displayTotal)} {currencySymbol}</Text>
                 <Text style={styles.paymentText}>{item.paymentMethod || 'CASH'}</Text>
             </View>
         </TouchableOpacity>
 
         {expandedId === item.id && (
             <View style={styles.details}>
-                <View style={styles.divider} />
-                
-                {/* ລາຍການສິນຄ້າ */}
-                {item.items?.map((prod: any, idx: number) => (
-                    <View key={idx} style={styles.itemRow}>
-                        <Text style={styles.itemName}>{prod.name} x{prod.quantity}</Text>
-                        <Text style={styles.itemPrice}>
-                            {formatNumber(prod.price * prod.quantity)} {prod.priceCurrency === 'THB' ? '฿' : '₭'}
-                        </Text>
+                {/* 🟢 Header ສີເຫຼືອງໃນ Expanded View */}
+                <View style={styles.expandedHeader}>
+                    <View>
+                        <Text style={styles.expandedBillId}>ບິນ #{item.id ? item.id.slice(-4) : '...'}</Text>
+                        <Text style={styles.expandedDate}>{new Date(item.date).toLocaleTimeString('lo-LA')}</Text>
                     </View>
-                ))}
+                    <View style={{alignItems: 'flex-end'}}>
+                        <Text style={styles.expandedAmount}>+{formatNumber(displayTotal)} {currencySymbol}</Text>
+                        <Text style={styles.expandedPayment}>{item.paymentMethod || 'CASH'}</Text>
+                    </View>
+                </View>
 
-                {/* ສ່ວນຫຼຸດ (ຖ້າມີ) */}
-                {item.discount > 0 && (
+                <View style={{paddingHorizontal: 15, paddingBottom: 15}}>
+                    <View style={styles.divider} />
+                    
+                    {/* Items List */}
+                    {item.items?.map((prod: any, idx: number) => (
+                        <View key={idx} style={styles.itemRow}>
+                            <Text style={styles.itemName}>{prod.name} x{prod.quantity}</Text>
+                            <Text style={styles.itemPrice}>
+                                {formatNumber(prod.price * prod.quantity)} {prod.priceCurrency === 'THB' ? '฿' : '₭'}
+                            </Text>
+                        </View>
+                    ))}
+
+                    {/* Discount */}
+                    {item.discount > 0 && (
+                        <View style={styles.itemRow}>
+                            <Text style={[styles.itemName, {color: 'red'}]}>ສ່ວນຫຼຸດ</Text>
+                            <Text style={[styles.itemPrice, {color: 'red'}]}>-{formatNumber(item.discount)}</Text>
+                        </View>
+                    )}
+
+                    <View style={[styles.itemRow, {marginTop: 10}]}>
+                        <Text style={styles.itemName}>ຮັບເງິນ:</Text>
+                        <Text style={styles.itemPrice}>{formatNumber(item.amountReceived)}</Text>
+                    </View>
                     <View style={styles.itemRow}>
-                        <Text style={[styles.itemName, {color: 'red'}]}>ສ່ວນຫຼຸດ</Text>
-                        <Text style={[styles.itemPrice, {color: 'red'}]}>-{formatNumber(item.discount)}</Text>
+                        <Text style={[styles.itemName, {fontFamily: 'Lao-Bold'}]}>ເງິນທອນ:</Text>
+                        <Text style={[styles.itemPrice, {color: COLORS.primary, fontSize: 16}]}>{formatNumber(item.change)}</Text>
                     </View>
-                )}
 
-                <View style={[styles.itemRow, {marginTop: 5}]}>
-                    <Text style={styles.itemName}>ຮັບເງິນ:</Text>
-                    <Text style={styles.itemPrice}>{formatNumber(item.amountReceived)}</Text>
+                    <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
+                        <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
+                        <Text style={[styles.deleteText, {color: ORANGE_COLOR}]}>ລຶບບິນນີ້</Text>
+                    </TouchableOpacity>
                 </View>
-                <View style={styles.itemRow}>
-                    <Text style={styles.itemName}>ເງິນທອນ:</Text>
-                    <Text style={[styles.itemPrice, {color: COLORS.primary}]}>{formatNumber(item.change)}</Text>
-                </View>
-
-                <View style={styles.divider} />
-                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
-                    <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
-                    <Text style={[styles.deleteText, {color: ORANGE_COLOR}]}>ລຶບບິນນີ້</Text>
-                </TouchableOpacity>
             </View>
         )}
       </View>
@@ -175,7 +219,6 @@ export default function SalesHistoryScreen() {
          ))}
       </View>
 
-      {/* List */}
       <FlatList
         data={filteredSales}
         keyExtractor={item => item.id}
@@ -223,19 +266,26 @@ const styles = StyleSheet.create({
   activeFilter: { backgroundColor: COLORS?.primary || '#008B94' },
   filterText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
   
-  card: { backgroundColor: 'white', borderRadius: 12, marginBottom: 10, padding: 15, elevation: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  card: { backgroundColor: 'white', borderRadius: 12, marginBottom: 10, overflow: 'hidden', elevation: 2 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 },
   billId: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#333' },
   dateText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#888' },
   amountText: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS?.primary || '#008B94' },
   paymentText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
   
-  details: { marginTop: 10 },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 8 },
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  itemName: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#444' },
-  itemPrice: { fontFamily: 'Lao-Bold', fontSize: 13, color: '#333' },
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 5, marginTop: 5 },
+  // Expanded Styles
+  details: { backgroundColor: 'white' },
+  expandedHeader: { backgroundColor: '#FFECB3', padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  expandedBillId: { fontFamily: 'Lao-Bold', fontSize: 16, color: '#333' },
+  expandedDate: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
+  expandedAmount: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS?.primary || '#008B94' },
+  expandedPayment: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
+
+  divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
+  itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  itemName: { fontFamily: 'Lao-Regular', fontSize: 14, color: '#333' },
+  itemPrice: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#333' },
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 5, marginTop: 15 },
   deleteText: { fontFamily: 'Lao-Bold', fontSize: 12 },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
   

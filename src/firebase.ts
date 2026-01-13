@@ -1,13 +1,21 @@
+// 1. Import App ກ່ອນ
+import { getApp, getApps, initializeApp } from 'firebase/app';
+
+// 2. 🔥 Import Auth Side-effect (ສຳຄັນ! ຕ້ອງຢູ່ບ່ອນນີ້) 🔥
+// ການ import ແບບນີ້ຈະບັງຄັບໃຫ້ລະບົບ Register Component 'auth' ທັນທີ
+import 'firebase/auth';
+
+// 3. Import ຟັງຊັນອື່ນໆ
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
-import { initializeApp, getApp, getApps } from 'firebase/app';
+import {
+  Auth,
+  getAuth,
+  getReactNativePersistence,
+  initializeAuth
+} from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 
-// 🟢 1. ເພີ່ມແຖວນີ້! (ສຳຄັນ) ບັງຄັບໃຫ້ໂຫຼດ Auth Component ເພື່ອແກ້ Error "Not registered"
-import 'firebase/auth'; 
-
-// @ts-ignore
-import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
-
+// Config ຂອງທ່ານ
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",
   authDomain: "studio-7834307833-10afa.firebaseapp.com",
@@ -19,26 +27,21 @@ const firebaseConfig = {
 };
 
 let app;
-let auth;
+let auth: Auth;
 
-try {
-  // 🟢 2. ກວດສອບ App Instance
-  if (getApps().length > 0) {
-    app = getApp();
-  } else {
-    app = initializeApp(firebaseConfig);
-  }
-
-  // 🟢 3. ພະຍາຍາມ Initialize Auth ດ້ວຍ Persistence
-  // ຖ້າມັນ Error (ເພາະມີຢູ່ແລ້ວ) ມັນຈະໄປທີ່ catch ເອງ
+// Logic ການກວດສອບແບບ Singleton (ມາດຕະຖານທີ່ສຸດ)
+if (!getApps().length) {
+  // ຖ້າຍັງບໍ່ມີ App => ສ້າງໃໝ່ (Initialize)
+  app = initializeApp(firebaseConfig);
+  
+  // Initialize Auth ພ້ອມ Persistence
   auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
   });
-
-} catch (error) {
-  // 🟢 4. Recovery: ຖ້າ initialize ບໍ່ໄດ້ (Duplicate) ໃຫ້ດຶງໂຕເກົ່າ
-  // Error "Not registered" ຈະຫາຍໄປເພາະເຮົາ import 'firebase/auth' ແລ້ວ
-  console.log("Auth Exists, getting instance...");
+} else {
+  // ຖ້າມີ App ແລ້ວ => ດຶງໂຕເກົ່າມາໃຊ້
+  app = getApp();
+  // ເນື່ອງຈາກເຮົາ import 'firebase/auth' ທາງເທິງແລ້ວ getAuth ຈະເຮັດວຽກໄດ້ປົກກະຕິ
   auth = getAuth(app);
 }
 

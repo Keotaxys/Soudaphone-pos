@@ -1,8 +1,12 @@
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-
-// 🟢 1. Import ແຄ່ນີ້ພໍ (ຕັດ getReactNativePersistence ອອກ)
-import { getAuth } from 'firebase/auth';
+// 🟢 1. Import Auth ແລະ Persistence
+import {
+  getAuth,
+  getReactNativePersistence,
+  initializeAuth
+} from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",
@@ -15,17 +19,24 @@ const firebaseConfig = {
 };
 
 let app;
+let auth;
 
-// 🟢 2. Logic ກວດສອບ App
+// 🟢 2. ກວດສອບ App Instance
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
 } else {
   app = getApp();
 }
 
-// 🟢 3. ສ້າງ Auth ແບບງ່າຍ (ໃຊ້ໄດ້ກັບທຸກ Version)
-// ວິທີນີ້ຈະບໍ່ມີ Error "no exported member" ແນ່ນອນ
-const auth = getAuth(app);
+// 🟢 3. ພະຍາຍາມ Initialize Auth ແບບຈື່ຈຳ (Persistence)
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+  });
+} catch (error) {
+  // ຖ້າມີ Auth ຢູ່ແລ້ວ (Duplicate) ໃຫ້ດຶງໂຕເກົ່າມາໃຊ້
+  auth = getAuth(app);
+}
 
 const db = getDatabase(app);
 

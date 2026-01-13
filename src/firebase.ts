@@ -1,8 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-// 🟢 ໃຊ້ Module ຫຼັກ 'firebase/auth' ເພື່ອປ້ອງກັນ Error ຂອງ Metro Specifier
+// 🟢 ເມື່ອໃຊ້ Firebase v10, ການ import ນີ້ຈະເຮັດວຽກໄດ້ 100%
+// @ts-ignore
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
-import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
+import { getReactNativePersistence, initializeAuth } from 'firebase/auth/react-native';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",
@@ -20,8 +21,7 @@ const app = initializeApp(firebaseConfig);
 // 2. Initialize Realtime Database
 export const db = getDatabase(app);
 
-// 3. Initialize Auth ໂດຍໃຊ້ Manual Persistence Configuration
-// ວິທີນີ້ຈະບໍ່ມີບັນຫາເລື່ອງ Missing Specifier ໃນ Firebase v11
+// 3. Initialize Auth ພ້ອມ Persistence (ສຳລັບ v10)
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(ReactNativeAsyncStorage)
 });

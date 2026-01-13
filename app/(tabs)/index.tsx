@@ -28,11 +28,11 @@ import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
 // Modals
+import EditShopModal from '../../src/components/modals/EditShopModal';
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
-// 🟢 Import Modal ແກ້ໄຂຮ້ານ
-import EditShopModal from '../../src/components/modals/EditShopModal';
 
+// 🔥 Force Cast Components (ເພື່ອຫຼີກລ້ຽງ TypeScript Error ເລັກນ້ອຍ)
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -73,7 +73,7 @@ export default function App() {
   });
   const [isEditShopVisible, setEditShopVisible] = useState(false);
 
-  // Fetch Data (Products & Shop Info)
+  // Fetch Data (Products, Sales, Shop Info)
   useEffect(() => {
     if (!isLoggedIn) return; 
     
@@ -90,6 +90,18 @@ export default function App() {
       }
     });
 
+    // Fetch Sales History
+    const salesRef = ref(db, 'sales');
+    const unsubSales = onValue(salesRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+            setSalesHistory(list);
+        } else {
+            setSalesHistory([]);
+        }
+    });
+
     // 🟢 Fetch Shop Info (ຖ້າມີໃນ Firebase)
     const shopRef = ref(db, 'shopInfo');
     const unsubShop = onValue(shopRef, (snapshot) => {
@@ -100,12 +112,13 @@ export default function App() {
 
     return () => {
         unsubProd();
+        unsubSales();
         unsubShop();
     };
   }, [isLoggedIn]); 
 
   // --- Handlers ---
-  const addToCart = (product: Product) => { /* ... Logic ເດີມ ... */
+  const addToCart = (product: Product) => {
     setCart(prev => {
         const existing = prev.find(item => item.id === product.id);
         if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
@@ -116,7 +129,7 @@ export default function App() {
   const updateQuantity = (id: string, delta: number) => setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item).filter(i => i.quantity > 0));
   const clearCart = () => setCart([]);
 
-  const handleCheckout = (paymentDetails: any) => { /* ... Logic ເດີມ ... */ 
+  const handleCheckout = (paymentDetails: any) => {
     const { paymentMethod, amountReceived, discount = 0 } = paymentDetails || {};
     const subTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = subTotal - (discount || 0);
@@ -160,7 +173,21 @@ export default function App() {
     const tabName = activeTab.toLowerCase();
     switch (tabName) {
       case 'home': return <HomeScreenAny salesHistory={salesHistory} products={products} onQuickAddProduct={openAddProductModal} onQuickScan={() => setScannerVisible(true)} onQuickCustomer={() => setActiveTab('Customers')} />;
-      case 'pos': return <POSScreenAny products={products} cart={cart} addToCart={addToCart} removeFromCart={removeFromCart} updateQuantity={updateQuantity} clearCart={clearCart} onCheckout={handleCheckout} openEditProductModal={openEditProductModal} />;
+      case 'pos': return (
+          // 🟢 ສົ່ງ Props ໃຫ້ POSScreen
+          <POSScreenAny 
+            products={products} 
+            cart={cart} 
+            addToCart={addToCart} 
+            removeFromCart={removeFromCart} 
+            updateQuantity={updateQuantity} 
+            clearCart={clearCart} 
+            onCheckout={handleCheckout} 
+            openEditProductModal={openEditProductModal}
+            onOpenScan={() => setScannerVisible(true)} 
+            onOpenAddProduct={openAddProductModal} 
+          />
+      );
       case 'products': return <ProductsScreenAny products={products} onAddProduct={openAddProductModal} onEditProduct={openEditProductModal} onDeleteProduct={handleDeleteProduct} />;
       case 'customers': return <CustomerScreen />;
       case 'orders': return <OrderTrackingScreen />;
@@ -180,18 +207,22 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      {/* 🟢 Status Bar Background (ສີຂຽວ) */}
       <SafeAreaView style={{ flex: 0, backgroundColor: '#008B94' }} edges={['top']} />
+      
+      {/* App Content */}
       <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
         <StatusBar style="light" backgroundColor="#008B94" />
         
-        {/* 🟢 ສົ່ງຂໍ້ມູນຮ້ານ ແລະ ຟັງຊັນເປີດ Modal ໃຫ້ Header */}
+        {/* 🟢 Header ພ້ອມຂໍ້ມູນຮ້ານ */}
         <HeaderAny 
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
             user={{ name: 'Admin', role: 'Manager' }} 
             shopName={shopInfo.name}
             shopId={shopInfo.id}
             shopLogo={shopInfo.logo}
-            onEditPress={() => setEditShopVisible(true)} // ເປີດ Modal
+            onEditPress={() => setEditShopVisible(true)}
+            onLogout={() => setIsLoggedIn(false)}
         />
 
         <View style={styles.mainContainer}>

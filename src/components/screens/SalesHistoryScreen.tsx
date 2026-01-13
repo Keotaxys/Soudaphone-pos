@@ -2,8 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 // @ts-ignore
 import * as FileSystem from 'expo-file-system/legacy';
-import { printToFileAsync } from 'expo-print';
-import { shareAsync } from 'expo-sharing';
 import { onValue, ref, remove } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
@@ -15,14 +13,17 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  ScrollView
+  View
 } from 'react-native';
 import { db } from '../../firebase';
-import { COLORS, formatDate, formatNumber } from '../../types';
+import { COLORS, formatNumber } from '../../types';
 
-const ORANGE_COLOR = '#F57C00';
+const ORANGE_COLOR = '#FF8F00';
 type FilterType = 'day' | 'week' | 'month' | 'year';
+
+const formatDateLao = (date: Date) => {
+  return date.toLocaleDateString('lo-LA', { day: 'numeric', month: 'long', year: 'numeric' });
+};
 
 export default function SalesHistoryScreen() {
   const [sales, setSales] = useState<any[]>([]);
@@ -32,6 +33,7 @@ export default function SalesHistoryScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // ດຶງຂໍ້ມູນຈາກ Firebase
   useEffect(() => {
     const salesRef = ref(db, 'sales');
     const unsubscribe = onValue(salesRef, (snapshot) => {
@@ -47,6 +49,7 @@ export default function SalesHistoryScreen() {
     return () => unsubscribe();
   }, []);
 
+  // Filter ຂໍ້ມູນຕາມວັນທີ
   useEffect(() => {
     const start = new Date(currentDate);
     const end = new Date(currentDate);
@@ -55,7 +58,7 @@ export default function SalesHistoryScreen() {
 
     if (filterType === 'week') {
       const day = start.getDay();
-      const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is sunday
+      const diff = start.getDate() - day + (day === 0 ? -6 : 1);
       start.setDate(diff);
       end.setDate(start.getDate() + 6);
     } else if (filterType === 'month') {
@@ -80,10 +83,6 @@ export default function SalesHistoryScreen() {
     ]);
   };
 
-  // Export Functions (Excel/PDF) - ຫຍໍ້ໄວ້ເພື່ອປະຢັດເນື້ອທີ່
-  const generatePDF = async () => { /* ... Logic PDF ເດີມ ... */ };
-  const generateExcel = async () => { /* ... Logic Excel ເດີມ ... */ };
-
   const handleNavigateDate = (dir: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
     const val = dir === 'next' ? 1 : -1;
@@ -94,6 +93,67 @@ export default function SalesHistoryScreen() {
     setCurrentDate(newDate);
   };
 
+  // 🟢 Render Card
+  const renderItem = ({ item }: { item: any }) => {
+    // ກວດສອບສະກຸນເງິນຂອງບິນນັ້ນ (LAK ຫຼື THB)
+    const currencySymbol = item.currency === 'THB' ? '฿' : '₭';
+    
+    return (
+      <View style={styles.card}>
+        <TouchableOpacity style={styles.cardHeader} onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}>
+            <View>
+                <Text style={styles.billId}>ບິນ #{item.id ? item.id.slice(-4) : '...'}</Text>
+                <Text style={styles.dateText}>{new Date(item.date).toLocaleTimeString('lo-LA')}</Text>
+            </View>
+            <View style={{alignItems: 'flex-end'}}>
+                {/* ສະແດງຍອດເງິນ ແລະ ສະກຸນເງິນໃຫ້ຖືກຕ້ອງ */}
+                <Text style={styles.amountText}>+{formatNumber(item.total)} {currencySymbol}</Text>
+                <Text style={styles.paymentText}>{item.paymentMethod || 'CASH'}</Text>
+            </View>
+        </TouchableOpacity>
+
+        {expandedId === item.id && (
+            <View style={styles.details}>
+                <View style={styles.divider} />
+                
+                {/* ລາຍການສິນຄ້າ */}
+                {item.items?.map((prod: any, idx: number) => (
+                    <View key={idx} style={styles.itemRow}>
+                        <Text style={styles.itemName}>{prod.name} x{prod.quantity}</Text>
+                        <Text style={styles.itemPrice}>
+                            {formatNumber(prod.price * prod.quantity)} {prod.priceCurrency === 'THB' ? '฿' : '₭'}
+                        </Text>
+                    </View>
+                ))}
+
+                {/* ສ່ວນຫຼຸດ (ຖ້າມີ) */}
+                {item.discount > 0 && (
+                    <View style={styles.itemRow}>
+                        <Text style={[styles.itemName, {color: 'red'}]}>ສ່ວນຫຼຸດ</Text>
+                        <Text style={[styles.itemPrice, {color: 'red'}]}>-{formatNumber(item.discount)}</Text>
+                    </View>
+                )}
+
+                <View style={[styles.itemRow, {marginTop: 5}]}>
+                    <Text style={styles.itemName}>ຮັບເງິນ:</Text>
+                    <Text style={styles.itemPrice}>{formatNumber(item.amountReceived)}</Text>
+                </View>
+                <View style={styles.itemRow}>
+                    <Text style={styles.itemName}>ເງິນທອນ:</Text>
+                    <Text style={[styles.itemPrice, {color: COLORS.primary}]}>{formatNumber(item.change)}</Text>
+                </View>
+
+                <View style={styles.divider} />
+                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
+                    <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
+                    <Text style={[styles.deleteText, {color: ORANGE_COLOR}]}>ລຶບບິນນີ້</Text>
+                </TouchableOpacity>
+            </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -101,7 +161,7 @@ export default function SalesHistoryScreen() {
         <Text style={styles.headerTitle}>ປະຫວັດການຂາຍ</Text>
         <View style={styles.dateNav}>
              <TouchableOpacity onPress={() => handleNavigateDate('prev')}><Ionicons name="chevron-back" size={20} color="#666" /></TouchableOpacity>
-             <TouchableOpacity onPress={() => setShowDatePicker(true)}><Text style={styles.dateLabel}>{formatDate(currentDate)}</Text></TouchableOpacity>
+             <TouchableOpacity onPress={() => setShowDatePicker(true)}><Text style={styles.dateLabel}>{formatDateLao(currentDate)}</Text></TouchableOpacity>
              <TouchableOpacity onPress={() => handleNavigateDate('next')}><Ionicons name="chevron-forward" size={20} color="#666" /></TouchableOpacity>
         </View>
       </View>
@@ -121,46 +181,29 @@ export default function SalesHistoryScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={{ padding: 15 }}
         ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ພົບປະຫວັດການຂາຍ</Text>}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.cardHeader} onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}>
-                <View>
-                    <Text style={styles.billId}>ບິນ #{item.id.slice(-4)}</Text>
-                    <Text style={styles.dateText}>{new Date(item.date).toLocaleTimeString('lo-LA')}</Text>
-                </View>
-                <View style={{alignItems: 'flex-end'}}>
-                    <Text style={styles.amountText}>+{formatNumber(item.total)} ₭</Text>
-                    <Text style={styles.paymentText}>{item.paymentMethod}</Text>
-                </View>
-            </TouchableOpacity>
-
-            {expandedId === item.id && (
-                <View style={styles.details}>
-                    <View style={styles.divider} />
-                    {item.items?.map((prod: any, idx: number) => (
-                        <View key={idx} style={styles.itemRow}>
-                            <Text style={styles.itemName}>{prod.name} x{prod.quantity}</Text>
-                            <Text style={styles.itemPrice}>{formatNumber(prod.price * prod.quantity)}</Text>
-                        </View>
-                    ))}
-                    <View style={styles.divider} />
-                    <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
-                        <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
-                        <Text style={[styles.deleteText, {color: ORANGE_COLOR}]}>ລຶບບິນນີ້</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-          </View>
-        )}
+        renderItem={renderItem}
       />
 
       {showDatePicker && (
         Platform.OS === 'ios' ? (
-            <View style={styles.modalOverlay}>
-                <View style={styles.dateContainer}>
-                    <DateTimePicker value={currentDate} mode="date" display="inline" onChange={(e, d) => { setShowDatePicker(false); if(d) setCurrentDate(d); }} />
+            <Modal visible={true} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.dateContainer}>
+                        <DateTimePicker 
+                            value={currentDate} 
+                            mode="date" 
+                            display="inline" 
+                            onChange={(e, d) => { setShowDatePicker(false); if(d) setCurrentDate(d); }} 
+                            textColor="black"
+                            themeVariant="light"
+                            style={{backgroundColor: 'white'}}
+                        />
+                        <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.closeBtn}>
+                            <Text style={styles.closeBtnText}>ປິດ</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
+            </Modal>
         ) : (
             <DateTimePicker value={currentDate} mode="date" onChange={(e, d) => { setShowDatePicker(false); if(d) setCurrentDate(d); }} />
         )
@@ -195,6 +238,9 @@ const styles = StyleSheet.create({
   deleteBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 5, marginTop: 5 },
   deleteText: { fontFamily: 'Lao-Bold', fontSize: 12 },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontFamily: 'Lao-Regular' },
+  
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  dateContainer: { backgroundColor: 'white', padding: 20, borderRadius: 15 }
+  dateContainer: { backgroundColor: 'white', padding: 20, borderRadius: 15, width: '90%', alignItems: 'center' },
+  closeBtn: { marginTop: 15, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 10, width: '100%', alignItems: 'center' },
+  closeBtnText: { fontFamily: 'Lao-Bold', color: '#333' }
 });

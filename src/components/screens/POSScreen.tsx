@@ -1,21 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   FlatList,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  Alert
+  View
 } from 'react-native';
-import { COLORS, formatNumber, Product, CartItem } from '../../types';
+import { CartItem, COLORS, formatNumber, Product } from '../../types';
 
-const { width, height } = Dimensions.get('window');
-const ORANGE_COLOR = '#EF6C00';
+const { width } = Dimensions.get('window');
+const ORANGE_THEME = '#FF8F00'; // ສີສົ້ມ Theme
 
 interface POSScreenProps {
   products: Product[];
@@ -54,6 +58,10 @@ export default function POSScreen({
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
   const [amountReceived, setAmountReceived] = useState('');
   const [exchangeRate] = useState(680); 
+  
+  // Date Picker State
+  const [orderDate, setOrderDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Receipt Modal State
   const [isReceiptVisible, setReceiptVisible] = useState(false);
@@ -80,6 +88,12 @@ export default function POSScreen({
   const receivedVal = parseFloat(amountReceived.replace(/,/g, '')) || 0;
   const change = receivedVal - displayTotal;
 
+  // Handle Date Change
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (selectedDate) setOrderDate(selectedDate);
+  };
+
   const handlePayment = () => {
     if (paymentMethod === 'CASH' && receivedVal < displayTotal) {
         Alert.alert("ແຈ້ງເຕືອນ", "ເງິນທີ່ຮັບມາບໍ່ພຽງພໍ!");
@@ -94,7 +108,7 @@ export default function POSScreen({
         paymentMethod,
         amountReceived: currency === 'LAK' ? receivedVal : receivedVal * exchangeRate,
         change: currency === 'LAK' ? change : change * exchangeRate,
-        date: new Date().toISOString()
+        date: orderDate.toISOString()
     };
 
     onCheckout(orderData);
@@ -108,7 +122,7 @@ export default function POSScreen({
   const renderProductItem = ({ item }: { item: Product }) => (
     <View style={styles.productCard}>
       <TouchableOpacity activeOpacity={0.8} onPress={() => addToCart(item)} style={styles.cardContent}>
-        <View style={[styles.currencyTag, item.priceCurrency === 'THB' ? {backgroundColor: '#FF9800'} : {backgroundColor: COLORS.primary}]}>
+        <View style={[styles.currencyTag, item.priceCurrency === 'THB' ? {backgroundColor: ORANGE_THEME} : {backgroundColor: COLORS.primary}]}>
             <Text style={styles.currencyText}>{item.priceCurrency || 'LAK'}</Text>
         </View>
         <Image source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://via.placeholder.com/150' }} style={styles.productImage} />
@@ -156,11 +170,15 @@ export default function POSScreen({
         </TouchableOpacity>
       )}
 
-      {/* Cart Modal */}
+      {/* 🟢 Cart Modal with KeyboardAvoidingView */}
       <Modal visible={isCartVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={styles.modalOverlay}
+        >
             <View style={styles.modalContent}>
                 
+                {/* Header */}
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>ກະຕ່າສິນຄ້າ ({cart.length})</Text>
                     <TouchableOpacity onPress={() => setCartVisible(false)}>
@@ -168,22 +186,24 @@ export default function POSScreen({
                     </TouchableOpacity>
                 </View>
 
-                {/* Source Toggle */}
+                {/* Top Controls */}
                 <View style={styles.toggleRow}>
                     <TouchableOpacity style={[styles.toggleBtn, orderSource === 'shop' ? {backgroundColor: COLORS.primary} : styles.inactiveBtn]} onPress={() => setOrderSource('shop')}>
                         <Text style={[styles.toggleText, orderSource === 'shop' ? {color:'white'} : {color:'#666'}]}>ໜ້າຮ້ານ</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.toggleBtn, orderSource === 'online' ? {backgroundColor: ORANGE_COLOR} : styles.inactiveBtn]} onPress={() => setOrderSource('online')}>
+                    <TouchableOpacity style={[styles.toggleBtn, orderSource === 'online' ? {backgroundColor: ORANGE_THEME} : styles.inactiveBtn]} onPress={() => setOrderSource('online')}>
                         <Text style={[styles.toggleText, orderSource === 'online' ? {color:'white'} : {color:'#666'}]}>Online</Text>
                     </TouchableOpacity>
-                    <View style={styles.dateBadge}>
+                    
+                    {/* Date Picker Button */}
+                    <TouchableOpacity style={styles.dateBadge} onPress={() => setShowDatePicker(true)}>
                         <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
-                        <Text style={styles.dateText}>{new Date().toLocaleDateString('en-GB')}</Text>
-                    </View>
+                        <Text style={styles.dateText}>{orderDate.toLocaleDateString('en-GB')}</Text>
+                    </TouchableOpacity>
                 </View>
 
-                {/* List Items */}
-                <View style={{height: 200}}>
+                {/* List Items (Scrollable) */}
+                <View style={{flex: 1}}>
                     <FlatList 
                         data={cart}
                         keyExtractor={item => item.id!}
@@ -200,81 +220,100 @@ export default function POSScreen({
                                     <TouchableOpacity onPress={() => updateQuantity(item.id!, 1)}><Text style={styles.qtySign}>+</Text></TouchableOpacity>
                                 </View>
                                 <TouchableOpacity onPress={() => removeFromCart(item.id!)} style={{marginLeft: 15}}>
-                                    <Ionicons name="trash-outline" size={24} color={ORANGE_COLOR} /> 
+                                    <Ionicons name="trash-outline" size={24} color={ORANGE_THEME} /> 
                                 </TouchableOpacity>
                             </View>
                         )}
                     />
                 </View>
 
-                <View style={styles.divider} />
+                {/* Payment Section (Fixed Bottom) */}
+                <View style={styles.paymentSection}>
+                    <View style={styles.currencyRow}>
+                        <TouchableOpacity style={[styles.currencyBtn, currency === 'LAK' ? {backgroundColor: COLORS.primary} : styles.inactiveBorderBtn]} onPress={() => setCurrency('LAK')}>
+                            <Text style={[styles.currencyBtnText, currency === 'LAK' ? {color:'white'} : {color: COLORS.primary}]}>₭ ເງິນກີບ</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.currencyBtn, currency === 'THB' ? {backgroundColor: ORANGE_THEME} : styles.inactiveBorderBtn]} onPress={() => setCurrency('THB')}>
+                            <Text style={[styles.currencyBtnText, currency === 'THB' ? {color:'white'} : {color: ORANGE_THEME}]}>฿ ເງິນບາດ</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                {/* Currency Toggle */}
-                <View style={styles.currencyRow}>
-                    <TouchableOpacity style={[styles.currencyBtn, currency === 'LAK' ? {backgroundColor: COLORS.primary} : styles.inactiveBorderBtn]} onPress={() => setCurrency('LAK')}>
-                        <Text style={[styles.currencyBtnText, currency === 'LAK' ? {color:'white'} : {color: COLORS.primary}]}>₭ ເງິນກີບ</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.currencyBtn, currency === 'THB' ? {backgroundColor: ORANGE_COLOR} : styles.inactiveBorderBtn]} onPress={() => setCurrency('THB')}>
-                        <Text style={[styles.currencyBtnText, currency === 'THB' ? {color:'white'} : {color: ORANGE_COLOR}]}>฿ ເງິນບາດ</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Total Display */}
-                <View style={styles.totalDisplayRow}>
-                    <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
-                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                        <Text style={[styles.totalValue, {color: currency === 'LAK' ? COLORS.primary : ORANGE_COLOR}]}>
+                    <View style={styles.totalDisplayRow}>
+                        <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
+                        <Text style={[styles.totalValue, {color: currency === 'LAK' ? COLORS.primary : ORANGE_THEME}]}>
                             {formatNumber(displayTotal)} {currency === 'LAK' ? '₭' : '฿'}
                         </Text>
-                        <Ionicons name="pencil" size={16} color="#999" style={{marginLeft: 5}} />
                     </View>
-                </View>
 
-                {/* Payment Method Toggle */}
-                <View style={styles.methodRow}>
-                    <TouchableOpacity style={[styles.methodBtn, paymentMethod === 'CASH' ? {borderColor: COLORS.primary, backgroundColor: '#E0F2F1'} : styles.inactiveMethod]} onPress={() => setPaymentMethod('CASH')}>
-                        <Ionicons name="cash-outline" size={24} color={paymentMethod === 'CASH' ? COLORS.primary : '#999'} />
-                        <Text style={[styles.methodText, paymentMethod === 'CASH' && {color: COLORS.primary}]}>ເງິນສົດ</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.methodBtn, paymentMethod === 'QR' ? {borderColor: ORANGE_COLOR, backgroundColor: '#FFF3E0'} : styles.inactiveMethod]} onPress={() => setPaymentMethod('QR')}>
-                        <Ionicons name="qr-code-outline" size={24} color={paymentMethod === 'QR' ? ORANGE_COLOR : '#999'} />
-                        <Text style={[styles.methodText, paymentMethod === 'QR' && {color: ORANGE_COLOR}]}>QR OnePay</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Cash Input */}
-                {paymentMethod === 'CASH' && (
-                    <View style={styles.cashSection}>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>ຮັບເງິນມາ:</Text>
-                            <TextInput 
-                                style={styles.cashInput} 
-                                keyboardType="number-pad" 
-                                placeholder="0" 
-                                value={amountReceived}
-                                onChangeText={setAmountReceived}
-                            />
-                        </View>
-                        <View style={styles.changeGroup}>
-                            <Text style={styles.inputLabel}>ເງິນທອນ:</Text>
-                            <Text style={[styles.changeValue, change < 0 ? {color:'red'} : {color: COLORS.success}]}>
-                                {formatNumber(change > 0 ? change : 0)} {currency === 'LAK' ? '₭' : '฿'}
-                            </Text>
-                        </View>
+                    <View style={styles.methodRow}>
+                        <TouchableOpacity style={[styles.methodBtn, paymentMethod === 'CASH' ? {borderColor: COLORS.primary, backgroundColor: '#E0F2F1'} : styles.inactiveMethod]} onPress={() => setPaymentMethod('CASH')}>
+                            <Ionicons name="cash-outline" size={24} color={paymentMethod === 'CASH' ? COLORS.primary : '#999'} />
+                            <Text style={[styles.methodText, paymentMethod === 'CASH' && {color: COLORS.primary}]}>ເງິນສົດ</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.methodBtn, paymentMethod === 'QR' ? {borderColor: ORANGE_THEME, backgroundColor: '#FFF3E0'} : styles.inactiveMethod]} onPress={() => setPaymentMethod('QR')}>
+                            <Ionicons name="qr-code-outline" size={24} color={paymentMethod === 'QR' ? ORANGE_THEME : '#999'} />
+                            <Text style={[styles.methodText, paymentMethod === 'QR' && {color: ORANGE_THEME}]}>QR</Text>
+                        </TouchableOpacity>
                     </View>
-                )}
 
-                {/* Pay Button */}
-                <TouchableOpacity 
-                    style={[styles.payBigBtn, { backgroundColor: (orderSource === 'online' || paymentMethod === 'QR' || currency === 'THB') ? ORANGE_COLOR : COLORS.primary }]}
-                    onPress={handlePayment}
-                >
-                    <Text style={styles.payBigText}>{paymentMethod === 'QR' ? 'ຊຳລະເງິນ (QR)' : 'ຊຳລະເງິນ'}</Text>
-                </TouchableOpacity>
+                    {paymentMethod === 'CASH' && (
+                        <View style={styles.cashSection}>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>ຮັບເງິນມາ:</Text>
+                                <TextInput 
+                                    style={styles.cashInput} 
+                                    keyboardType="number-pad" 
+                                    placeholder="0" 
+                                    value={amountReceived}
+                                    onChangeText={setAmountReceived}
+                                />
+                            </View>
+                            <View style={styles.changeGroup}>
+                                <Text style={styles.inputLabel}>ເງິນທອນ:</Text>
+                                <Text style={[styles.changeValue, change < 0 ? {color: ORANGE_THEME} : {color: COLORS.primary}]}>
+                                    {formatNumber(change > 0 ? change : 0)} {currency === 'LAK' ? '₭' : '฿'}
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
+                    <TouchableOpacity 
+                        style={[styles.payBigBtn, { backgroundColor: COLORS.primary }]} // 🟢 ປຸ່ມຊຳລະເງິນສີ Teal ສະເໝີ
+                        onPress={handlePayment}
+                    >
+                        <Text style={styles.payBigText}>{paymentMethod === 'QR' ? 'ຊຳລະເງິນ (QR)' : 'ຊຳລະເງິນ'}</Text>
+                    </TouchableOpacity>
+                </View>
 
             </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
+
+      {/* Date Picker Modal */}
+      {showDatePicker && (
+        Platform.OS === 'ios' ? (
+            <Modal visible={true} transparent animationType="fade">
+                <View style={styles.datePickerOverlay}>
+                    <View style={styles.datePickerContainer}>
+                        <DateTimePicker 
+                            value={orderDate} 
+                            mode="date" 
+                            display="inline" 
+                            onChange={onDateChange}
+                            textColor="black"
+                            themeVariant="light"
+                            style={{backgroundColor:'white'}}
+                        />
+                        <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.closeDateBtn}>
+                            <Text style={styles.closeDateText}>ຕົກລົງ</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        ) : (
+            <DateTimePicker value={orderDate} mode="date" onChange={onDateChange} />
+        )
+      )}
 
       {/* Receipt Modal */}
       <Modal visible={isReceiptVisible} transparent animationType="fade">
@@ -345,30 +384,31 @@ const styles = StyleSheet.create({
   viewCartBtn: { backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 5 },
   viewCartText: { color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 12 },
 
-  // Modal Styles
+  // Modal Overlay
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#F5F9FA', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, height: '85%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalContent: { backgroundColor: '#F5F9FA', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, height: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   modalTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333' },
   
-  toggleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   toggleBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, marginRight: 10 },
   inactiveBtn: { backgroundColor: '#ddd' },
   toggleText: { fontFamily: 'Lao-Bold', fontSize: 14 },
   dateBadge: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'white', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: COLORS.primary },
   dateText: { color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 12 },
 
-  // 🟢 Styles ທີ່ຂາດໄປ (ເພີ່ມໃຫ້ແລ້ວ)
-  cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 15 },
-  itemThumb: { width: 50, height: 50, borderRadius: 10, backgroundColor: '#eee' },
+  itemThumb: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#eee' },
   itemName: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#333' },
   itemPrice: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
-  qtyBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 8, paddingHorizontal: 5, height: 30 },
-  qtySign: { fontSize: 18, paddingHorizontal: 10, color: '#666', fontFamily: 'Lao-Bold' },
-  qtyVal: { fontSize: 14, fontFamily: 'Lao-Bold', paddingHorizontal: 5, minWidth: 20, textAlign: 'center' },
+  qtyBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 8, paddingHorizontal: 5 },
+  qtySign: { fontSize: 20, paddingHorizontal: 10, color: '#666' },
+  qtyVal: { fontSize: 16, fontFamily: 'Lao-Bold', paddingHorizontal: 5 },
+  cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 15 },
+
+  divider: { height: 1, backgroundColor: '#ddd', marginVertical: 10 },
   
-  divider: { height: 1, backgroundColor: '#ddd', marginVertical: 15 },
-  
+  // Payment Section
+  paymentSection: { marginTop: 10, paddingBottom: 20 },
   currencyRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
   currencyBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   inactiveBorderBtn: { borderWidth: 1, borderColor: '#ccc', backgroundColor: 'white' },
@@ -390,8 +430,14 @@ const styles = StyleSheet.create({
   changeGroup: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0f0f0', padding: 15, borderRadius: 10 },
   changeValue: { fontSize: 20, fontFamily: 'Lao-Bold' },
 
-  payBigBtn: { padding: 18, borderRadius: 15, alignItems: 'center', elevation: 3 },
+  payBigBtn: { padding: 18, borderRadius: 15, alignItems: 'center', elevation: 3, marginBottom: 20 },
   payBigText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 20 },
+
+  // Date Picker
+  datePickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
+  closeDateBtn: { marginTop: 15, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 10, width: '100%', alignItems: 'center' },
+  closeDateText: { fontFamily: 'Lao-Bold', color: COLORS.primary },
 
   // Receipt Modal
   receiptContainer: { width: '85%', backgroundColor: 'white', borderRadius: 20, padding: 25, alignItems: 'center', alignSelf: 'center', marginTop: 'auto', marginBottom: 'auto', elevation: 10 },

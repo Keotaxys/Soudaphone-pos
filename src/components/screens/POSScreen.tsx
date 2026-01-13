@@ -92,10 +92,9 @@ export default function POSScreen({
     </View>
   );
 
-  // 🟢 List Header Component: ລວມສ່ວນຄົ້ນຫາ, ປຸ່ມ ແລະ ໝວດໝູ່ ໄວ້ບ່ອນນີ້
+  // Header Component
   const ListHeader = () => (
     <View>
-      {/* 1. Search Bar */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#999" />
         <TextInput 
@@ -111,7 +110,6 @@ export default function POSScreen({
         )}
       </View>
 
-      {/* 2. Action Buttons */}
       <View style={styles.actionButtons}>
         <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primary, marginRight: 10 }]} onPress={onOpenScan}>
             <Ionicons name="qr-code-outline" size={20} color="white" />
@@ -123,7 +121,6 @@ export default function POSScreen({
         </TouchableOpacity>
       </View>
 
-      {/* 3. Categories */}
       <View style={{ marginBottom: 10 }}>
         <FlatList 
           horizontal
@@ -147,14 +144,13 @@ export default function POSScreen({
   return (
     <View style={styles.container}>
       
-      {/* 🟢 4. Main List: ໃຊ້ FlatList ດຽວຄຸມທັງໝົດ */}
       <FlatList
-        ListHeaderComponent={ListHeader} // ໃສ່ສ່ວນຫົວທີ່ນີ້
+        ListHeaderComponent={ListHeader}
         data={filteredProducts}
         keyExtractor={item => item.id!}
         numColumns={2}
-        contentContainerStyle={{ paddingBottom: 100 }} // ເວັ້ນບ່ອນໃຫ້ Floating Cart
-        columnWrapperStyle={{ paddingHorizontal: 10 }} // ຈັດ column ໃຫ້ຫ່າງຂອບ
+        contentContainerStyle={{ paddingBottom: 150 }} // ເພີ່ມ padding ລຸ່ມໃຫ້ຫຼາຍຂຶ້ນ
+        columnWrapperStyle={{ paddingHorizontal: 10 }}
         renderItem={renderProductItem}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -164,7 +160,7 @@ export default function POSScreen({
         }
       />
 
-      {/* 5. Floating Cart Bar */}
+      {/* 🟢 Floating Cart Bar (ປັບຕຳແໜ່ງ) */}
       {cart.length > 0 && (
         <TouchableOpacity 
             style={styles.floatingCartBar} 
@@ -188,7 +184,7 @@ export default function POSScreen({
         </TouchableOpacity>
       )}
 
-      {/* 6. Cart Modal */}
+      {/* Cart Modal */}
       <Modal visible={isCartVisible} animationType="slide" onRequestClose={() => setCartVisible(false)}>
         <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
@@ -246,7 +242,7 @@ export default function POSScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F9FA' },
+  container: { flex: 1, backgroundColor: '#F5F9FA', position: 'relative' }, // position relative
   
   // Search
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', margin: 15, paddingHorizontal: 15, height: 50, borderRadius: 10, elevation: 2 },
@@ -280,17 +276,20 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 50 },
   emptyText: { fontFamily: 'Lao-Regular', color: '#999', marginTop: 10 },
 
-  // Floating Cart Bar
+  // 🟢 Floating Cart Bar (ແກ້ໄຂຕຳແໜ່ງ)
   floatingCartBar: { 
     position: 'absolute', 
-    bottom: 20, left: 15, right: 15, 
+    bottom: 20, // ຍົກຂຶ້ນມາໜ້ອຍໜຶ່ງ (ຖ້າ Footer ບັງ ໃຫ້ເພີ່ມຄ່ານີ້ ເຊັ່ນ: 80)
+    left: 15, 
+    right: 15, 
     backgroundColor: '#333', 
     borderRadius: 50, 
     height: 60,
     flexDirection: 'row', 
     alignItems: 'center', 
     paddingHorizontal: 15, 
-    elevation: 10,
+    elevation: 20, // ເພີ່ມ elevation ໃຫ້ສູງກວ່າ Footer
+    zIndex: 9999, // ໃຫ້ຢູ່ເທິງສຸດ
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5
   },
   cartIconWrapper: { position: 'relative', paddingRight: 15, borderRightWidth: 1, borderRightColor: '#555' },

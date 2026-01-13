@@ -38,13 +38,12 @@ const FooterAny = Footer as any;
 const ProductModalAny = ProductModal as any;
 const LoginScreenAny = LoginScreen as any;
 
-// Default Product
 const emptyProduct: Product = {
   id: '', name: '', price: 0, stock: 0, priceCurrency: 'LAK', category: '', barcode: ''
 };
 
 export default function App() {
-  // 1. Hooks (useState, useFonts, useEffect) ຕ້ອງປະກາດຢູ່ເທິງສຸດໃຫ້ໝົດ ຫ້າມມີ if ມາຂັ້ນ
+  // 🟢 1. Hooks ທັງໝົດຕ້ອງຢູ່ເທິງສຸດ (ຫ້າມມີ if return ຂັ້ນ)
   const [fontsLoaded] = useFonts({
     'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'), 
     'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
@@ -61,7 +60,7 @@ export default function App() {
   const [isProductModalVisible, setProductModalVisible] = useState(false);
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
 
-  // 🟢 2. useEffect (ຕ້ອງຢູ່ບ່ອນນີ້ ກ່ອນທີ່ຈະ return)
+  // 🟢 2. useEffect ກໍຕ້ອງຢູ່ເທິງ
   useEffect(() => {
     const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
@@ -184,7 +183,7 @@ export default function App() {
     }
   };
 
-  // 🟢 3. Conditional Return (ຕ້ອງຢູ່ລຸ່ມສຸດ ຫຼັງຈາກປະກາດ Hooks ແລະ Function ໝົດແລ້ວ)
+  // 🟢 3. Conditional Return (ເອົາມາໄວ້ລຸ່ມສຸດ ຫຼັງຈາກ Hooks ທຸກຢ່າງ)
   if (!fontsLoaded) {
     return (
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>

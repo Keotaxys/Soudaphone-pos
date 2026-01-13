@@ -1,14 +1,14 @@
-import { useFonts } from 'expo-font';
+import React, { useState, useEffect } from 'react';
+import { View, Alert, ActivityIndicator, StyleSheet, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ແທນ (ແກ້ Warning)
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { useFonts } from 'expo-font';
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ (ແກ້ Warning)
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
 // --- Imports ---
-import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import { db } from '../../src/firebase';
-import { CartItem, Product, SaleRecord } from '../../src/types';
+import { ref, onValue, push, set, remove, update } from 'firebase/database';
+import { Product, CartItem, SaleRecord } from '../../src/types';
 
 // Screens
 import CustomerScreen from '../../src/components/screens/CustomerScreen';
@@ -30,7 +30,7 @@ import Sidebar from '../../src/components/ui/Sidebar';
 // Modals
 import ProductModal from '../../src/components/modals/ProductModal';
 
-// 🔥 Force Cast Components to avoid strict type checking issues
+// 🔥 Force Cast Components
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -45,7 +45,7 @@ const emptyProduct: Product = {
 };
 
 export default function App() {
-  // 🟢 HOOKS: ຕ້ອງຢູ່ເທິງສຸດສະເໝີ ຫ້າມມີ if return ມາຂັ້ນ
+  // 🟢 1. HOOKS: ປະກາດໄວ້ເທິງສຸດ
   const [fontsLoaded] = useFonts({
     'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'), 
     'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
@@ -81,7 +81,7 @@ export default function App() {
     }, (error) => {
       console.error("Error fetching products:", error);
       if (!error.message.includes("permission_denied")) {
-         Alert.alert("Error", "ບໍ່ສາມາດດຶງຂໍ້ມູນໄດ້: " + error.message);
+         // Alert.alert("Error", "ດຶງຂໍ້ມູນບໍ່ໄດ້: " + error.message);
       }
     });
     return () => unsubscribe();
@@ -170,6 +170,7 @@ export default function App() {
     setProductModalVisible(false);
   };
 
+  // 🟢 3. Render Screen Logic (ແກ້ໄຂໃຫ້ກົງກັບຊື່ໃນ Footer/Sidebar)
   const renderScreen = () => {
     const tabName = activeTab.toLowerCase();
     switch (tabName) {
@@ -182,15 +183,22 @@ export default function App() {
         );
       case 'customers': return <CustomerScreen />;
       case 'orders': return <OrderTrackingScreen />;
-      case 'reports': return <ReportDashboard />;
+      
+      // 🟢 ຕ້ອງເປັນ reports (ມີ s) ຕາມ Footer
+      case 'reports': return <ReportDashboard />; 
+      
+      // 🟢 ຕ້ອງເປັນ expenses (ມີ s) ຕາມ Footer/Sidebar
       case 'expenses': return <ExpenseScreen />;
+      
       case 'debts': return <DebtScreen />;
       case 'shift': return <ShiftScreen />;
+      case 'history': return <ReportDashboard />; // ຕົວຢ່າງ: ໃຫ້ History ໄປໜ້າ Report ກ່ອນ
+      
       default: return <HomeScreenAny salesHistory={salesHistory} products={products} />;
     }
   };
 
-  // 🟢 3. Conditional Returns (ຕ້ອງຢູ່ລຸ່ມສຸດ ຫຼັງຈາກ Hooks)
+  // 🟢 4. Conditional Returns (ຕ້ອງຢູ່ລຸ່ມສຸດ ຫຼັງຈາກ Hooks)
   if (!fontsLoaded) {
     return (
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -219,8 +227,8 @@ export default function App() {
                <SidebarAny 
                   activeTab={activeTab} 
                   onTabChange={(tab: string) => { setActiveTab(tab); setIsSidebarOpen(false); }} 
-                  tabs={TABS} 
-                  onClose={() => setIsSidebarOpen(false)} // 🟢 ສົ່ງ onClose ໄປໃຫ້ Sidebar
+                  tabs={TABS}
+                  onClose={() => setIsSidebarOpen(false)} // ສົ່ງ onClose ໃຫ້ Sidebar ເຮັດວຽກ
                />
                {/* ພື້ນທີ່ໂປ່ງໃສ ກົດເພື່ອປິດ */}
                <View style={styles.transparentCloseArea} onTouchEnd={() => setIsSidebarOpen(false)} />
@@ -232,6 +240,7 @@ export default function App() {
           </View>
         </View>
 
+        {/* Footer */}
         <FooterAny 
           status="Online" 
           version="1.0.0" 

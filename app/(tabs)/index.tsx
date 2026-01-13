@@ -1,11 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { Alert, SafeAreaView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, View } from 'react-native';
+
+// 🟢 1. Import expo-font
+import { useFonts } from 'expo-font';
 
 // --- Imports ---
-import { db } from '../../src/firebase';
-// 🟢 1. Import ຄຳສັ່ງ Firebase Database
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
+import { db } from '../../src/firebase';
 import { CartItem, Product, SaleRecord } from '../../src/types';
 
 // Screens
@@ -38,12 +40,19 @@ const FooterAny = Footer as any;
 const ProductModalAny = ProductModal as any;
 const LoginScreenAny = LoginScreen as any;
 
-// 🟢 Default Product
+// Default Product
 const emptyProduct: Product = {
   id: '', name: '', price: 0, stock: 0, priceCurrency: 'LAK', category: '', barcode: ''
 };
 
 export default function App() {
+  // 🟢 2. ສັ່ງໂຫຼດ Fonts (ກວດເບິ່ງຊື່ໄຟລ໌ຂອງທ່ານໃຫ້ຕົງກັບບ່ອນນີ້!)
+  const [fontsLoaded] = useFonts({
+    // ຊື່ທີ່ຈະໃຊ້ໃນ Style : ບ່ອນຢູ່ຂອງໄຟລ໌
+    'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'), 
+    'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
+  });
+
   // --- State Management ---
   const [activeTab, setActiveTab] = useState<string>('Home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -58,37 +67,36 @@ export default function App() {
   const [isProductModalVisible, setProductModalVisible] = useState(false);
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
 
-  // 🟢 2. Fetch Data from Firebase (ດຶງຂໍ້ມູນຈິງຈາກ Database)
-  useEffect(() => {
-    // ອ້າງອີງໄປທີ່ node 'products' ໃນ Firebase
-    const productsRef = ref(db, 'products');
+  // 🟢 3. ລໍຖ້າໃຫ້ Font ໂຫຼດແລ້ວກ່ອນ ຈຶ່ງສະແດງໜ້າແອັບ
+  if (!fontsLoaded) {
+    return (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <ActivityIndicator size="large" color="#008B94" />
+      </View>
+    );
+  }
 
+  // Fetch Data from Firebase
+  useEffect(() => {
+    const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const loadedProducts: Product[] = [];
-        
-        // ແປງຂໍ້ມູນຈາກ Object ເປັນ Array
         for (const key in data) {
-          loadedProducts.push({
-            id: key, // ໃຊ້ Key ຈາກ Firebase ເປັນ ID
-            ...data[key]
-          });
+          loadedProducts.push({ id: key, ...data[key] });
         }
         setProducts(loadedProducts);
       } else {
-        setProducts([]); // ຖ້າບໍ່ມີຂໍ້ມູນ
+        setProducts([]);
       }
     }, (error) => {
       console.error("Error fetching products:", error);
-      Alert.alert("Error", "ບໍ່ສາມາດດຶງຂໍ້ມູນຈາກລະບົບໄດ້");
     });
-
-    // Cleanup listener ເມື່ອປິດໜ້າ
     return () => unsubscribe();
   }, []);
 
-  // --- Handlers (Cart & Checkout) ---
+  // --- Handlers ---
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
@@ -120,10 +128,9 @@ export default function App() {
     const subTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = subTotal - (discount || 0);
 
-    // 🟢 ບັນທຶກການຂາຍລົງ Firebase (Sales History)
     const newSaleRef = push(ref(db, 'sales'));
     const newSale: SaleRecord = {
-      id: newSaleRef.key!, // Generate ID ຈາກ Firebase
+      id: newSaleRef.key!,
       items: [...cart],
       subTotal, discount: discount || 0, total,
       amountReceived: amountReceived || 0, change: (amountReceived || 0) - total,
@@ -134,40 +141,34 @@ export default function App() {
     set(newSaleRef, newSale)
       .then(() => {
         Alert.alert("Success", "ການຂາຍສຳເລັດ!");
-        setCart([]); // ລ້າງກະຕ່າ
+        setCart([]);
       })
       .catch(err => Alert.alert("Error", "ບັນທຶກການຂາຍບໍ່ໄດ້: " + err.message));
   };
 
-  // 🟢 3. Product Handlers (CRUD ກັບ Firebase ແທ້)
+  // Product Handlers
   const handleAddProduct = (newProduct: Product) => {
     try {
       const productsRef = ref(db, 'products');
-      const newRef = push(productsRef); // ສ້າງ Key ໃໝ່
+      const newRef = push(productsRef);
       const productWithId = { ...newProduct, id: newRef.key };
-      set(newRef, productWithId); // ບັນທຶກລົງ Database
-    } catch (error) {
-      Alert.alert("Error", "ເພີ່ມສິນຄ້າບໍ່ໄດ້");
-    }
+      set(newRef, productWithId);
+    } catch (error) { Alert.alert("Error", "ເພີ່ມສິນຄ້າບໍ່ໄດ້"); }
   };
 
   const handleEditProduct = (updatedProduct: Product) => {
     try {
       if (!updatedProduct.id) return;
       const productRef = ref(db, `products/${updatedProduct.id}`);
-      update(productRef, updatedProduct); // ອັບເດດຂໍ້ມູນ
-    } catch (error) {
-      Alert.alert("Error", "ແກ້ໄຂສິນຄ້າບໍ່ໄດ້");
-    }
+      update(productRef, updatedProduct);
+    } catch (error) { Alert.alert("Error", "ແກ້ໄຂສິນຄ້າບໍ່ໄດ້"); }
   };
 
   const handleDeleteProduct = (productId: string) => {
     try {
       const productRef = ref(db, `products/${productId}`);
-      remove(productRef); // ລຶບອອກຈາກ Database
-    } catch (error) {
-      Alert.alert("Error", "ລຶບສິນຄ້າບໍ່ໄດ້");
-    }
+      remove(productRef);
+    } catch (error) { Alert.alert("Error", "ລຶບສິນຄ້າບໍ່ໄດ້"); }
   };
 
   // Modal Handlers
@@ -176,20 +177,13 @@ export default function App() {
   
   const onSaveProductFromModal = () => {
     if (!tempProduct.name || !tempProduct.price) { Alert.alert("Error", "ກະລຸນາໃສ່ຂໍ້ມູນໃຫ້ຄົບ"); return; }
-    
-    // ເອີ້ນໃຊ້ຟັງຊັນທີ່ຕໍ່ກັບ Firebase
-    if (tempProduct.id) {
-      handleEditProduct(tempProduct);
-    } else {
-      handleAddProduct(tempProduct);
-    }
+    if (tempProduct.id) { handleEditProduct(tempProduct); } else { handleAddProduct(tempProduct); }
     setProductModalVisible(false);
   };
 
   // --- Render Screen Logic ---
   const renderScreen = () => {
     const tabName = activeTab.toLowerCase();
-    
     switch (tabName) {
       case 'home': return <HomeScreenAny salesHistory={salesHistory} products={products} />;
       case 'pos': return (

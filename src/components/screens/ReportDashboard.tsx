@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system';
+import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
@@ -18,7 +19,6 @@ import {
 import { db } from '../../firebase';
 import { COLORS, formatNumber } from '../../types';
 
-// Helper: ຈັດ Format ວັນທີພາສາລາວ (ແບບຫຍໍ້ເພື່ອປະຢັດພື້ນທີ່)
 const formatDateLao = (date: Date) => {
   return date.toLocaleDateString('lo-LA', { day: 'numeric', month: 'numeric', year: '2-digit' });
 };
@@ -37,7 +37,6 @@ export default function ReportDashboard() {
   const [expenses, setExpenses] = useState<any[]>([]);
   
   const [filterType, setFilterType] = useState<FilterType>('day');
-  
   const [currentDate, setCurrentDate] = useState(new Date());
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
@@ -66,8 +65,8 @@ export default function ReportDashboard() {
     });
   }, []);
 
-  // 2. Filter Logic
-  useEffect(() => {
+  // Helper: Get Filtered Data
+  const getFilteredData = () => {
     let start = new Date();
     let end = new Date();
 
@@ -77,7 +76,6 @@ export default function ReportDashboard() {
     } else {
         start = new Date(currentDate);
         end = new Date(currentDate);
-        
         if (filterType === 'week') {
             const day = start.getDay();
             const diff = start.getDate() - day + (day === 0 ? -6 : 1);
@@ -91,7 +89,6 @@ export default function ReportDashboard() {
             end.setMonth(11, 31);
         }
     }
-
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
@@ -104,6 +101,13 @@ export default function ReportDashboard() {
         const d = new Date(item.date);
         return d >= start && d <= end;
     });
+
+    return { fSales, fExpenses, start, end };
+  };
+
+  // 2. Calculate Stats
+  useEffect(() => {
+    const { fSales, fExpenses } = getFilteredData();
 
     const revenue = fSales.reduce((sum, item: any) => sum + parseCurrency(item.total), 0);
     const expense = fExpenses.reduce((sum, item: any) => sum + parseCurrency(item.amount), 0);
@@ -140,6 +144,7 @@ export default function ReportDashboard() {
 
   }, [sales, expenses, filterType, currentDate, startDate, endDate]);
 
+  // 3. Navigation
   const handleNavigateDate = (dir: 'prev' | 'next') => {
     if (filterType === 'custom') return;
     const newDate = new Date(currentDate);
@@ -165,20 +170,106 @@ export default function ReportDashboard() {
     }
   };
 
+  // 🟢 4. EXPORT EXCEL (ແກ້ໄຂແລ້ວ)
   const generateExcel = async () => {
-    let csvContent = "Date,Type,Description,Amount\n";
-    salesByCategory.forEach((cat: any) => csvContent += `${formatDateLao(currentDate)},Sale,${cat.label},${cat.value}\n`);
-    expensesByCategory.forEach((cat: any) => csvContent += `${formatDateLao(currentDate)},Expense,${cat.label},-${cat.value}\n`);
     try {
+        const { fSales, fExpenses } = getFilteredData();
+        
+        let csv = "Date,Type,Category,Description,Amount\n";
+        
+        fSales.forEach(s => {
+            const dateStr = new Date(s.date).toLocaleDateString('lo-LA');
+            csv += `${dateStr},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
+        });
+
+        fExpenses.forEach(e => {
+            const dateStr = new Date(e.date).toLocaleDateString('lo-LA');
+            csv += `${dateStr},Expense,${e.category},${e.note || '-'},-${parseCurrency(e.amount)}\n`;
+        });
+
+        const totalRev = fSales.reduce((s, i) => s + parseCurrency(i.total), 0);
+        const totalExp = fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0);
+        csv += `\nSUMMARY,,,\n`;
+        csv += `,,Total Revenue,${totalRev}\n`;
+        csv += `,,Total Expense,${totalExp}\n`;
+        csv += `,,Net Profit,${totalRev - totalExp}\n`;
+
+        const fileName = `Report_${new Date().getTime()}.csv`;
+        // ໃຊ້ as any ເພື່ອຂ້າມການກວດສອບ Type
         const docDir = (FileSystem as any).documentDirectory;
-        const fileName = `${docDir}report_${new Date().getTime()}.csv`;
-        await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
-        await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
-    } catch (error) { Alert.alert("Error", "Export Failed"); }
+        const fileUri = docDir + fileName;
+
+        // 🟢 ໃຊ້ 'utf8' ແທນ FileSystem.EncodingType.UTF8
+        await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: 'utf8' });
+        await shareAsync(fileUri, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+
+    } catch (error: any) {
+        Alert.alert("Error", "Export ລົ້ມເຫຼວ: " + error.message);
+    }
   };
 
+  // 🟢 5. EXPORT PDF
   const generatePDF = async () => {
-    Alert.alert("Coming Soon", "PDF Export will be available here.");
+    try {
+        const { fSales, fExpenses, start, end } = getFilteredData();
+        const totalRev = fSales.reduce((s, i) => s + parseCurrency(i.total), 0);
+        const totalExp = fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0);
+        const profit = totalRev - totalExp;
+
+        const html = `
+        <html>
+            <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+            <style>
+                body { font-family: 'Helvetica', sans-serif; padding: 20px; }
+                h1 { color: #008B94; text-align: center; }
+                .summary { background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+                .row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #008B94; color: white; }
+                .money { text-align: right; }
+                .loss { color: red; }
+                .profit { color: green; }
+            </style>
+            </head>
+            <body>
+            <h1>ລາຍງານສະຫຼຸບ (POS Report)</h1>
+            <p align="center">ວັນທີ: ${formatDateLao(start)} - ${formatDateLao(end)}</p>
+            
+            <div class="summary">
+                <div class="row"><b>ຍອດຂາຍລວມ (Revenue):</b> <span>${formatNumber(totalRev)} ₭</span></div>
+                <div class="row"><b>ລາຍຈ່າຍລວມ (Expense):</b> <span>${formatNumber(totalExp)} ₭</span></div>
+                <hr/>
+                <div class="row" style="font-size: 16px;">
+                    <b>ກຳໄລສຸດທິ (Net Profit):</b> 
+                    <span class="${profit >= 0 ? 'profit' : 'loss'}">${formatNumber(profit)} ₭</span>
+                </div>
+            </div>
+
+            <h3>ລາຍການຂາຍລ່າສຸດ (Sales)</h3>
+            <table>
+                <tr><th>ວັນທີ</th><th>ເລກບິນ</th><th class="money">ຈຳນວນເງິນ</th></tr>
+                ${fSales.slice(0, 20).map((s: any) => `
+                    <tr>
+                        <td>${new Date(s.date).toLocaleDateString()}</td>
+                        <td>#${s.id ? s.id.slice(-4) : '-'}</td>
+                        <td class="money">${formatNumber(parseCurrency(s.total))}</td>
+                    </tr>
+                `).join('')}
+            </table>
+            
+            <p align="center" style="margin-top: 20px; color: #888;">Generate by Soudaphone POS</p>
+            </body>
+        </html>
+        `;
+
+        const { uri } = await printToFileAsync({ html });
+        await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+
+    } catch (error: any) {
+        Alert.alert("Error", "PDF ລົ້ມເຫຼວ: " + error.message);
+    }
   };
 
   const SummaryCard = ({ label, amount, color, icon }: any) => (
@@ -238,9 +329,7 @@ export default function ReportDashboard() {
         </View>
       </View>
 
-      {/* 🟢 Filter Bar ແບບແຖວດຽວ ເຕັມພື້ນທີ່ */}
       <View style={styles.filterBar}>
-         {/* ສ່ວນປຸ່ມກົດ (Flex 1 ເພື່ອໃຫ້ຍືດເຕັມທີ່) */}
          <View style={styles.filterGroup}>
             {['day', 'week', 'month', 'year', 'custom'].map((t) => (
                 <TouchableOpacity 
@@ -254,8 +343,6 @@ export default function ReportDashboard() {
                 </TouchableOpacity>
             ))}
          </View>
-
-         {/* ສ່ວນວັນທີ (ຢູ່ດ້ານຂວາສຸດ) */}
          <View style={styles.dateNav}>
              {filterType !== 'custom' ? (
                  <>
@@ -313,13 +400,11 @@ export default function ReportDashboard() {
         </View>
       </View>
 
-      {/* Date Picker Modal (Fix iOS Dark Mode) */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
             <Modal visible={true} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.dateContainer}>
-                        {/* 🟢 Fix: themeVariant="light" ແລະ textColor="black" */}
                         <DateTimePicker 
                             value={pickerMode === 'start' ? startDate : pickerMode === 'end' ? endDate : currentDate} 
                             mode="date" 
@@ -354,12 +439,11 @@ const styles = StyleSheet.create({
   exportBtn: { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, alignItems: 'center', gap: 4 },
   exportText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 12 },
 
-  // 🟢 ປັບ Styles ສຳລັບ Single Row
   filterBar: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 12, alignItems: 'center', justifyContent: 'space-between', elevation: 1 },
-  filterGroup: { flexDirection: 'row', flex: 1, justifyContent: 'flex-start', flexWrap: 'nowrap', gap: 4 }, // ໃຊ້ gap ແທນ margin
-  filterChip: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 15, backgroundColor: '#f0f0f0' }, // ຫຼຸດ padding
+  filterGroup: { flexDirection: 'row', flex: 1, justifyContent: 'flex-start', flexWrap: 'nowrap', gap: 4 },
+  filterChip: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 15, backgroundColor: '#f0f0f0' },
   activeFilter: { backgroundColor: COLORS?.primary || '#008B94' },
-  filterText: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#666' }, // ຫຼຸດ font size
+  filterText: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#666' },
   
   dateNav: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#f9f9f9', padding: 5, borderRadius: 8, marginLeft: 5 },
   dateLabel: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#333' },

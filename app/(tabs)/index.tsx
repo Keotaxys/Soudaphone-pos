@@ -1,9 +1,7 @@
+import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, View } from 'react-native';
-
-// 🟢 1. Import expo-font
-import { useFonts } from 'expo-font';
 
 // --- Imports ---
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
@@ -46,37 +44,24 @@ const emptyProduct: Product = {
 };
 
 export default function App() {
-  // 🟢 2. ສັ່ງໂຫຼດ Fonts (ກວດເບິ່ງຊື່ໄຟລ໌ຂອງທ່ານໃຫ້ຕົງກັບບ່ອນນີ້!)
+  // 1. Hooks (useState, useFonts, useEffect) ຕ້ອງປະກາດຢູ່ເທິງສຸດໃຫ້ໝົດ ຫ້າມມີ if ມາຂັ້ນ
   const [fontsLoaded] = useFonts({
-    // ຊື່ທີ່ຈະໃຊ້ໃນ Style : ບ່ອນຢູ່ຂອງໄຟລ໌
     'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'), 
     'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
   });
 
-  // --- State Management ---
   const [activeTab, setActiveTab] = useState<string>('Home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   
-  // Data States
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
   
-  // Modal States
   const [isProductModalVisible, setProductModalVisible] = useState(false);
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
 
-  // 🟢 3. ລໍຖ້າໃຫ້ Font ໂຫຼດແລ້ວກ່ອນ ຈຶ່ງສະແດງໜ້າແອັບ
-  if (!fontsLoaded) {
-    return (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <ActivityIndicator size="large" color="#008B94" />
-      </View>
-    );
-  }
-
-  // Fetch Data from Firebase
+  // 🟢 2. useEffect (ຕ້ອງຢູ່ບ່ອນນີ້ ກ່ອນທີ່ຈະ return)
   useEffect(() => {
     const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
@@ -146,7 +131,6 @@ export default function App() {
       .catch(err => Alert.alert("Error", "ບັນທຶກການຂາຍບໍ່ໄດ້: " + err.message));
   };
 
-  // Product Handlers
   const handleAddProduct = (newProduct: Product) => {
     try {
       const productsRef = ref(db, 'products');
@@ -171,7 +155,6 @@ export default function App() {
     } catch (error) { Alert.alert("Error", "ລຶບສິນຄ້າບໍ່ໄດ້"); }
   };
 
-  // Modal Handlers
   const openAddProductModal = () => { setTempProduct(emptyProduct); setProductModalVisible(true); };
   const openEditProductModal = (product: Product) => { setTempProduct(product); setProductModalVisible(true); };
   
@@ -181,7 +164,6 @@ export default function App() {
     setProductModalVisible(false);
   };
 
-  // --- Render Screen Logic ---
   const renderScreen = () => {
     const tabName = activeTab.toLowerCase();
     switch (tabName) {
@@ -201,6 +183,15 @@ export default function App() {
       default: return <HomeScreenAny salesHistory={salesHistory} products={products} />;
     }
   };
+
+  // 🟢 3. Conditional Return (ຕ້ອງຢູ່ລຸ່ມສຸດ ຫຼັງຈາກປະກາດ Hooks ແລະ Function ໝົດແລ້ວ)
+  if (!fontsLoaded) {
+    return (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <ActivityIndicator size="large" color="#008B94" />
+      </View>
+    );
+  }
 
   if (!isLoggedIn) {
     return <LoginScreenAny onLoginSuccess={() => setIsLoggedIn(true)} />;

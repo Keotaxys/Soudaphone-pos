@@ -1,6 +1,11 @@
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-import { getAuth } from 'firebase/auth';
+import { 
+  initializeAuth, 
+  getReactNativePersistence, 
+  getAuth 
+} from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",
@@ -13,13 +18,26 @@ const firebaseConfig = {
 };
 
 let app;
+let auth;
+
+// 1. Initialize App
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
 } else {
   app = getApp();
 }
 
-// ໃຊ້ Auth ແບບທຳມະດາ (ບໍ່ມີ Error ແນ່ນອນ)
-export const auth = getAuth(app);
-export const db = getDatabase(app);
+// 2. Initialize Auth ພ້ອມ Persistence (ຈື່ການ Login)
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+  });
+} catch (error) {
+  // ຖ້າມີ Auth ຢູ່ແລ້ວ ໃຫ້ດຶງໂຕເກົ່າ
+  auth = getAuth(app);
+}
+
+const db = getDatabase(app);
+
+export { auth, db };
 export default app;

@@ -2,7 +2,6 @@ import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // --- Imports ---
@@ -29,6 +28,7 @@ import Footer from '../../src/components/ui/Footer';
 import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
+// Force Cast
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -156,14 +156,17 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {/* 🟢 1. ແກ້ໄຂສີ Background ຂອງ Layer ນີ້ໃຫ້ເປັນ #008B94 */}
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        {/* 2. ຕົວໜັງສື StatusBar ເປັນສີຂາວ */}
+      {/* 🟢 ສ່ວນທີ 1: ພື້ນທີ່ Status Bar ເທິງສຸດ (ສີຂຽວ) */}
+      <SafeAreaView style={{ flex: 0, backgroundColor: '#008B94' }} edges={['top']} />
+
+      {/* 🟢 ສ່ວນທີ 2: ເນື້ອຫາແອັບ (ສີເທົາອ່ອນ) */}
+      <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+        
+        {/* ຕັ້ງຄ່າໃຫ້ຕົວໜັງສືເປັນສີຂາວ */}
         <StatusBar style="light" backgroundColor="#008B94" />
         
         <HeaderAny toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} user={{ name: 'Admin', role: 'Manager' }} />
 
-        {/* 🟢 3. ຍ້າຍສີພື້ນຫຼັງສີເທົາ (#F5F9FA) ມາໃສ່ທີ່ Layer ຂອງເນື້ອຫາແທນ */}
         <View style={styles.mainContainer}>
           {isSidebarOpen && (
             <View style={styles.sidebarOverlay}>
@@ -186,19 +189,15 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  // 🟢 ຈຸດສຳຄັນ: Container ໃຫຍ່ສຸດເປັນສີຂຽວ ເພື່ອເປັນພື້ນຫຼັງໃຫ້ Status Bar
+  // Container ຫຼັກຂອງເນື້ອຫາ
   container: { 
     flex: 1, 
-    backgroundColor: '#008B94' 
-  },
-  
-  // 🟢 ສ່ວນເນື້ອຫາ ຈຶ່ງຄ່ອຍເປັນສີເທົາອ່ອນ
-  mainContainer: { 
-    flex: 1, 
-    position: 'relative', 
     backgroundColor: '#F5F9FA' 
   },
-  
+  mainContainer: { 
+    flex: 1, 
+    position: 'relative' 
+  },
   sidebarOverlay: { position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, zIndex: 999, flexDirection: 'row' },
   transparentCloseArea: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   contentWrapper: { flex: 1, backgroundColor: '#fff', marginHorizontal: 10, marginTop: 10, marginBottom: 0, borderRadius: 10, overflow: 'hidden' }

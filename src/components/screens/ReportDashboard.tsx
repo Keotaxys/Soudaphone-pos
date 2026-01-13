@@ -18,12 +18,11 @@ import {
 import { db } from '../../firebase';
 import { COLORS, formatNumber } from '../../types';
 
-// Helper: ຈັດ Format ວັນທີພາສາລາວ
+// Helper: ຈັດ Format ວັນທີພາສາລາວ (ແບບຫຍໍ້ເພື່ອປະຢັດພື້ນທີ່)
 const formatDateLao = (date: Date) => {
-  return date.toLocaleDateString('lo-LA', { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString('lo-LA', { day: 'numeric', month: 'numeric', year: '2-digit' });
 };
 
-// Helper: Parse Currency
 const parseCurrency = (value: any): number => {
     if (value === undefined || value === null || value === '') return 0;
     const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
@@ -31,27 +30,21 @@ const parseCurrency = (value: any): number => {
     return isNaN(num) ? 0 : num;
 };
 
-// 🟢 ເພີ່ມ custom ເຂົ້າໄປໃນ Type
 type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 
 export default function ReportDashboard() {
-  // Data
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   
-  // Filter State
   const [filterType, setFilterType] = useState<FilterType>('day');
   
-  // 🟢 State ສຳລັບວັນທີ
-  const [currentDate, setCurrentDate] = useState(new Date()); // ສຳລັບ Day/Week/Month/Year
-  const [startDate, setStartDate] = useState(new Date());     // ສຳລັບ Custom
-  const [endDate, setEndDate] = useState(new Date());         // ສຳລັບ Custom
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
   
-  // 🟢 State ຄວບຄຸມ DatePicker
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'single' | 'start' | 'end'>('single');
 
-  // Stats
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
   const [topProducts, setTopProducts] = useState<any[]>([]);
@@ -78,7 +71,6 @@ export default function ReportDashboard() {
     let start = new Date();
     let end = new Date();
 
-    // 🟢 Logic ຄຳນວນວັນທີຕາມ Filter
     if (filterType === 'custom') {
         start = new Date(startDate);
         end = new Date(endDate);
@@ -100,7 +92,6 @@ export default function ReportDashboard() {
         }
     }
 
-    // Reset ເວລາໃຫ້ກວມເອົາທັງໝົດ
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
@@ -114,14 +105,12 @@ export default function ReportDashboard() {
         return d >= start && d <= end;
     });
 
-    // Calculate
     const revenue = fSales.reduce((sum, item: any) => sum + parseCurrency(item.total), 0);
     const expense = fExpenses.reduce((sum, item: any) => sum + parseCurrency(item.amount), 0);
     
     setTotalRevenue(revenue);
     setTotalExpense(expense);
 
-    // Top Products
     const prodStats: any = {};
     const catStats: any = {};
     fSales.forEach((sale: any) => {
@@ -141,7 +130,6 @@ export default function ReportDashboard() {
     setTopProducts(Object.values(prodStats).sort((a: any, b: any) => b.totalSold - a.totalSold).slice(0, 5));
     setSalesByCategory(Object.keys(catStats).map(k => ({ label: k, value: catStats[k] })).sort((a,b) => b.value - a.value));
 
-    // Expenses Categories
     const expCatStats: any = {};
     fExpenses.forEach((e: any) => {
         const cat = e.category || 'ອື່ນໆ';
@@ -150,12 +138,10 @@ export default function ReportDashboard() {
     });
     setExpensesByCategory(Object.keys(expCatStats).map(k => ({ label: k, value: expCatStats[k] })).sort((a,b) => b.value - a.value));
 
-  }, [sales, expenses, filterType, currentDate, startDate, endDate]); // Trigger ເມື່ອວັນທີປ່ຽນ
+  }, [sales, expenses, filterType, currentDate, startDate, endDate]);
 
-  // 3. Navigation & Picker Handlers
   const handleNavigateDate = (dir: 'prev' | 'next') => {
-    if (filterType === 'custom') return; // Custom ບໍ່ໃຫ້ກົດ Next/Prev
-
+    if (filterType === 'custom') return;
     const newDate = new Date(currentDate);
     const val = dir === 'next' ? 1 : -1;
     if (filterType === 'day') newDate.setDate(newDate.getDate() + val);
@@ -165,16 +151,13 @@ export default function ReportDashboard() {
     setCurrentDate(newDate);
   };
 
-  // 🟢 ເປີດ Picker ຕາມໂໝດ
   const openDatePicker = (mode: 'single' | 'start' | 'end') => {
     setPickerMode(mode);
     setShowDatePicker(true);
   };
 
-  // 🟢 ຮັບຄ່າເມື່ອເລືອກວັນທີ
   const onDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
-    
     if (selectedDate) {
         if (pickerMode === 'single') setCurrentDate(selectedDate);
         if (pickerMode === 'start') setStartDate(selectedDate);
@@ -182,7 +165,6 @@ export default function ReportDashboard() {
     }
   };
 
-  // 4. Export Functions
   const generateExcel = async () => {
     let csvContent = "Date,Type,Description,Amount\n";
     salesByCategory.forEach((cat: any) => csvContent += `${formatDateLao(currentDate)},Sale,${cat.label},${cat.value}\n`);
@@ -199,7 +181,6 @@ export default function ReportDashboard() {
     Alert.alert("Coming Soon", "PDF Export will be available here.");
   };
 
-  // Components
   const SummaryCard = ({ label, amount, color, icon }: any) => (
     <View style={[styles.card, { borderLeftColor: color }]}>
         <View>
@@ -257,9 +238,10 @@ export default function ReportDashboard() {
         </View>
       </View>
 
-      {/* 🟢 Filter Tabs */}
+      {/* 🟢 Filter Bar ແບບແຖວດຽວ ເຕັມພື້ນທີ່ */}
       <View style={styles.filterBar}>
-         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginRight: 10}}>
+         {/* ສ່ວນປຸ່ມກົດ (Flex 1 ເພື່ອໃຫ້ຍືດເຕັມທີ່) */}
+         <View style={styles.filterGroup}>
             {['day', 'week', 'month', 'year', 'custom'].map((t) => (
                 <TouchableOpacity 
                     key={t} 
@@ -267,29 +249,28 @@ export default function ReportDashboard() {
                     onPress={() => setFilterType(t as FilterType)}
                 >
                     <Text style={[styles.filterText, filterType === t && {color: 'white'}]}>
-                        {t === 'day' ? 'ມື້' : t === 'week' ? 'ອາທິດ' : t === 'month' ? 'ເດືອນ' : t === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
+                        {t === 'day' ? 'ມື້' : t === 'week' ? 'ອາທິດ' : t === 'month' ? 'ເດືອນ' : t === 'year' ? 'ປີ' : 'ກຳນົດ'}
                     </Text>
                 </TouchableOpacity>
             ))}
-         </ScrollView>
+         </View>
 
-         {/* 🟢 Date Navigator: ປ່ຽນຕາມ Filter Type */}
+         {/* ສ່ວນວັນທີ (ຢູ່ດ້ານຂວາສຸດ) */}
          <View style={styles.dateNav}>
              {filterType !== 'custom' ? (
                  <>
-                    <TouchableOpacity onPress={() => handleNavigateDate('prev')}><Ionicons name="chevron-back" size={20} color="#666" /></TouchableOpacity>
-                    {/* ກົດທີ່ວັນທີເພື່ອເລືອກທັນທີ */}
+                    <TouchableOpacity onPress={() => handleNavigateDate('prev')} hitSlop={10}><Ionicons name="chevron-back" size={18} color="#666" /></TouchableOpacity>
                     <TouchableOpacity onPress={() => openDatePicker('single')}>
                         <Text style={styles.dateLabel}>{formatDateLao(currentDate)}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleNavigateDate('next')}><Ionicons name="chevron-forward" size={20} color="#666" /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleNavigateDate('next')} hitSlop={10}><Ionicons name="chevron-forward" size={18} color="#666" /></TouchableOpacity>
                  </>
              ) : (
-                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
+                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 3}}>
                     <TouchableOpacity onPress={() => openDatePicker('start')} style={styles.customDateBtn}>
                         <Text style={styles.customDateText}>{formatDateLao(startDate)}</Text>
                     </TouchableOpacity>
-                    <Text>-</Text>
+                    <Text style={{fontSize: 10}}>-</Text>
                     <TouchableOpacity onPress={() => openDatePicker('end')} style={styles.customDateBtn}>
                         <Text style={styles.customDateText}>{formatDateLao(endDate)}</Text>
                     </TouchableOpacity>
@@ -332,16 +313,20 @@ export default function ReportDashboard() {
         </View>
       </View>
 
-      {/* Date Picker Modal */}
+      {/* Date Picker Modal (Fix iOS Dark Mode) */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
             <Modal visible={true} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.dateContainer}>
+                        {/* 🟢 Fix: themeVariant="light" ແລະ textColor="black" */}
                         <DateTimePicker 
                             value={pickerMode === 'start' ? startDate : pickerMode === 'end' ? endDate : currentDate} 
                             mode="date" 
-                            display="inline" 
+                            display="inline"
+                            themeVariant="light"
+                            textColor="black"
+                            style={{backgroundColor: 'white'}}
                             onChange={onDateChange} 
                         />
                         <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.closeBtn}>
@@ -368,15 +353,18 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333' },
   exportBtn: { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, alignItems: 'center', gap: 4 },
   exportText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 12 },
-  filterBar: { flexDirection: 'row', backgroundColor: 'white', padding: 10, alignItems: 'center', justifyContent: 'space-between', elevation: 1 },
-  filterChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 15, backgroundColor: '#f0f0f0', marginRight: 5 },
+
+  // 🟢 ປັບ Styles ສຳລັບ Single Row
+  filterBar: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 12, alignItems: 'center', justifyContent: 'space-between', elevation: 1 },
+  filterGroup: { flexDirection: 'row', flex: 1, justifyContent: 'flex-start', flexWrap: 'nowrap', gap: 4 }, // ໃຊ້ gap ແທນ margin
+  filterChip: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 15, backgroundColor: '#f0f0f0' }, // ຫຼຸດ padding
   activeFilter: { backgroundColor: COLORS?.primary || '#008B94' },
-  filterText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
+  filterText: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#666' }, // ຫຼຸດ font size
   
-  dateNav: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f9f9f9', padding: 5, borderRadius: 10 },
-  dateLabel: { fontFamily: 'Lao-Bold', fontSize: 13, color: '#333' },
-  customDateBtn: { padding: 5, backgroundColor: '#fff', borderRadius: 5, borderWidth: 1, borderColor: '#ddd' },
-  customDateText: { fontSize: 11, fontFamily: 'Lao-Bold', color: '#333' },
+  dateNav: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#f9f9f9', padding: 5, borderRadius: 8, marginLeft: 5 },
+  dateLabel: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#333' },
+  customDateBtn: { paddingHorizontal: 4, paddingVertical: 2, backgroundColor: '#fff', borderRadius: 4, borderWidth: 1, borderColor: '#ddd' },
+  customDateText: { fontSize: 10, fontFamily: 'Lao-Bold', color: '#333' },
 
   content: { padding: 15 },
   summaryRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },

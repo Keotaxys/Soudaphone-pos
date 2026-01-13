@@ -1,9 +1,11 @@
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-// 🟢 ສັງເກດ: ລຶບ /react-native ອອກຈາກທາງຫຼັງ
-// ໃຫ້ import ຈາກ 'firebase/auth' ໂດຍກົງ
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+
+// 🟢 ໃຊ້ @ts-ignore ເພື່ອບອກໃຫ້ລະບົບຮູ້ວ່າບໍ່ຕ້ອງສົນໃຈ Error ເສັ້ນແດງ
+// ເຮົາຈຳເປັນຕ້ອງ Import ຈາກ path ນີ້ເພື່ອໃຫ້ Auth ເຮັດວຽກໃນມືຖືໄດ້
+// @ts-ignore
+import { getReactNativePersistence, initializeAuth } from 'firebase/auth/react-native';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",
@@ -21,9 +23,8 @@ const app = initializeApp(firebaseConfig);
 // 2. Initialize Realtime Database
 export const db = getDatabase(app);
 
-// 3. Initialize Auth
-// ຖ້າ VS Code ຍັງຂຶ້ນເສັ້ນແດງຢູ່ກ້ອງ getReactNativePersistence ໃຫ້ໃສ່ // @ts-ignore ໄວ້ເທິງແຖວ export
-// @ts-ignore 
+// 3. Initialize Auth ພ້ອມ Persistence
+// ຕັ້ງຄ່າໃຫ້ຈື່ການ Login ໂດຍໃຊ້ AsyncStorage
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(ReactNativeAsyncStorage)
 });

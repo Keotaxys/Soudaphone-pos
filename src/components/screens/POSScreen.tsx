@@ -2,29 +2,26 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { printAsync } from 'expo-print';
 import { onValue, ref } from 'firebase/database';
-// 🟢 Import ຈາກ firebase/functions
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-// 🟢 Import QRCode
-import QRCode from 'react-native-qrcode-svg';
+// 🟢 ປ່ຽນມາໃຊ້ SafeAreaView ຈາກ library ເພື່ອຫຼຸດ Warning
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useExchangeRate } from '../../../hooks/useExchangeRate';
 import { db } from '../../firebase';
-import { CartItem, COLORS, formatNumber, Product } from '../../types';
+import { CartItem, COLORS, Product } from '../../types';
 import CurrencyInput from '../ui/CurrencyInput';
 
 interface POSScreenProps {
@@ -68,11 +65,6 @@ export default function POSScreen({
   const [receivedAmount, setReceivedAmount] = useState(''); 
   const [customTotal, setCustomTotal] = useState<string>(''); 
   const [isEditingTotal, setIsEditingTotal] = useState(false);
-
-  // 🟢 OnePay QR States
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [qrCodeValue, setQrCodeValue] = useState('');
-  const [isProcessingQR, setIsProcessingQR] = useState(false);
 
   // Success & Print States
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -140,63 +132,25 @@ export default function POSScreen({
       }
   }, [cart]);
 
-  // 🟢 1. ຟັງຊັນເລີ່ມການຊຳລະ (ເຊື່ອມຕໍ່ OnePay ຂອງແທ້ຜ່ານ Firebase Functions)
-  const initiateCheckout = async () => {
-      if (paymentMethod === 'QR') {
-          setIsProcessingQR(true); // ສະແດງ Loading ລະຫວ່າງລໍຖ້າ API
-          
-          try {
-              const functions = getFunctions();
-              const generateQR = httpsCallable(functions, 'generateOnePayQR');
-              
-              const refId = `POS-${Date.now()}`;
-
-              // 🟢 ສົ່ງຂໍ້ມູນໄປຫາ Backend
-              const result: any = await generateQR({ 
-                  amount: Math.ceil(finalTotal), 
-                  invoiceId: refId,
-                  description: `Shop: ${billSettings.shopName} - Inv: ${refId}`
-              });
-
-              // 🟢 ຮັບ QR String ທີ່ສົ່ງມາຈາກ BCEL ຜ່ານ Backend ເຮົາ
-              const { qrCode } = result.data;
-
-              if (qrCode) {
-                  setQrCodeValue(qrCode);
-                  setShowQRModal(true);
-              } else {
-                  Alert.alert("ຂໍ້ຜິດພາດ", "ບໍ່ສາມາດດຶງຂໍ້ມູນ QR Code ຈາກລະບົບ OnePay ໄດ້.");
-              }
-
-          } catch (error: any) {
-              console.error(error);
-              Alert.alert("ຂໍ້ຜິດພາດການເຊື່ອມຕໍ່", "ບໍ່ສາມາດຕິດຕໍ່ລະບົບ OnePay ໄດ້: " + error.message);
-          } finally {
-              setIsProcessingQR(false);
-          }
-      } else {
-          completeOrder();
+  // 🟢 1. ຟັງຊັນເລີ່ມການຊຳລະ (ຕັດ OnePay API ອອກ - ບັນທຶກໂດຍກົງ)
+  const initiateCheckout = () => {
+      if (cart.length === 0) {
+          Alert.alert("ແຈ້ງເຕືອນ", "ກະລຸນາເລືອກສິນຄ້າລົງກະຕ່າກ່ອນ");
+          return;
       }
+
+      // ບໍ່ວ່າຈະເປັນ CASH ຫຼື QR ແມ່ນໃຫ້ບັນທຶກເລີຍ ໂດຍບໍ່ຕ້ອງເປີດ Modal QR ອີກ
+      completeOrder();
   };
 
-  // 🟢 2. ຟັງຊັນກວດສອບການຊຳລະ (Simulate)
-  const checkPaymentStatus = () => {
-      setIsProcessingQR(true);
-      // ຈຳລອງການໂຫຼດ 2 ວິນາທີ (ໃນອະນາຄົດສາມາດປ່ຽນເປັນການຍິງ API ໄປ Check Status ຈິງໄດ້)
-      setTimeout(() => {
-          setIsProcessingQR(false);
-          setShowQRModal(false);
-          completeOrder(); 
-      }, 2000);
-  };
-
-  // 🟢 3. ຟັງຊັນບັນທຶກອໍເດີລົງ Firebase
+  // 🟢 2. ຟັງຊັນບັນທຶກອໍເດີລົງ Firebase
   const completeOrder = () => {
       const finalAmountLAK = paymentCurrency === 'LAK' ? finalTotal : Math.ceil(finalTotal * currentRate);
       
       const orderDetails = {
           items: [...cart], 
           paymentMethod,
+          // ຖ້າເປັນ QR ຖືວ່າຮັບເຕັມ, ຖ້າເງິນສົດເອົາຕາມທີ່ປ້ອນ
           amountReceived: paymentMethod === 'QR' ? finalAmountLAK : parseFloat(receivedAmount.replace(/,/g, '') || '0'), 
           change: paymentMethod === 'QR' ? 0 : (changeAmount > 0 ? changeAmount : 0),
           date: checkoutDate.toISOString(),
@@ -213,7 +167,8 @@ export default function POSScreen({
       setCustomTotal('');
       setReceivedAmount('');
       
-      setTimeout(() => setShowSuccessModal(true), 500); 
+      // ເປີດ Modal ສຳເລັດ
+      setTimeout(() => setShowSuccessModal(true), 300); 
   };
 
   const printReceipt = async () => {
@@ -350,15 +305,7 @@ export default function POSScreen({
   );
 
   return (
-    <View style={styles.container}>
-      {/* 🟢 ສ່ວນສະແດງ Loading ໃຫຍ່ລະຫວ່າງສ້າງ QR */}
-      {isProcessingQR && !showQRModal && (
-          <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
-              <Text style={styles.loadingText}>ກຳລັງຕິດຕໍ່ລະບົບ OnePay...</Text>
-          </View>
-      )}
-
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={filteredProducts}
         keyExtractor={item => item.id!}
@@ -548,9 +495,10 @@ export default function POSScreen({
                           </TouchableOpacity>
                       </View>
 
+                      {/* 🟢 ປຸ່ມຢືນຢັນ - ແກ້ໄຂໃຫ້ບັນທຶກເລີຍ */}
                       <TouchableOpacity style={styles.checkoutBtn} onPress={initiateCheckout}>
                           <Text style={styles.checkoutBtnText}>
-                              {paymentMethod === 'QR' ? 'ສ້າງ QR Code' : 'ຢືນຢັນການຊຳລະ'}
+                              {paymentMethod === 'QR' ? 'ບັນທຶກການຊຳລະ (OnePay)' : 'ຢືນຢັນການຊຳລະ'}
                           </Text>
                       </TouchableOpacity>
                   </View>
@@ -587,45 +535,6 @@ export default function POSScreen({
           )}
       </Modal>
 
-      {/* 🟢 OnePay QR Modal */}
-      <Modal visible={showQRModal} transparent={true} animationType="slide">
-        <View style={styles.modalOverlay}>
-            <View style={styles.qrCard}>
-                <View style={styles.qrHeader}>
-                    <Text style={styles.qrTitle}>ສະແກນຈ່າຍດ້ວຍ OnePay</Text>
-                    <TouchableOpacity onPress={() => setShowQRModal(false)}>
-                        <Ionicons name="close" size={24} color="#666" />
-                    </TouchableOpacity>
-                </View>
-                
-                <View style={styles.qrContent}>
-                    <View style={styles.qrBox}>
-                        <QRCode
-                            value={qrCodeValue}
-                            size={220}
-                            logoBackgroundColor='white'
-                        />
-                    </View>
-                    <Text style={styles.qrAmount}>{formatNumber(Math.ceil(finalTotal))} {paymentCurrency === 'LAK' ? '₭' : '฿'}</Text>
-                    <Text style={styles.qrHint}>ກະລຸນາສະແກນເພື່ອຊຳລະເງິນ</Text>
-                </View>
-
-                <View style={styles.qrFooter}>
-                    {isProcessingQR ? (
-                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
-                            <ActivityIndicator color={COLORS.primary} />
-                            <Text style={{fontFamily: 'Lao-Regular', color: '#666'}}>ກຳລັງກວດສອບ...</Text>
-                        </View>
-                    ) : (
-                        <TouchableOpacity style={styles.checkPaymentBtn} onPress={checkPaymentStatus}>
-                            <Text style={styles.checkPaymentText}>ກວດສອບການຊຳລະ</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-            </View>
-        </View>
-      </Modal>
-
       {/* Success & Print Modal */}
       <Modal visible={showSuccessModal} transparent={true} animationType="fade">
         <View style={styles.modalOverlay}>
@@ -650,7 +559,7 @@ export default function POSScreen({
         </View>
       </Modal>
 
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -747,19 +656,5 @@ const styles = StyleSheet.create({
   printBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, padding: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center', width: '100%' },
   printBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 5 },
   closeBtn: { padding: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center', width: '100%', backgroundColor: '#f0f0f0' },
-  closeBtnText: { color: '#666', fontFamily: 'Lao-Bold', fontSize: 16 },
-
-  qrCard: { backgroundColor: 'white', width: '85%', borderRadius: 20, overflow: 'hidden' },
-  qrHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  qrTitle: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.text },
-  qrContent: { alignItems: 'center', padding: 30 },
-  qrBox: { padding: 10, backgroundColor: 'white', borderRadius: 10, elevation: 3, marginBottom: 20 },
-  qrAmount: { fontFamily: 'Lao-Bold', fontSize: 24, color: COLORS.primary },
-  qrHint: { fontFamily: 'Lao-Regular', color: '#666', marginTop: 5 },
-  qrFooter: { padding: 20, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
-  checkPaymentBtn: { backgroundColor: COLORS.secondary, paddingVertical: 12, paddingHorizontal: 30, borderRadius: 25 },
-  checkPaymentText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
-  
-  loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.8)', justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
-  loadingText: { marginTop: 10, fontFamily: 'Lao-Bold', color: COLORS.primary }
+  closeBtnText: { color: '#666', fontFamily: 'Lao-Bold', fontSize: 16 }
 });

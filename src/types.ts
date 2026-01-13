@@ -59,6 +59,7 @@ export interface OrderItem {
 }
 
 // 🟢 6. CustomerOrder Interface (ຕິດຕາມຄຳສັ່ງຊື້ລວມ)
+// (ອັນນີ້ໃຊ້ສຳລັບ OrderTrackingScreen)
 export interface CustomerOrder {
   id?: string;
   customerName: string;
@@ -68,7 +69,22 @@ export interface CustomerOrder {
   createdAt: string;
 }
 
-// 🟢 7. COLORS (Theme Teal + Orange)
+// 🟢 [ເພີ່ມໃໝ່] 7. Customer Interface (ຂໍ້ມູນລູກຄ້າ)
+// (ຈຳເປັນຕ້ອງມີ ເພາະ index.tsx ມີການ import Customer)
+export interface Customer {
+  id: string;
+  name: string;
+  phoneNumber?: string;
+  address?: string;
+  createdAt?: string;
+}
+
+// 🟢 [ເພີ່ມໃໝ່] 8. Order Interface (Alias ຫຼື Interface ລວມ)
+// (ຈຳເປັນຕ້ອງມີ ເພາະ index.tsx ມີການ import Order)
+// ໃນທີ່ນີ້ໃຫ້ມັນໃຊ້ຮ່ວມກັບ CustomerOrder ຫຼືສ້າງໃໝ່ກໍໄດ້
+export type Order = CustomerOrder; 
+
+// 🟢 9. COLORS (Theme Teal + Orange)
 export const COLORS = {
   // ສີ Teal ຕາມ PMS 320 2X
   primary: '#008B94',      
@@ -89,7 +105,7 @@ export const COLORS = {
 
 export const SIDEBAR_WIDTH = 250;
 
-// 🟢 8. Helper Functions
+// 🟢 10. Helper Functions
 // ຟັງຊັນຈັດຮູບແບບຕົວເລກ (Noto Sans Lao)
 export const formatNumber = (num: number | string | undefined) => {
   if (num === undefined || num === null || num === '') return '0';
@@ -104,8 +120,8 @@ export const formatDate = (date: Date) => {
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
 };
-// ເພີ່ມເຂົ້າໃນ src/types.ts
 
+// 🟢 11. Shift Related Types
 export interface CashDenomination {
   value: number;
   count: number;

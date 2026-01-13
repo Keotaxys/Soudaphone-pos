@@ -1,21 +1,9 @@
-// 1. Import App ກ່ອນ
 import { getApp, getApps, initializeApp } from 'firebase/app';
-
-// 2. 🔥 Import Auth Side-effect (ສຳຄັນ! ຕ້ອງຢູ່ບ່ອນນີ້) 🔥
-// ການ import ແບບນີ້ຈະບັງຄັບໃຫ້ລະບົບ Register Component 'auth' ທັນທີ
-import 'firebase/auth';
-
-// 3. Import ຟັງຊັນອື່ນໆ
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  Auth,
-  getAuth,
-  getReactNativePersistence,
-  initializeAuth
-} from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 
-// Config ຂອງທ່ານ
+// 🟢 1. Import ແບບທຳມະດາ (ໃຊ້ໄດ້ກັບ Firebase ທຸກລຸ້ນ)
+import { getAuth } from 'firebase/auth';
+
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",
   authDomain: "studio-7834307833-10afa.firebaseapp.com",
@@ -27,23 +15,18 @@ const firebaseConfig = {
 };
 
 let app;
-let auth: Auth;
+let auth;
 
-// Logic ການກວດສອບແບບ Singleton (ມາດຕະຖານທີ່ສຸດ)
+// 🟢 2. Logic ກວດສອບ App (Singleton)
 if (!getApps().length) {
-  // ຖ້າຍັງບໍ່ມີ App => ສ້າງໃໝ່ (Initialize)
   app = initializeApp(firebaseConfig);
-  
-  // Initialize Auth ພ້ອມ Persistence
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
-  });
 } else {
-  // ຖ້າມີ App ແລ້ວ => ດຶງໂຕເກົ່າມາໃຊ້
   app = getApp();
-  // ເນື່ອງຈາກເຮົາ import 'firebase/auth' ທາງເທິງແລ້ວ getAuth ຈະເຮັດວຽກໄດ້ປົກກະຕິ
-  auth = getAuth(app);
 }
+
+// 🟢 3. ໃຊ້ getAuth ທຳມະດາ (ແກ້ບັນຫາ is not a function)
+// ວິທີນີ້ຈະບໍ່ເຮັດໃຫ້ແອັບ Crash ເຖິງແມ່ນວ່າ Firebase ຈະເປັນ version ໃດກໍຕາມ
+auth = getAuth(app);
 
 const db = getDatabase(app);
 

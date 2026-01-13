@@ -1,8 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-// 🟢 ແກ້ໄຂ: Import ຈາກ 'firebase/auth/react-native' ແທນ 'firebase/auth'
+// Use // @ts-ignore to suppress the TypeScript error for the react-native sub-module
+// @ts-ignore
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth/react-native';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
-import { getReactNativePersistence, initializeAuth } from 'firebase/auth/react-native';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",
@@ -14,13 +15,16 @@ const firebaseConfig = {
   appId: "1:1085134944350:web:cdd4c563a7891c176d9ccf"
 };
 
-// Initialize Firebase
-export const app = initializeApp(firebaseConfig);
+// 1. Initialize Firebase App
+const app = initializeApp(firebaseConfig);
 
-// Initialize Realtime Database
+// 2. Initialize Realtime Database and Export
 export const db = getDatabase(app);
 
-// Initialize Auth ພ້ອມຕັ້ງຄ່າ Persistence ໃຫ້ຈື່ການ Login ໃນມືຖື
+// 3. Initialize Auth with Persistence and Export
+// ວິທີນີ້ຈະຊ່ວຍໃຫ້ແອັບຈື່ການ Login ຂອງຜູ້ໃຊ້ໄວ້ ເວລາປິດແລ້ວເປີດແອັບໃໝ່
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(ReactNativeAsyncStorage)
 });
+
+export default app;

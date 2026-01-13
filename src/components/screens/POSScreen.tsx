@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,7 +18,7 @@ import {
 import { CartItem, COLORS, formatNumber, Product } from '../../types';
 
 const { width } = Dimensions.get('window');
-const ORANGE_THEME = '#FF8F00'; // ສີສົ້ມ Theme
+const ORANGE_THEME = '#FF8F00'; // ສີສົ້ມ Theme ທີ່ຖືກຕ້ອງ
 
 interface POSScreenProps {
   products: Product[];
@@ -33,6 +32,18 @@ interface POSScreenProps {
   onOpenScan?: () => void;
   onOpenAddProduct?: () => void;
 }
+
+// Helper: ຈັດ Format ໃສ່ຈຸດເວລາພິມ (String -> String)
+const formatInputNumber = (val: string) => {
+    const numericValue = val.replace(/[^0-9]/g, '');
+    if (!numericValue) return '';
+    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
+// Helper: ແປງກັບເປັນຕົວເລກ (String -> Number)
+const parseInputNumber = (val: string) => {
+    return parseFloat(val.replace(/,/g, '')) || 0;
+};
 
 export default function POSScreen({
   products,
@@ -56,7 +67,11 @@ export default function POSScreen({
   const [orderSource, setOrderSource] = useState<'shop' | 'online'>('shop');
   const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
+  
+  // 🟢 State ສຳລັບການພິມຕົວເລກ (String ເພື່ອຮອງຮັບ comma)
   const [amountReceived, setAmountReceived] = useState('');
+  const [editableTotal, setEditableTotal] = useState(''); // ຍອດທີ່ແກ້ໄຂໄດ້
+  
   const [exchangeRate] = useState(680); 
   
   // Date Picker State
@@ -80,13 +95,24 @@ export default function POSScreen({
     setFilteredProducts(filtered);
   }, [searchQuery, selectedCategory, products]);
 
+  // 🟢 Effect: ອັບເດດຍອດລວມເມື່ອ Cart ຫຼື Currency ປ່ຽນ
+  useEffect(() => {
+    const rawTotalLAK = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const rawTotal = currency === 'LAK' ? rawTotalLAK : Math.ceil(rawTotalLAK / exchangeRate);
+    setEditableTotal(formatNumber(rawTotal)); // Reset ຍອດແກ້ໄຂໃຫ້ເທົ່າກັບຍອດຈິງ
+    setAmountReceived(''); // Reset ຍອດຮັບເງິນ
+  }, [cart, currency]);
+
   // Calculations
-  const totalAmountLAK = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const totalAmountTHB = Math.ceil(totalAmountLAK / exchangeRate);
-  const displayTotal = currency === 'LAK' ? totalAmountLAK : totalAmountTHB;
+  const rawTotalLAK = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const calculatedTotal = currency === 'LAK' ? rawTotalLAK : Math.ceil(rawTotalLAK / exchangeRate);
   
-  const receivedVal = parseFloat(amountReceived.replace(/,/g, '')) || 0;
-  const change = receivedVal - displayTotal;
+  // ດຶງຄ່າຈາກທີ່ພິມ (ຖ້າແກ້ໄຂ)
+  const finalTotal = parseInputNumber(editableTotal);
+  const discount = calculatedTotal - finalTotal; // ຄຳນວນສ່ວນຫຼຸດ
+  
+  const receivedVal = parseInputNumber(amountReceived);
+  const change = receivedVal - finalTotal;
 
   // Handle Date Change
   const onDateChange = (event: any, selectedDate?: Date) => {
@@ -95,19 +121,21 @@ export default function POSScreen({
   };
 
   const handlePayment = () => {
-    if (paymentMethod === 'CASH' && receivedVal < displayTotal) {
+    if (paymentMethod === 'CASH' && receivedVal < finalTotal) {
         Alert.alert("ແຈ້ງເຕືອນ", "ເງິນທີ່ຮັບມາບໍ່ພຽງພໍ!");
         return;
     }
 
     const orderData = {
         items: cart,
-        total: totalAmountLAK,
+        originalTotal: calculatedTotal, // ຍອດເຕັມ
+        total: finalTotal,              // ຍອດຫຼັງຫັກສ່ວນຫຼຸດ (ຖ້າມີ)
+        discount: discount > 0 ? discount : 0, // ບັນທຶກສ່ວນຫຼຸດ
         currency,
         source: orderSource,
         paymentMethod,
-        amountReceived: currency === 'LAK' ? receivedVal : receivedVal * exchangeRate,
-        change: currency === 'LAK' ? change : change * exchangeRate,
+        amountReceived: receivedVal,
+        change: change,
         date: orderDate.toISOString()
     };
 
@@ -116,7 +144,6 @@ export default function POSScreen({
     
     setCartVisible(false);
     setTimeout(() => setReceiptVisible(true), 500);
-    setAmountReceived('');
   };
 
   const renderProductItem = ({ item }: { item: Product }) => (
@@ -165,12 +192,12 @@ export default function POSScreen({
       {cart.length > 0 && (
         <TouchableOpacity style={styles.floatingCartBar} activeOpacity={0.9} onPress={() => setCartVisible(true)}>
             <View style={styles.cartIconWrapper}><Ionicons name="cart" size={24} color="white" /><View style={styles.badge}><Text style={styles.badgeText}>{cart.reduce((a,b)=>a+b.quantity,0)}</Text></View></View>
-            <View style={styles.cartTextWrapper}><Text style={styles.cartTotalLabel}>ຍອດລວມ:</Text><Text style={styles.cartTotalValue}>{formatNumber(totalAmountLAK)} ₭</Text></View>
+            <View style={styles.cartTextWrapper}><Text style={styles.cartTotalLabel}>ຍອດລວມ:</Text><Text style={styles.cartTotalValue}>{formatNumber(rawTotalLAK)} ₭</Text></View>
             <View style={styles.viewCartBtn}><Text style={styles.viewCartText}>ເບິ່ງກະຕ່າ</Text><Ionicons name="chevron-forward" size={16} color={COLORS.primary} /></View>
         </TouchableOpacity>
       )}
 
-      {/* 🟢 Cart Modal with KeyboardAvoidingView */}
+      {/* 🟢 Cart Modal */}
       <Modal visible={isCartVisible} animationType="slide" transparent={true}>
         <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -178,7 +205,6 @@ export default function POSScreen({
         >
             <View style={styles.modalContent}>
                 
-                {/* Header */}
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>ກະຕ່າສິນຄ້າ ({cart.length})</Text>
                     <TouchableOpacity onPress={() => setCartVisible(false)}>
@@ -195,14 +221,14 @@ export default function POSScreen({
                         <Text style={[styles.toggleText, orderSource === 'online' ? {color:'white'} : {color:'#666'}]}>Online</Text>
                     </TouchableOpacity>
                     
-                    {/* Date Picker Button */}
+                    {/* 🟢 1. ປຸ່ມວັນທີ (ກົດແລ້ວເປີດທັນທີ) */}
                     <TouchableOpacity style={styles.dateBadge} onPress={() => setShowDatePicker(true)}>
                         <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
                         <Text style={styles.dateText}>{orderDate.toLocaleDateString('en-GB')}</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* List Items (Scrollable) */}
+                {/* List Items */}
                 <View style={{flex: 1}}>
                     <FlatList 
                         data={cart}
@@ -238,13 +264,32 @@ export default function POSScreen({
                         </TouchableOpacity>
                     </View>
 
+                    {/* 🟢 3. ຍອດຊຳລະ (ແກ້ໄຂໄດ້ + ໂຊ Rate) */}
                     <View style={styles.totalDisplayRow}>
-                        <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
-                        <Text style={[styles.totalValue, {color: currency === 'LAK' ? COLORS.primary : ORANGE_THEME}]}>
-                            {formatNumber(displayTotal)} {currency === 'LAK' ? '₭' : '฿'}
-                        </Text>
+                        <View style={{flex: 1}}>
+                            <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
+                            {/* 🟢 2. ໂຊ Rate ເປັນສີເທົານ້ອຍໆ */}
+                            {currency === 'THB' && (
+                                <Text style={{fontSize: 10, color: '#999'}}>Rate: 1 ฿ = {exchangeRate} ₭</Text>
+                            )}
+                        </View>
+                        
+                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                            <TextInput 
+                                style={[styles.totalInput, {color: currency === 'LAK' ? COLORS.primary : ORANGE_THEME}]}
+                                value={editableTotal}
+                                onChangeText={(text) => setEditableTotal(formatInputNumber(text))}
+                                keyboardType="number-pad"
+                                selectTextOnFocus={true} // 🟢 4. Auto Select
+                            />
+                            <Text style={[styles.currencySuffix, {color: currency === 'LAK' ? COLORS.primary : ORANGE_THEME}]}>
+                                {currency === 'LAK' ? '₭' : '฿'}
+                            </Text>
+                            <Ionicons name="pencil" size={14} color="#ccc" style={{marginLeft: 5}} />
+                        </View>
                     </View>
 
+                    {/* Payment Method */}
                     <View style={styles.methodRow}>
                         <TouchableOpacity style={[styles.methodBtn, paymentMethod === 'CASH' ? {borderColor: COLORS.primary, backgroundColor: '#E0F2F1'} : styles.inactiveMethod]} onPress={() => setPaymentMethod('CASH')}>
                             <Ionicons name="cash-outline" size={24} color={paymentMethod === 'CASH' ? COLORS.primary : '#999'} />
@@ -252,7 +297,7 @@ export default function POSScreen({
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.methodBtn, paymentMethod === 'QR' ? {borderColor: ORANGE_THEME, backgroundColor: '#FFF3E0'} : styles.inactiveMethod]} onPress={() => setPaymentMethod('QR')}>
                             <Ionicons name="qr-code-outline" size={24} color={paymentMethod === 'QR' ? ORANGE_THEME : '#999'} />
-                            <Text style={[styles.methodText, paymentMethod === 'QR' && {color: ORANGE_THEME}]}>QR</Text>
+                            <Text style={[styles.methodText, paymentMethod === 'QR' && {color: ORANGE_THEME}]}>QR</Text> 
                         </TouchableOpacity>
                     </View>
 
@@ -265,11 +310,13 @@ export default function POSScreen({
                                     keyboardType="number-pad" 
                                     placeholder="0" 
                                     value={amountReceived}
-                                    onChangeText={setAmountReceived}
+                                    onChangeText={(text) => setAmountReceived(formatInputNumber(text))} // 🟢 5. Format comma
+                                    selectTextOnFocus={true} // 🟢 4. Auto Select
                                 />
                             </View>
                             <View style={styles.changeGroup}>
                                 <Text style={styles.inputLabel}>ເງິນທອນ:</Text>
+                                {/* 🟢 5. ສີເງິນທອນ Teal/Orange ເທົ່ານັ້ນ */}
                                 <Text style={[styles.changeValue, change < 0 ? {color: ORANGE_THEME} : {color: COLORS.primary}]}>
                                     {formatNumber(change > 0 ? change : 0)} {currency === 'LAK' ? '₭' : '฿'}
                                 </Text>
@@ -277,8 +324,9 @@ export default function POSScreen({
                         </View>
                     )}
 
+                    {/* 🟢 4. ປຸ່ມຊຳລະເງິນເປັນສີ Teal ສະເໝີ */}
                     <TouchableOpacity 
-                        style={[styles.payBigBtn, { backgroundColor: COLORS.primary }]} // 🟢 ປຸ່ມຊຳລະເງິນສີ Teal ສະເໝີ
+                        style={[styles.payBigBtn, { backgroundColor: COLORS.primary }]} 
                         onPress={handlePayment}
                     >
                         <Text style={styles.payBigText}>{paymentMethod === 'QR' ? 'ຊຳລະເງິນ (QR)' : 'ຊຳລະເງິນ'}</Text>
@@ -289,7 +337,7 @@ export default function POSScreen({
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Date Picker Modal */}
+      {/* 🟢 1. Date Picker (ເປີດທັນທີ & ຮອງຮັບ Dark Mode) */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
             <Modal visible={true} transparent animationType="fade">
@@ -300,8 +348,8 @@ export default function POSScreen({
                             mode="date" 
                             display="inline" 
                             onChange={onDateChange}
-                            textColor="black"
-                            themeVariant="light"
+                            textColor="black" // ບັງຄັບສີດຳ
+                            themeVariant="light" // ບັງຄັບ Light Theme
                             style={{backgroundColor:'white'}}
                         />
                         <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.closeDateBtn}>
@@ -322,20 +370,25 @@ export default function POSScreen({
                 <View style={styles.receiptHeader}>
                     <Ionicons name="checkmark-circle" size={60} color={COLORS.success} />
                     <Text style={styles.receiptTitle}>ຊຳລະເງິນສຳເລັດ!</Text>
-                    <Text style={styles.receiptDate}>{new Date().toLocaleString('lo-LA')}</Text>
+                    <Text style={styles.receiptDate}>{new Date(lastOrderDetails?.date || new Date()).toLocaleString('lo-LA')}</Text>
                 </View>
                 
                 <View style={styles.receiptBody}>
-                    <View style={styles.receiptRow}><Text>ຍອດລວມ:</Text><Text style={styles.receiptValue}>{formatNumber(lastOrderDetails?.total)} ₭</Text></View>
-                    <View style={styles.receiptRow}><Text>ຮັບເງິນ:</Text><Text style={styles.receiptValue}>{formatNumber(lastOrderDetails?.amountReceived)} {lastOrderDetails?.currency === 'THB' ? '฿' : '₭'}</Text></View>
+                    <View style={styles.receiptRow}><Text>ຍອດລວມ:</Text><Text style={styles.receiptValue}>{formatNumber(lastOrderDetails?.originalTotal)}</Text></View>
+                    {lastOrderDetails?.discount > 0 && (
+                        <View style={styles.receiptRow}><Text style={{color:'red'}}>ສ່ວນຫຼຸດ:</Text><Text style={{color:'red'}}>-{formatNumber(lastOrderDetails?.discount)}</Text></View>
+                    )}
+                    <View style={[styles.receiptRow, {borderTopWidth:1, borderColor:'#eee', paddingTop:5}]}><Text style={{fontFamily:'Lao-Bold'}}>ຍອດສຸດທິ:</Text><Text style={{fontFamily:'Lao-Bold', fontSize:18}}>{formatNumber(lastOrderDetails?.total)} {lastOrderDetails?.currency === 'THB' ? '฿' : '₭'}</Text></View>
+                    
+                    <View style={styles.receiptRow}><Text>ຮັບເງິນ:</Text><Text style={styles.receiptValue}>{formatNumber(lastOrderDetails?.amountReceived)}</Text></View>
                     <View style={[styles.receiptRow, {borderTopWidth:1, borderTopColor:'#eee', paddingTop:10, marginTop:10}]}>
                         <Text style={{fontFamily:'Lao-Bold'}}>ເງິນທອນ:</Text>
-                        <Text style={[styles.receiptValue, {color: COLORS.primary, fontSize: 20}]}>{formatNumber(lastOrderDetails?.change)} {lastOrderDetails?.currency === 'THB' ? '฿' : '₭'}</Text>
+                        <Text style={[styles.receiptValue, {color: COLORS.primary, fontSize: 20}]}>{formatNumber(lastOrderDetails?.change)}</Text>
                     </View>
                 </View>
 
                 <View style={styles.receiptActions}>
-                    <TouchableOpacity style={styles.printBtn} onPress={() => { Alert.alert("Print", "Connecting to printer..."); setReceiptVisible(false); clearCart(); }}>
+                    <TouchableOpacity style={styles.printBtn} onPress={() => { Alert.alert("Print", "Printing..."); setReceiptVisible(false); clearCart(); }}>
                         <Ionicons name="print" size={20} color="white" />
                         <Text style={styles.printText}>ພິມໃບບິນ</Text>
                     </TouchableOpacity>
@@ -386,7 +439,7 @@ const styles = StyleSheet.create({
 
   // Modal Overlay
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#F5F9FA', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, height: '90%' },
+  modalContent: { backgroundColor: '#F5F9FA', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, height: '85%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   modalTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333' },
   
@@ -407,7 +460,6 @@ const styles = StyleSheet.create({
 
   divider: { height: 1, backgroundColor: '#ddd', marginVertical: 10 },
   
-  // Payment Section
   paymentSection: { marginTop: 10, paddingBottom: 20 },
   currencyRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
   currencyBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
@@ -417,6 +469,10 @@ const styles = StyleSheet.create({
   totalDisplayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   totalLabel: { fontSize: 16, fontFamily: 'Lao-Regular', color: '#666' },
   totalValue: { fontSize: 24, fontFamily: 'Lao-Bold' },
+  
+  // 🟢 New Editable Total Styles
+  totalInput: { fontSize: 24, fontFamily: 'Lao-Bold', textAlign: 'right', minWidth: 100 },
+  currencySuffix: { fontSize: 20, fontFamily: 'Lao-Bold', marginLeft: 5 },
 
   methodRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   methodBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#eee', backgroundColor: 'white' },
@@ -433,13 +489,11 @@ const styles = StyleSheet.create({
   payBigBtn: { padding: 18, borderRadius: 15, alignItems: 'center', elevation: 3, marginBottom: 20 },
   payBigText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 20 },
 
-  // Date Picker
   datePickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
   closeDateBtn: { marginTop: 15, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 10, width: '100%', alignItems: 'center' },
   closeDateText: { fontFamily: 'Lao-Bold', color: COLORS.primary },
 
-  // Receipt Modal
   receiptContainer: { width: '85%', backgroundColor: 'white', borderRadius: 20, padding: 25, alignItems: 'center', alignSelf: 'center', marginTop: 'auto', marginBottom: 'auto', elevation: 10 },
   receiptHeader: { alignItems: 'center', marginBottom: 20 },
   receiptTitle: { fontSize: 22, fontFamily: 'Lao-Bold', color: COLORS.success, marginTop: 10 },

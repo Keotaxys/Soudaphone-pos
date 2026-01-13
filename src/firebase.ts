@@ -2,8 +2,10 @@ import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
-// 🟢 ໃຊ້ import ແບບນີ້ເພື່ອບໍ່ໃຫ້ເກີດ Error "Missing specifier"
-import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
+// 🟢 ໃຊ້ @ts-ignore ເພື່ອບໍ່ໃຫ້ມັນຟ້ອງ Error ເສັ້ນແດງ
+// ແລະ Import ຈາກ path ນີ້ເທົ່ານັ້ນ ຈຶ່ງຈະມີ getReactNativePersistence
+// @ts-ignore
+import { getReactNativePersistence, initializeAuth } from 'firebase/auth/react-native';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",

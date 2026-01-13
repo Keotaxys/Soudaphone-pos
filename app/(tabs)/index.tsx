@@ -2,9 +2,8 @@ import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
-
 // 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ແທນ (ແກ້ Warning)
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // --- Imports ---
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
@@ -31,7 +30,7 @@ import Sidebar from '../../src/components/ui/Sidebar';
 // Modals
 import ProductModal from '../../src/components/modals/ProductModal';
 
-// 🔥 Force Cast Components
+// 🔥 Force Cast Components to avoid strict type checking issues
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -46,6 +45,7 @@ const emptyProduct: Product = {
 };
 
 export default function App() {
+  // 🟢 HOOKS: ຕ້ອງຢູ່ເທິງສຸດສະເໝີ ຫ້າມມີ if return ມາຂັ້ນ
   const [fontsLoaded] = useFonts({
     'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'), 
     'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
@@ -62,10 +62,9 @@ export default function App() {
   const [isProductModalVisible, setProductModalVisible] = useState(false);
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
 
-  // 🟢 2. ຍ້າຍ Logic ການດຶງຂໍ້ມູນມາໄວ້ບ່ອນນີ້
-  // ມັນຈະເຮັດວຽກກໍຕໍ່ເມື່ອ isLoggedIn = true ເທົ່ານັ້ນ
+  // 🟢 2. useEffect: ດຶງຂໍ້ມູນເມື່ອ Login ແລ້ວ
   useEffect(() => {
-    if (!isLoggedIn) return; // ຖ້າຍັງບໍ່ Login ບໍ່ຕ້ອງດຶງຂໍ້ມູນ
+    if (!isLoggedIn) return; 
 
     const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
@@ -81,12 +80,12 @@ export default function App() {
       }
     }, (error) => {
       console.error("Error fetching products:", error);
-      // ບໍ່ຕ້ອງ Alert ຖ້າເປັນ permission denied ເພື່ອບໍ່ໃຫ້ລົບກວນ
-      if (error.message.includes("permission_denied")) return;
-      Alert.alert("Error", "ບໍ່ສາມາດດຶງຂໍ້ມູນໄດ້: " + error.message);
+      if (!error.message.includes("permission_denied")) {
+         Alert.alert("Error", "ບໍ່ສາມາດດຶງຂໍ້ມູນໄດ້: " + error.message);
+      }
     });
     return () => unsubscribe();
-  }, [isLoggedIn]); // ເຮັດວຽກເມື່ອສະຖານະ Login ປ່ຽນ
+  }, [isLoggedIn]); 
 
   // --- Handlers ---
   const addToCart = (product: Product) => {
@@ -191,6 +190,7 @@ export default function App() {
     }
   };
 
+  // 🟢 3. Conditional Returns (ຕ້ອງຢູ່ລຸ່ມສຸດ ຫຼັງຈາກ Hooks)
   if (!fontsLoaded) {
     return (
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -206,50 +206,80 @@ export default function App() {
   const TABS = ['Home', 'POS', 'Products', 'Customers', 'Orders', 'Reports', 'Expenses', 'Debts', 'Shift'];
 
   return (
-    // 🟢 ໃຊ້ SafeAreaView ແບບຖືກຕ້ອງ
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="light" backgroundColor="#008B94" />
-      
-      <HeaderAny toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} user={{ name: 'Admin', role: 'Manager' }} />
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <StatusBar style="light" backgroundColor="#008B94" />
+        
+        <HeaderAny toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} user={{ name: 'Admin', role: 'Manager' }} />
 
-      <View style={styles.mainContainer}>
-        {isSidebarOpen && (
-          <View style={styles.sidebarWrapper}>
-             <SidebarAny activeTab={activeTab} onTabChange={(tab: string) => {
-               setActiveTab(tab);
-               setIsSidebarOpen(false);
-             }} tabs={TABS} />
+        <View style={styles.mainContainer}>
+          {/* Sidebar Overlay */}
+          {isSidebarOpen && (
+            <View style={styles.sidebarOverlay}>
+               <SidebarAny 
+                  activeTab={activeTab} 
+                  onTabChange={(tab: string) => { setActiveTab(tab); setIsSidebarOpen(false); }} 
+                  tabs={TABS} 
+                  onClose={() => setIsSidebarOpen(false)} // 🟢 ສົ່ງ onClose ໄປໃຫ້ Sidebar
+               />
+               {/* ພື້ນທີ່ໂປ່ງໃສ ກົດເພື່ອປິດ */}
+               <View style={styles.transparentCloseArea} onTouchEnd={() => setIsSidebarOpen(false)} />
+            </View>
+          )}
+
+          <View style={styles.contentWrapper}>
+            {renderScreen()}
           </View>
-        )}
-
-        <View style={styles.contentArea}>
-          {renderScreen()}
         </View>
-      </View>
 
-      <FooterAny 
-        status="Online" 
-        version="1.0.0" 
-        currentTab={activeTab.toLowerCase()} 
-        onTabChange={(tab: string) => setActiveTab(tab)}
-      />
+        <FooterAny 
+          status="Online" 
+          version="1.0.0" 
+          currentTab={activeTab.toLowerCase()} 
+          onTabChange={(tab: string) => setActiveTab(tab)}
+        />
 
-      <ProductModalAny 
-        visible={isProductModalVisible}
-        onClose={() => setProductModalVisible(false)}
-        product={tempProduct}
-        setProduct={setTempProduct}
-        onSave={onSaveProductFromModal}
-        onPickImage={() => {}}
-        onScan={() => {}}
-      />
-    </SafeAreaView>
+        <ProductModalAny 
+          visible={isProductModalVisible}
+          onClose={() => setProductModalVisible(false)}
+          product={tempProduct}
+          setProduct={setTempProduct}
+          onSave={onSaveProductFromModal}
+          onPickImage={() => {}}
+          onScan={() => {}}
+        />
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F9FA' },
-  mainContainer: { flex: 1, flexDirection: 'row', position: 'relative' },
-  sidebarWrapper: { width: 250, backgroundColor: 'white', height: '100%', position: 'absolute', zIndex: 100, top: 0, left: 0, elevation: 5 },
-  contentArea: { flex: 1, backgroundColor: '#fff', margin: 10, borderRadius: 10, overflow: 'hidden', marginBottom: 80 }
+  mainContainer: { flex: 1, position: 'relative' }, // ໃຫ້ເປັນ relative ເພື່ອໃຫ້ sidebar absolute
+  
+  // Sidebar Overlay
+  sidebarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    zIndex: 999,
+    flexDirection: 'row',
+  },
+  transparentCloseArea: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+
+  // Content
+  contentWrapper: {
+    flex: 1,
+    backgroundColor: '#fff',
+    marginHorizontal: 10,
+    marginTop: 10,
+    marginBottom: 0, 
+    borderRadius: 10,
+    overflow: 'hidden',
+  }
 });

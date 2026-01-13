@@ -1,43 +1,51 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { COLORS } from '../../types';
 
 interface FooterProps {
   currentTab: string;
-  onTabChange: (tab: 'home' | 'pos' | 'expense' | 'report') => void;
+  onTabChange: (tab: string) => void;
+  // ຮັບ props ເພີ່ມເຕີມເພື່ອບໍ່ໃຫ້ index.tsx ຟ້ອງ Error (Optional)
+  status?: string;
+  version?: string;
 }
 
 export default function Footer({ currentTab, onTabChange }: FooterProps) {
   
-  // ຟັງຊັນຊ່ວຍເລືອກສີ Icon (Active = ຂາວ, Inactive = ຂາວຈາງໆ)
+  // ປ່ຽນເປັນ toLowerCase ເພື່ອປ້ອງກັນບັນຫາ home vs Home
+  const active = currentTab.toLowerCase();
+
   const getIconColor = (tabName: string) => {
-      return currentTab === tabName ? 'white' : 'rgba(255, 255, 255, 0.6)';
+      return active === tabName ? 'white' : 'rgba(255, 255, 255, 0.6)';
   };
 
   return (
     <View style={styles.footer}>
+        {/* 1. ປຸ່ມໜ້າຫຼັກ */}
         <TouchableOpacity style={styles.navBtn} onPress={() => onTabChange('home')}>
             <Ionicons name="home" size={24} color={getIconColor('home')} />
-            <Text style={[styles.navText, currentTab === 'home' && styles.navTextActive]}>ໜ້າຫຼັກ</Text>
+            <Text style={[styles.navText, active === 'home' && styles.navTextActive]}>ໜ້າຫຼັກ</Text>
         </TouchableOpacity>
         
+        {/* 2. ປຸ່ມຂາຍ (POS) - ແບບລອຍເດັ່ນ */}
         <TouchableOpacity style={styles.navBtn} onPress={() => onTabChange('pos')}>
-            {/* ປຸ່ມຂາຍທາງກາງ: ພື້ນຫຼັງສີຂາວ, Icon ສີຂຽວ ເພື່ອໃຫ້ເດັ່ນ */}
-            <View style={[styles.navIconCircle, currentTab === 'pos' && styles.activeCircle]}>
-               <Ionicons name="cart" size={28} color={COLORS.primary} />
+            <View style={[styles.navIconCircle, active === 'pos' && styles.activeCircle]}>
+               <Ionicons name="cart" size={28} color={COLORS?.primary || '#008B94'} />
             </View>
-            <Text style={[styles.navText, currentTab === 'pos' && styles.navTextActive]}>ຂາຍສິນຄ້າ</Text>
+            <Text style={[styles.navText, active === 'pos' && styles.navTextActive]}>ຂາຍສິນຄ້າ</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navBtn} onPress={() => onTabChange('expense')}>
-            <Ionicons name="wallet" size={24} color={getIconColor('expense')} />
-            <Text style={[styles.navText, currentTab === 'expense' && styles.navTextActive]}>ລາຍຈ່າຍ</Text>
+        {/* 3. ປຸ່ມລາຍຈ່າຍ (expenses) */}
+        <TouchableOpacity style={styles.navBtn} onPress={() => onTabChange('expenses')}>
+            <Ionicons name="wallet" size={24} color={getIconColor('expenses')} />
+            <Text style={[styles.navText, active === 'expenses' && styles.navTextActive]}>ລາຍຈ່າຍ</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navBtn} onPress={() => onTabChange('report')}>
-            <Ionicons name="bar-chart" size={24} color={getIconColor('report')} />
-            <Text style={[styles.navText, currentTab === 'report' && styles.navTextActive]}>ລາຍງານ</Text>
+        {/* 4. ປຸ່ມລາຍງານ (reports) */}
+        <TouchableOpacity style={styles.navBtn} onPress={() => onTabChange('reports')}>
+            <Ionicons name="bar-chart" size={24} color={getIconColor('reports')} />
+            <Text style={[styles.navText, active === 'reports' && styles.navTextActive]}>ລາຍງານ</Text>
         </TouchableOpacity>
     </View>
   );
@@ -46,19 +54,22 @@ export default function Footer({ currentTab, onTabChange }: FooterProps) {
 const styles = StyleSheet.create({
   footer: { 
       flexDirection: 'row', 
-      backgroundColor: COLORS.primary, // 🟢 ປ່ຽນພື້ນຫຼັງເປັນສີຂຽວ Theme
-      height: 75, // ເພີ່ມຄວາມສູງໜ້ອຍໜຶ່ງໃຫ້ເບິ່ງໂປ່ງ
+      backgroundColor: COLORS?.primary || '#008B94', 
+      height: 75, 
       alignItems: 'center', 
       justifyContent: 'space-around', 
-      paddingBottom: 10, 
-      // ເພີ່ມຄວາມໂຄ້ງມົນດ້ານເທິງ ໃຫ້ເບິ່ງ Soft ຂຶ້ນ
+      paddingBottom: Platform.OS === 'ios' ? 20 : 10, // ປັບໃຫ້ພໍດີກັບ iPhone X+
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       elevation: 10,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: -3 },
       shadowOpacity: 0.1,
-      shadowRadius: 3
+      shadowRadius: 3,
+      position: 'absolute', // 🟢 Fix ໃຫ້ມັນຢູ່ລຸ່ມສຸດສະເໝີ
+      bottom: 0,
+      left: 0,
+      right: 0,
   },
   navBtn: { 
       alignItems: 'center', 
@@ -66,23 +77,23 @@ const styles = StyleSheet.create({
       flex: 1 
   },
   navText: { 
-      color: 'rgba(255, 255, 255, 0.6)', // ສີຕົວໜັງສືທົ່ວໄປ (ຂາວຈາງ)
+      color: 'rgba(255, 255, 255, 0.6)', 
       fontSize: 10, 
       marginTop: 4, 
       fontFamily: 'Lao-Regular' 
   },
   navTextActive: { 
-      color: 'white', // ສີຕົວໜັງສືຕອນເລືອກ (ຂາວແຈ້ງ)
+      color: 'white', 
       fontFamily: 'Lao-Bold' 
   },
   navIconCircle: { 
       width: 54, 
       height: 54, 
       borderRadius: 27, 
-      backgroundColor: 'white', // ວົງມົນສີຂາວ
+      backgroundColor: 'white', 
       justifyContent: 'center', 
       alignItems: 'center', 
-      marginTop: -25, // ຍົກຂຶ້ນໃຫ້ລອຍ
+      marginTop: -25, // ເທັກນິກເຮັດໃຫ້ປຸ່ມລອຍ
       elevation: 5, 
       shadowColor: '#000', 
       shadowOpacity: 0.2, 
@@ -90,6 +101,6 @@ const styles = StyleSheet.create({
   },
   activeCircle: {
       borderWidth: 3,
-      borderColor: '#E0F2F1' // ເພີ່ມຂອບສີຂຽວອ່ອນໆ ເມື່ອຖືກເລືອກ
+      borderColor: '#E0F2F1' 
   }
 });

@@ -35,7 +35,7 @@ const FooterAny = Footer as any;
 const ProductModalAny = ProductModal as any;
 const LoginScreenAny = LoginScreen as any;
 
-// 🟢 Default Product (ຄ່າເລີ່ມຕົ້ນສຳລັບການເພີ່ມໃໝ່)
+// 🟢 Default Product
 const emptyProduct: Product = {
   id: '', 
   name: '', 
@@ -57,9 +57,9 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
   
-  // 🟢 Modal States (ແກ້ໄຂສ່ວນນີ້)
+  // Modal States
   const [isProductModalVisible, setProductModalVisible] = useState(false);
-  const [tempProduct, setTempProduct] = useState<Product>(emptyProduct); // ສ້າງ State ໄວ້ຮອງຮັບຂໍ້ມູນໃນ Modal
+  const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
 
   // --- 2. Initial Dummy Data ---
   useEffect(() => {
@@ -70,7 +70,6 @@ export default function App() {
   }, []);
 
   // --- 3. Handlers ---
-
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
@@ -138,24 +137,22 @@ export default function App() {
     setProducts(prev => prev.filter(p => p.id !== productId));
   };
 
-  // 🟢 ຟັງຊັນເປີດ Modal (ແກ້ໄຂ)
+  // Modal Handlers
   const openAddProductModal = () => {
-    setTempProduct(emptyProduct); // Reset ຂໍ້ມູນເປັນຄ່າວ່າງ
+    setTempProduct(emptyProduct);
     setProductModalVisible(true);
   };
 
   const openEditProductModal = (product: Product) => {
-    setTempProduct(product); // ດຶງຂໍ້ມູນເກົ່າໃສ່ State
+    setTempProduct(product);
     setProductModalVisible(true);
   };
 
-  // 🟢 ຟັງຊັນບັນທຶກຈາກ Modal
   const onSaveProductFromModal = () => {
     if (!tempProduct.name || !tempProduct.price) {
       Alert.alert("Error", "ກະລຸນາໃສ່ຂໍ້ມູນໃຫ້ຄົບ");
       return;
     }
-
     if (tempProduct.id) {
       handleEditProduct(tempProduct);
     } else {
@@ -167,10 +164,10 @@ export default function App() {
   // --- 4. Render Screen Logic ---
   const renderScreen = () => {
     switch (activeTab) {
-      case 'Home': 
+      case 'Home': case 'home':
         return <HomeScreenAny salesHistory={salesHistory} products={products} />;
       
-      case 'POS': 
+      case 'POS': case 'pos':
         return (
           <POSScreenAny 
             products={products}
@@ -184,12 +181,12 @@ export default function App() {
           />
         );
       
-      case 'Products': 
+      case 'Products': case 'products':
         return (
           <ProductsScreenAny 
             products={products}
-            onAddProduct={openAddProductModal} // ໃຊ້ຟັງຊັນໃໝ່
-            onEditProduct={openEditProductModal} // ໃຊ້ຟັງຊັນໃໝ່
+            onAddProduct={openAddProductModal}
+            onEditProduct={openEditProductModal}
             onDeleteProduct={handleDeleteProduct}
           />
         );
@@ -203,7 +200,7 @@ export default function App() {
       
       default: return <HomeScreenAny salesHistory={salesHistory} products={products} />;
     }
-  };
+  }; // 🟢 <--- ປິດ renderScreen (ຈຸດທີ່ມັກ Error)
 
   if (!isLoggedIn) {
     return <LoginScreenAny onLoginSuccess={() => setIsLoggedIn(true)} />;
@@ -227,13 +224,19 @@ export default function App() {
         </View>
       </View>
 
-      <FooterAny status="Online" version="1.0.0" />
+      <FooterAny 
+        status="Online" 
+        version="1.0.0" 
+        currentTab={activeTab}
+        onTabChange={(tab: string) => {
+          const formattedTab = tab.charAt(0).toUpperCase() + tab.slice(1);
+          setActiveTab(formattedTab);
+        }}
+      />
 
-      {/* 🟢 Global Modals (ແກ້ໄຂໃຫ້ຕົງກັບ ProductModal ຂອງທ່ານ) */}
       <ProductModalAny 
         visible={isProductModalVisible}
         onClose={() => setProductModalVisible(false)}
-        // ສົ່ງ Props ໃຫ້ຖືກຕ້ອງຕາມທີ່ ProductModal ຕ້ອງການ:
         product={tempProduct}
         setProduct={setTempProduct}
         onSave={onSaveProductFromModal}
@@ -242,4 +245,4 @@ export default function App() {
       />
     </SafeAreaView>
   );
-}
+} // 🟢 <--- ປິດ App

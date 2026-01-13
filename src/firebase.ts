@@ -14,25 +14,25 @@ const firebaseConfig = {
   appId: "1:1085134944350:web:cdd4c563a7891c176d9ccf"
 };
 
-// 1. ກວດສອບ App Instance
+// 1. ຈັດການ App Instance
 let app;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
+if (getApps().length > 0) {
   app = getApp();
+} else {
+  app = initializeApp(firebaseConfig);
 }
 
-// 2. 🔥🔥🔥 SOLUTION: Reverse Logic (ດຶງກ່ອນ ຄ່ອຍສ້າງ) 🔥🔥🔥
+// 2. 🔥🔥🔥 SOLUTION: Initialize First Pattern 🔥🔥🔥
+// ວິທີນີ້ແກ້ໄຂບັນຫາ "auth not registered" ໄດ້ດີກວ່າ
 let auth;
 try {
-  // ລອງດຶງ Auth ທີ່ມີຢູ່ແລ້ວອອກມາໃຊ້
-  auth = getAuth(app);
-} catch (error) {
-  // ຖ້າມັນຟ້ອງວ່າ "auth has not been registered" (ຍັງບໍ່ມີ)
-  // ໃຫ້ເຮົາສ້າງໃໝ່ເລີຍ (Initialize)
+  // ພະຍາຍາມສ້າງ Auth ໃໝ່ກ່ອນ (ພ້ອມ Persistence)
   auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
   });
+} catch (error) {
+  // ຖ້າສ້າງບໍ່ໄດ້ (ມັນຟ້ອງວ່າ duplicate ຫຼື ມີຢູ່ແລ້ວ) -> ໃຫ້ດຶງໂຕເກົ່າມາໃຊ້
+  auth = getAuth(app);
 }
 
 const db = getDatabase(app);

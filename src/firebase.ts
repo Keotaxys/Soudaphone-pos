@@ -1,8 +1,8 @@
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
-import { getApp, getApps, initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 // @ts-ignore
-import { getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",
@@ -14,17 +14,18 @@ const firebaseConfig = {
   appId: "1:1085134944350:web:cdd4c563a7891c176d9ccf"
 };
 
-// 1. ກວດສອບ ແລະ ດຶງ App Instance ມາກ່ອນ
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// 1. ກວດສອບ ແລະ ດຶງ App Instance
+// ຖ້າມີ App ຢູ່ແລ້ວ ໃຫ້ດຶງມາໃຊ້ (getApp), ຖ້າບໍ່ມີ ໃຫ້ສ້າງໃໝ່ (initializeApp)
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// 2. 🔥🔥🔥 SOLUTION: Try GET First, Then Initialize 🔥🔥🔥
-// ວິທີນີ້ຈະບໍ່ເກີດ Error "auth has not been registered"
+// 2. 🔥🔥🔥 ແກ້ໄຂ: ດຶງກ່ອນ ແລ້ວຄ່ອຍສ້າງ (Try GET First) 🔥🔥🔥
 let auth;
 try {
-  // ລອງດຶງ Auth ທີ່ມີຢູ່ແລ້ວກ່ອນ
+  // ລອງດຶງ Auth ທີ່ມີຢູ່ແລ້ວກ່ອນ (ຖ້າມັນມີ ມັນຈະຜ່ານບ່ອນນີ້)
   auth = getAuth(app);
 } catch (error) {
-  // ຖ້າດຶງບໍ່ໄດ້ (ແປວ່າບໍ່ທັນມີ ຫຼື ບໍ່ທັນ Register) -> ໃຫ້ສ້າງໃໝ່
+  // ຖ້າດຶງບໍ່ໄດ້ (Error "Not registered") -> ແປວ່າເຮົາຕ້ອງສ້າງມັນຂຶ້ນມາໃໝ່
+  // ໃຫ້ໂຄດ initializeAuth ຢູ່ໃນ catch ເທົ່ານັ້ນ!
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(ReactNativeAsyncStorage)
   });

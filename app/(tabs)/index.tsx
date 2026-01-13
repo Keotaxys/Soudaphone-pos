@@ -28,9 +28,10 @@ import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
 // Modals
-import EditShopModal from '../../src/components/modals/EditShopModal';
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
+// 🟢 Import Modal ແກ້ໄຂຮ້ານ
+import EditShopModal from '../../src/components/modals/EditShopModal';
 
 // 🔥 Force Cast Components (ເພື່ອຫຼີກລ້ຽງ TypeScript Error ເລັກນ້ອຍ)
 const POSScreenAny = POSScreen as any;
@@ -88,6 +89,8 @@ export default function App() {
       } else {
         setProducts([]);
       }
+    }, (error) => {
+        if(!error.message.includes("permission_denied")) console.error(error);
     });
 
     // Fetch Sales History

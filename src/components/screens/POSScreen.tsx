@@ -20,7 +20,7 @@ import {
 import { CartItem, COLORS, formatNumber, Product } from '../../types';
 
 const { width } = Dimensions.get('window');
-const ORANGE_THEME = '#FF8F00';
+const ORANGE_THEME = '#FF8F00'; // ສີສົ້ມ Theme ທີ່ຖືກຕ້ອງ
 
 interface POSScreenProps {
   products: Product[];
@@ -207,7 +207,6 @@ export default function POSScreen({
 
       {/* Cart Modal */}
       <Modal visible={isCartVisible} animationType="slide" transparent={true}>
-        {/* 🟢 2. Wrap ດ້ວຍ TouchableWithoutFeedback ເພື່ອປິດຄີບອດເມື່ອກົດບ່ອນອື່ນ */}
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <KeyboardAvoidingView 
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -240,7 +239,7 @@ export default function POSScreen({
                         <FlatList 
                             data={cart}
                             keyExtractor={item => item.id!}
-                            keyboardShouldPersistTaps="handled" // 🟢 ອະນຸຍາດໃຫ້ກົດປຸ່ມໄດ້ເຖິງວ່າຄີບອດຄ້າງຢູ່
+                            keyboardShouldPersistTaps="handled" 
                             renderItem={({item}) => (
                                 <View style={styles.cartItem}>
                                     <Image source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://via.placeholder.com/50' }} style={styles.itemThumb} />
@@ -271,29 +270,27 @@ export default function POSScreen({
                             </TouchableOpacity>
                         </View>
 
-                        {/* 🟢 3. ຍອດຊຳລະ (ຍ້າຍ Rate ມາເບື້ອງຂວາ) */}
                         <View style={styles.totalDisplayRow}>
-                            <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
-                            
-                            <View style={{alignItems: 'flex-end'}}>
-                                <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                                    <TextInput 
-                                        style={[styles.totalInput, {color: currency === 'LAK' ? COLORS.primary : ORANGE_THEME}]}
-                                        value={editableTotal}
-                                        onChangeText={(text) => setEditableTotal(formatInputNumber(text))}
-                                        keyboardType="number-pad"
-                                        selectTextOnFocus={true} 
-                                        returnKeyType="done" // 🟢 2. ເພີ່ມປຸ່ມ Done
-                                    />
-                                    <Text style={[styles.currencySuffix, {color: currency === 'LAK' ? COLORS.primary : ORANGE_THEME}]}>
-                                        {currency === 'LAK' ? '₭' : '฿'}
-                                    </Text>
-                                    <Ionicons name="pencil" size={14} color="#ccc" style={{marginLeft: 5}} />
-                                </View>
-                                {/* 🟢 1. ຍ້າຍ Rate ມາຢູ່ກ້ອງນີ້ */}
+                            <View style={{flex: 1}}>
+                                <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
                                 {currency === 'THB' && (
                                     <Text style={{fontSize: 10, color: '#999', marginTop: 2}}>Rate: 1 ฿ = {formatNumber(exchangeRate)} ₭</Text>
                                 )}
+                            </View>
+                            
+                            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                <TextInput 
+                                    style={[styles.totalInput, {color: currency === 'LAK' ? COLORS.primary : ORANGE_THEME}]}
+                                    value={editableTotal}
+                                    onChangeText={(text) => setEditableTotal(formatInputNumber(text))}
+                                    keyboardType="number-pad"
+                                    selectTextOnFocus={true} 
+                                    returnKeyType="done" 
+                                />
+                                <Text style={[styles.currencySuffix, {color: currency === 'LAK' ? COLORS.primary : ORANGE_THEME}]}>
+                                    {currency === 'LAK' ? '₭' : '฿'}
+                                </Text>
+                                <Ionicons name="pencil" size={14} color="#ccc" style={{marginLeft: 5}} />
                             </View>
                         </View>
 
@@ -319,7 +316,7 @@ export default function POSScreen({
                                         value={amountReceived}
                                         onChangeText={(text) => setAmountReceived(formatInputNumber(text))} 
                                         selectTextOnFocus={true}
-                                        returnKeyType="done" // 🟢 2. ເພີ່ມປຸ່ມ Done
+                                        returnKeyType="done" 
                                     />
                                 </View>
                                 <View style={styles.changeGroup}>
@@ -369,15 +366,18 @@ export default function POSScreen({
         <View style={styles.modalOverlay}>
             <View style={styles.receiptContainer}>
                 <View style={styles.receiptHeader}>
-                    <Ionicons name="checkmark-circle" size={60} color={COLORS.success} />
-                    <Text style={styles.receiptTitle}>ຊຳລະເງິນສຳເລັດ!</Text>
+                    {/* 🟢 ປ່ຽນສີເຄື່ອງໝາຍຖືກເປັນ Teal */}
+                    <Ionicons name="checkmark-circle" size={60} color={COLORS.primary} />
+                    {/* 🟢 ປ່ຽນສີຫົວຂໍ້ເປັນ Teal */}
+                    <Text style={[styles.receiptTitle, {color: COLORS.primary}]}>ຊຳລະເງິນສຳເລັດ!</Text>
                     <Text style={styles.receiptDate}>{new Date(lastOrderDetails?.date || new Date()).toLocaleString('lo-LA')}</Text>
                 </View>
                 
                 <View style={styles.receiptBody}>
                     <View style={styles.receiptRow}><Text>ຍອດລວມ:</Text><Text style={styles.receiptValue}>{formatNumber(lastOrderDetails?.originalTotal)} {lastOrderDetails?.currency === 'THB' ? '฿' : '₭'}</Text></View>
                     {lastOrderDetails?.discount > 0 && (
-                        <View style={styles.receiptRow}><Text style={{color:'red'}}>ສ່ວນຫຼຸດ:</Text><Text style={{color:'red'}}>-{formatNumber(lastOrderDetails?.discount)}</Text></View>
+                        /* 🟢 ປ່ຽນສີສ່ວນຫຼຸດເປັນສີສົ້ມ */
+                        <View style={styles.receiptRow}><Text style={{color: ORANGE_THEME}}>ສ່ວນຫຼຸດ:</Text><Text style={{color: ORANGE_THEME}}>-{formatNumber(lastOrderDetails?.discount)}</Text></View>
                     )}
                     <View style={[styles.receiptRow, {borderTopWidth:1, borderColor:'#eee', paddingTop:5}]}><Text style={{fontFamily:'Lao-Bold'}}>ຍອດສຸດທິ:</Text><Text style={{fontFamily:'Lao-Bold', fontSize:18}}>{formatNumber(lastOrderDetails?.total)} {lastOrderDetails?.currency === 'THB' ? '฿' : '₭'}</Text></View>
                     

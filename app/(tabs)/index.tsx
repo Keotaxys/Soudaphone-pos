@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, SafeAreaView, Alert, Dimensions, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import { Alert, SafeAreaView, StyleSheet, View } from 'react-native';
 
 // --- Imports ---
 import { db } from '../../src/firebase';
-import { Product, CartItem, SaleRecord } from '../../src/types';
+// 🟢 1. Import ຄຳສັ່ງ Firebase Database
+import { onValue, push, ref, remove, set, update } from 'firebase/database';
+import { CartItem, Product, SaleRecord } from '../../src/types';
 
 // Screens
 import CustomerScreen from '../../src/components/screens/CustomerScreen';
@@ -42,10 +44,9 @@ const emptyProduct: Product = {
 };
 
 export default function App() {
-  // --- 1. State Management ---
+  // --- State Management ---
   const [activeTab, setActiveTab] = useState<string>('Home');
-  // 🟢 ແກ້ໄຂ: ຕັ້ງເປັນ false ໄວ້ກ່ອນ ເພື່ອບໍ່ໃຫ້ບັງໜ້າຈໍໃນມືຖື
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   
   // Data States
@@ -57,15 +58,37 @@ export default function App() {
   const [isProductModalVisible, setProductModalVisible] = useState(false);
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
 
-  // --- 2. Initial Dummy Data ---
+  // 🟢 2. Fetch Data from Firebase (ດຶງຂໍ້ມູນຈິງຈາກ Database)
   useEffect(() => {
-    setProducts([
-      { id: '1', name: 'Pepsi', price: 10000, stock: 50, priceCurrency: 'LAK', category: 'Drink' },
-      { id: '2', name: 'Beer Lao', price: 15000, stock: 24, priceCurrency: 'LAK', category: 'Alcohol' },
-    ]);
+    // ອ້າງອີງໄປທີ່ node 'products' ໃນ Firebase
+    const productsRef = ref(db, 'products');
+
+    const unsubscribe = onValue(productsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const loadedProducts: Product[] = [];
+        
+        // ແປງຂໍ້ມູນຈາກ Object ເປັນ Array
+        for (const key in data) {
+          loadedProducts.push({
+            id: key, // ໃຊ້ Key ຈາກ Firebase ເປັນ ID
+            ...data[key]
+          });
+        }
+        setProducts(loadedProducts);
+      } else {
+        setProducts([]); // ຖ້າບໍ່ມີຂໍ້ມູນ
+      }
+    }, (error) => {
+      console.error("Error fetching products:", error);
+      Alert.alert("Error", "ບໍ່ສາມາດດຶງຂໍ້ມູນຈາກລະບົບໄດ້");
+    });
+
+    // Cleanup listener ເມື່ອປິດໜ້າ
+    return () => unsubscribe();
   }, []);
 
-  // --- 3. Handlers (Cart & Checkout) ---
+  // --- Handlers (Cart & Checkout) ---
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
@@ -97,36 +120,74 @@ export default function App() {
     const subTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = subTotal - (discount || 0);
 
+    // 🟢 ບັນທຶກການຂາຍລົງ Firebase (Sales History)
+    const newSaleRef = push(ref(db, 'sales'));
     const newSale: SaleRecord = {
-      id: Date.now().toString(),
+      id: newSaleRef.key!, // Generate ID ຈາກ Firebase
       items: [...cart],
       subTotal, discount: discount || 0, total,
       amountReceived: amountReceived || 0, change: (amountReceived || 0) - total,
       currency: 'LAK', paymentMethod: paymentMethod || 'CASH',
       source: 'POS', date: new Date().toISOString(), status: 'COMPLETED', createdAt: new Date().toISOString()
     };
-    setSalesHistory(prev => [newSale, ...prev]);
-    setCart([]);
-    Alert.alert("Success", "ການຂາຍສຳເລັດ!");
+    
+    set(newSaleRef, newSale)
+      .then(() => {
+        Alert.alert("Success", "ການຂາຍສຳເລັດ!");
+        setCart([]); // ລ້າງກະຕ່າ
+      })
+      .catch(err => Alert.alert("Error", "ບັນທຶກການຂາຍບໍ່ໄດ້: " + err.message));
   };
 
-  // Product Handlers
-  const handleAddProduct = (newProduct: Product) => setProducts(prev => [...prev, { ...newProduct, id: Date.now().toString() }]);
-  const handleEditProduct = (updatedProduct: Product) => setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-  const handleDeleteProduct = (productId: string) => setProducts(prev => prev.filter(p => p.id !== productId));
+  // 🟢 3. Product Handlers (CRUD ກັບ Firebase ແທ້)
+  const handleAddProduct = (newProduct: Product) => {
+    try {
+      const productsRef = ref(db, 'products');
+      const newRef = push(productsRef); // ສ້າງ Key ໃໝ່
+      const productWithId = { ...newProduct, id: newRef.key };
+      set(newRef, productWithId); // ບັນທຶກລົງ Database
+    } catch (error) {
+      Alert.alert("Error", "ເພີ່ມສິນຄ້າບໍ່ໄດ້");
+    }
+  };
+
+  const handleEditProduct = (updatedProduct: Product) => {
+    try {
+      if (!updatedProduct.id) return;
+      const productRef = ref(db, `products/${updatedProduct.id}`);
+      update(productRef, updatedProduct); // ອັບເດດຂໍ້ມູນ
+    } catch (error) {
+      Alert.alert("Error", "ແກ້ໄຂສິນຄ້າບໍ່ໄດ້");
+    }
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    try {
+      const productRef = ref(db, `products/${productId}`);
+      remove(productRef); // ລຶບອອກຈາກ Database
+    } catch (error) {
+      Alert.alert("Error", "ລຶບສິນຄ້າບໍ່ໄດ້");
+    }
+  };
 
   // Modal Handlers
   const openAddProductModal = () => { setTempProduct(emptyProduct); setProductModalVisible(true); };
   const openEditProductModal = (product: Product) => { setTempProduct(product); setProductModalVisible(true); };
+  
   const onSaveProductFromModal = () => {
     if (!tempProduct.name || !tempProduct.price) { Alert.alert("Error", "ກະລຸນາໃສ່ຂໍ້ມູນໃຫ້ຄົບ"); return; }
-    tempProduct.id ? handleEditProduct(tempProduct) : handleAddProduct(tempProduct);
+    
+    // ເອີ້ນໃຊ້ຟັງຊັນທີ່ຕໍ່ກັບ Firebase
+    if (tempProduct.id) {
+      handleEditProduct(tempProduct);
+    } else {
+      handleAddProduct(tempProduct);
+    }
     setProductModalVisible(false);
   };
 
-  // --- 4. Render Screen Logic ---
+  // --- Render Screen Logic ---
   const renderScreen = () => {
-    // ປ່ຽນເປັນ lowercase ໃຫ້ໝົດເພື່ອຄວາມຊົວ
     const tabName = activeTab.toLowerCase();
     
     switch (tabName) {
@@ -157,36 +218,30 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" backgroundColor="#008B94" />
       
-      {/* Header */}
       <HeaderAny toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} user={{ name: 'Admin', role: 'Manager' }} />
 
-      {/* Main Layout */}
       <View style={styles.mainContainer}>
-        {/* Sidebar (Render ແບບ Overlay ຫຼື ປິດໄປເລີຍຖ້າເປັນມືຖື) */}
         {isSidebarOpen && (
           <View style={styles.sidebarWrapper}>
              <SidebarAny activeTab={activeTab} onTabChange={(tab: string) => {
                setActiveTab(tab);
-               setIsSidebarOpen(false); // ເລືອກແລ້ວປິດ Sidebar ອັດຕະໂນມັດ
+               setIsSidebarOpen(false);
              }} tabs={TABS} />
           </View>
         )}
 
-        {/* Content Area */}
         <View style={styles.contentArea}>
           {renderScreen()}
         </View>
       </View>
 
-      {/* Footer */}
       <FooterAny 
         status="Online" 
         version="1.0.0" 
-        currentTab={activeTab.toLowerCase()} // ສົ່ງເປັນຕົວນ້ອຍ
+        currentTab={activeTab.toLowerCase()} 
         onTabChange={(tab: string) => setActiveTab(tab)}
       />
 
-      {/* Modal */}
       <ProductModalAny 
         visible={isProductModalVisible}
         onClose={() => setProductModalVisible(false)}
@@ -201,34 +256,8 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F9FA', // ສີພື້ນຫຼັງ
-  },
-  mainContainer: {
-    flex: 1,
-    flexDirection: 'row', // ລວງນອນ
-    position: 'relative',
-  },
-  sidebarWrapper: {
-    width: 250,
-    backgroundColor: 'white',
-    height: '100%',
-    position: 'absolute', // ໃຫ້ Sidebar ລອຍຢູ່ທາງເທິງ
-    zIndex: 100, // ໃຫ້ຢູ່ເທິງສຸດ
-    top: 0,
-    left: 0,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-  },
-  contentArea: {
-    flex: 1,
-    backgroundColor: '#fff',
-    margin: 10,
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginBottom: 80, // ເພື່ອບໍ່ໃຫ້ Footer ບັງເນື້ອຫາ
-  }
+  container: { flex: 1, backgroundColor: '#F5F9FA' },
+  mainContainer: { flex: 1, flexDirection: 'row', position: 'relative' },
+  sidebarWrapper: { width: 250, backgroundColor: 'white', height: '100%', position: 'absolute', zIndex: 100, top: 0, left: 0, elevation: 5 },
+  contentArea: { flex: 1, backgroundColor: '#fff', margin: 10, borderRadius: 10, overflow: 'hidden', marginBottom: 80 }
 });

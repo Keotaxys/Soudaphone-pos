@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLORS } from '../../types';
 
 interface HeaderProps {
@@ -30,10 +30,8 @@ export default function Header({
 
   return (
     <View style={styles.container}>
-      {/* ກຳນົດ StatusBar ຢູ່ບ່ອນນີ້ 
-         backgroundColor: ຕັ້ງສີພື້ນຫຼັງຂອງ Status Bar ໃຫ້ເປັນສີດຽວກັບ Header
-      */}
-      <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
+      {/* ຄວບຄຸມສີ Status Bar ໃຫ້ເປັນສີຂຽວ ແລະ ຕົວໜັງສືສີຂາວ */}
+      <StatusBar backgroundColor={COLORS?.primary || '#008B94'} barStyle="light-content" />
       
       {/* Top Bar */}
       <View style={styles.topBar}>
@@ -81,13 +79,10 @@ export default function Header({
 
 const styles = StyleSheet.create({
   container: { 
-    backgroundColor: COLORS.primary, // ສີຂຽວ Teal
+    backgroundColor: COLORS?.primary || '#008B94', 
     paddingBottom: 20, 
-    
-    // 🟢 ແກ້ໄຂຈຸດນີ້: 
-    // ລຶບ StatusBar.currentHeight ອອກ ເພາະ SafeAreaView ໃນ index.tsx ຈັດການໃຫ້ແລ້ວ
-    paddingTop: 10, 
-
+    // ໃຊ້ paddingTop ໜ້ອຍໜຶ່ງພໍ ເພາະ SafeAreaView ຈັດການສ່ວນ Notch ໃຫ້ແລ້ວ
+    paddingTop: Platform.OS === 'android' ? 10 : 0, 
     borderBottomLeftRadius: 20, 
     borderBottomRightRadius: 20, 
     zIndex: 1000 
@@ -102,12 +97,25 @@ const styles = StyleSheet.create({
   leftContainer: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },
   rightIcons: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  shopCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', marginHorizontal: 20, padding: 15, borderRadius: 15, elevation: 3 },
+  shopCard: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    backgroundColor: 'white', 
+    marginHorizontal: 20, 
+    padding: 15, 
+    borderRadius: 15, 
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4
+  },
   shopInfo: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   shopLogo: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eee' },
   shopLogoPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E0F2F1', justifyContent: 'center', alignItems: 'center' },
-  shopLogoText: { fontSize: 24, fontFamily: 'Lao-Bold', color: COLORS.primary },
-  shopName: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text },
+  shopLogoText: { fontSize: 24, fontFamily: 'Lao-Bold', color: COLORS?.primary || '#008B94' },
+  shopName: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS?.text || '#333' },
   shopId: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
   editBtn: { backgroundColor: '#f0f0f0', paddingVertical: 5, paddingHorizontal: 15, borderRadius: 20 },
   editBtnText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },

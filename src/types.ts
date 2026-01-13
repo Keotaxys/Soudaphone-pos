@@ -1,6 +1,23 @@
 // src/types.ts
 
-// 🟢 1. Product Interface (ສິນຄ້າໃນສະຕັອກ)
+// 🟢 1. COLORS Theme
+export const COLORS = {
+  primary: '#008B94',      
+  primaryDark: '#006064',
+  secondary: '#FFB300',    
+  secondaryDark: '#FF8F00',
+  background: '#F5F9FA',
+  text: '#37474F',
+  textLight: '#90A4AE',
+  success: '#43A047',
+  danger: '#E53935',
+  white: '#FFFFFF',
+  gray: '#ECEFF1'
+};
+
+export const SIDEBAR_WIDTH = 250;
+
+// 🟢 2. Product Interface
 export interface Product {
   id?: string;
   name: string;
@@ -12,12 +29,12 @@ export interface Product {
   category?: string;
 }
 
-// 🟢 2. CartItem Interface (ສິນຄ້າໃນກະຕ່າຂາຍ)
+// 🟢 3. CartItem Interface
 export interface CartItem extends Product {
   quantity: number;
 }
 
-// 🟢 3. SaleRecord Interface (ປະຫວັດການຂາຍໜ້າຮ້ານ)
+// 🟢 4. SaleRecord Interface
 export interface SaleRecord {
   id?: string;
   items: CartItem[];
@@ -35,37 +52,36 @@ export interface SaleRecord {
   createdAt: string;
 }
 
-// 🟢 4. ExpenseRecord Interface (ລາຍຈ່າຍ)
-// * ແກ້ໄຂ: ເພີ່ມ note ເພື່ອໃຫ້ຕົງກັບໜ້າ Report
+// 🟢 5. ExpenseRecord Interface
 export interface ExpenseRecord {
   id?: string;
   date: string;
   category: string;
-  description?: string; // ເຮັດເປັນ optional
-  note?: string;        // ໃຊ້ໂຕນີ້ໃນ ReportDashboard
+  description?: string; 
+  note?: string;        
   amount: number;
   createdAt: string;
 }
 
-// 🟢 [ເພີ່ມໃໝ່] DebtRecord Interface (ບັນທຶກໜີ້ສິນ)
+// 🟢 6. DebtRecord Interface
 export interface DebtRecord {
   id?: string;
   customerName: string;
   description?: string;
-  totalAmount: number;     // ຍອດໜີ້ທັງໝົດ
-  paidAmount: number;      // ຈ່າຍໄປແລ້ວ
-  remainingBalance: number;// ຍັງເຫຼືອ
-  dueDate: string;         // ກຳນົດຈ່າຍ
+  totalAmount: number;     
+  paidAmount: number;      
+  remainingBalance: number;
+  dueDate: string;         
   status: 'PENDING' | 'PAID' | 'OVERDUE';
   createdAt: string;
-  history?: { date: string; amount: number; note: string }[]; // ປະຫວັດການຜ່ອນຈ່າຍ
+  history?: { date: string; amount: number; note: string }[];
 }
 
-// 🟢 5. OrderItem Interface (ລາຍຊື່ສິນຄ້າຍ່ອຍໃນອໍເດີ Online)
+// 🟢 7. Order Items (Online)
 export interface OrderItem {
   id: string;
   productName: string;
-  source: string; // ຈີນ, ຫວຽດ, ໄທ
+  source: string; 
   quantity: number;
   costPrice: number;
   salePrice: number;
@@ -74,7 +90,7 @@ export interface OrderItem {
   status: 'ຮັບອໍເດີ້' | 'ສັ່ງເຄື່ອງແລ້ວ' | 'ເຄື່ອງຮອດແລ້ວ' | 'ຈັດສົ່ງສຳເລັດ';
 }
 
-// 🟢 6. CustomerOrder Interface (ຕິດຕາມຄຳສັ່ງຊື້ລວມ)
+// 🟢 8. Customer Order
 export interface CustomerOrder {
   id?: string;
   customerName: string;
@@ -84,7 +100,7 @@ export interface CustomerOrder {
   createdAt: string;
 }
 
-// 🟢 7. Customer Interface (ຂໍ້ມູນລູກຄ້າ)
+// 🟢 9. Customer
 export interface Customer {
   id: string;
   name: string;
@@ -93,28 +109,11 @@ export interface Customer {
   createdAt?: string;
 }
 
-// 🟢 8. Order Interface (Alias)
+// 🟢 10. Type Alias
 export type Order = CustomerOrder; 
 
-// 🟢 9. COLORS (Theme Teal + Orange)
-export const COLORS = {
-  primary: '#008B94',      
-  primaryDark: '#006064',
-  secondary: '#FFB300',    
-  secondaryDark: '#FF8F00',
-  background: '#F5F9FA',
-  text: '#37474F',
-  textLight: '#90A4AE',
-  success: '#43A047',
-  danger: '#E53935',
-  white: '#FFFFFF',
-  gray: '#ECEFF1'
-};
-
-export const SIDEBAR_WIDTH = 250;
-
-// 🟢 10. Helper Functions
-export const formatNumber = (num: number | string | undefined) => {
+// 🟢 11. Helper Functions
+export const formatNumber = (num: number | string | undefined | null) => {
   if (num === undefined || num === null || num === '') return '0';
   const n = typeof num === 'string' ? parseFloat(num) : num;
   return isNaN(n) ? '0' : n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -128,7 +127,7 @@ export const formatDate = (date: Date | string) => {
     return `${day}/${month}/${year}`;
 };
 
-// 🟢 11. Shift Related Types
+// 🟢 12. Shift Records
 export interface CashDenomination {
   value: number;
   count: number;

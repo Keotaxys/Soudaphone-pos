@@ -62,7 +62,7 @@ export default function POSScreen({
   const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // --- Product Item ---
+  // --- Render Item (ບັດສິນຄ້າ) ---
   const renderProductItem = ({ item }: { item: Product }) => (
     <View style={styles.productCard}>
       <TouchableOpacity 
@@ -70,7 +70,6 @@ export default function POSScreen({
         onPress={() => addToCart(item)}
         style={styles.cardContent}
       >
-        {/* Currency Tag */}
         <View style={[styles.currencyTag, item.priceCurrency === 'THB' ? {backgroundColor: '#FF9800'} : {backgroundColor: COLORS.primary}]}>
             <Text style={styles.currencyText}>{item.priceCurrency || 'LAK'}</Text>
         </View>
@@ -84,7 +83,6 @@ export default function POSScreen({
           <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
           <View style={styles.priceRow}>
             <Text style={styles.productPrice}>{formatNumber(item.price)} {item.priceCurrency === 'THB' ? '฿' : '₭'}</Text>
-            {/* ປຸ່ມບວກສີ Teal */}
             <TouchableOpacity style={styles.addBtnSmall} onPress={() => addToCart(item)}>
                 <Ionicons name="add" size={20} color="white" />
             </TouchableOpacity>
@@ -94,9 +92,9 @@ export default function POSScreen({
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      
+  // 🟢 List Header Component: ລວມສ່ວນຄົ້ນຫາ, ປຸ່ມ ແລະ ໝວດໝູ່ ໄວ້ບ່ອນນີ້
+  const ListHeader = () => (
+    <View>
       {/* 1. Search Bar */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#999" />
@@ -143,13 +141,20 @@ export default function POSScreen({
           )}
         />
       </View>
+    </View>
+  );
 
-      {/* 4. Product Grid (Full Width) */}
+  return (
+    <View style={styles.container}>
+      
+      {/* 🟢 4. Main List: ໃຊ້ FlatList ດຽວຄຸມທັງໝົດ */}
       <FlatList
+        ListHeaderComponent={ListHeader} // ໃສ່ສ່ວນຫົວທີ່ນີ້
         data={filteredProducts}
         keyExtractor={item => item.id!}
         numColumns={2}
-        contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 100 }} // ເວັ້ນບ່ອນໃຫ້ Floating Cart
+        columnWrapperStyle={{ paddingHorizontal: 10 }} // ຈັດ column ໃຫ້ຫ່າງຂອບ
         renderItem={renderProductItem}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -159,7 +164,7 @@ export default function POSScreen({
         }
       />
 
-      {/* 🟢 5. Floating Cart Bar (ຈະສະແດງເມື່ອ cart.length > 0) */}
+      {/* 5. Floating Cart Bar */}
       {cart.length > 0 && (
         <TouchableOpacity 
             style={styles.floatingCartBar} 
@@ -172,12 +177,10 @@ export default function POSScreen({
                     <Text style={styles.badgeText}>{totalItems}</Text>
                 </View>
             </View>
-            
             <View style={styles.cartTextWrapper}>
                 <Text style={styles.cartTotalLabel}>ຍອດລວມ:</Text>
                 <Text style={styles.cartTotalValue}>{formatNumber(totalAmount)} ₭</Text>
             </View>
-
             <View style={styles.viewCartBtn}>
                 <Text style={styles.viewCartText}>ເບິ່ງກະຕ່າ</Text>
                 <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
@@ -185,7 +188,7 @@ export default function POSScreen({
         </TouchableOpacity>
       )}
 
-      {/* 6. Cart Modal (Full Screen Modal) */}
+      {/* 6. Cart Modal */}
       <Modal visible={isCartVisible} animationType="slide" onRequestClose={() => setCartVisible(false)}>
         <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
@@ -243,7 +246,7 @@ export default function POSScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F9FA' }, // ບໍ່ໃຊ້ flexDirection: row
+  container: { flex: 1, backgroundColor: '#F5F9FA' },
   
   // Search
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', margin: 15, paddingHorizontal: 15, height: 50, borderRadius: 10, elevation: 2 },
@@ -277,7 +280,7 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 50 },
   emptyText: { fontFamily: 'Lao-Regular', color: '#999', marginTop: 10 },
 
-  // 🟢 Floating Cart Bar (ແຖບລອຍ)
+  // Floating Cart Bar
   floatingCartBar: { 
     position: 'absolute', 
     bottom: 20, left: 15, right: 15, 

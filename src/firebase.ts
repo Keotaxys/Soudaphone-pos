@@ -2,9 +2,7 @@ import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
-// 🟢 ກັບມາໃຊ້ 'firebase/auth' ປົກກະຕິ (ບໍ່ມີ /react-native)
-// ເພື່ອແກ້ບັນຫາ "Missing specifier" ຕອນ Bundle
-// @ts-ignore
+// 🟢 ໃຊ້ import ແບບນີ້ເພື່ອບໍ່ໃຫ້ເກີດ Error "Missing specifier"
 import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
 
 const firebaseConfig = {

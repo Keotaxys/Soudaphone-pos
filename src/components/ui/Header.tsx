@@ -4,11 +4,8 @@ import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'reac
 import { COLORS } from '../../types';
 
 interface HeaderProps {
-  // 🟢 ຮັບຊື່ນີ້ໃຫ້ກົງກັບ index.tsx
   toggleSidebar: () => void; 
-  user?: { name: string; role: string }; // ຮັບຂໍ້ມູນ User ມາໂຊ
-  
-  // 🟢 Props ເສີມ (ເພື່ອຮັກສາຄວາມສາມາດເດີມ)
+  user?: { name: string; role: string };
   title?: string;
   shopName?: string;
   shopId?: string;
@@ -28,18 +25,18 @@ export default function Header({
   onLogout 
 }: HeaderProps) {
   
-  // ຖ້າມີຂໍ້ມູນ User ສົ່ງມາ ໃຫ້ໃຊ້ User (ຖ້າບໍ່ມີໃຊ້ ShopName ເດີມ)
   const displayName = user?.name || shopName;
   const displayDetail = user?.role ? `Role: ${user.role}` : shopId;
 
   return (
     <View style={styles.container}>
+      {/* ກຳນົດ StatusBar ຢູ່ບ່ອນນີ້ 
+         backgroundColor: ຕັ້ງສີພື້ນຫຼັງຂອງ Status Bar ໃຫ້ເປັນສີດຽວກັບ Header
+      */}
       <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
       
       {/* Top Bar */}
       <View style={styles.topBar}>
-        
-        {/* 🟢 ດ້ານຊ້າຍ: ເມນູ + ຊື່ແອັບ */}
         <View style={styles.leftContainer}>
           <TouchableOpacity onPress={toggleSidebar}>
             <Ionicons name="menu" size={30} color="white" />
@@ -47,27 +44,23 @@ export default function Header({
           <Text style={styles.appTitle}>{title}</Text>
         </View>
 
-        {/* 🟢 ດ້ານຂວາ: ແຈ້ງເຕືອນ + Logout */}
         <View style={styles.rightIcons}>
           <TouchableOpacity>
             <Ionicons name="notifications-outline" size={24} color="white" />
           </TouchableOpacity>
-
           <TouchableOpacity onPress={onLogout} style={{marginLeft: 5}}>
             <Ionicons name="log-out-outline" size={24} color="white" />
           </TouchableOpacity>
         </View>
-
       </View>
 
-      {/* Shop Info Card (UI ເດີມທີ່ສວຍງາມ) */}
+      {/* Shop Info Card */}
       <View style={styles.shopCard}>
         <View style={styles.shopInfo}>
           {shopLogo ? (
             <Image source={{ uri: shopLogo }} style={styles.shopLogo} />
           ) : (
             <View style={styles.shopLogoPlaceholder}>
-              {/* ຕົວອັກສອນທຳອິດຂອງຊື່ */}
               <Text style={styles.shopLogoText}>{displayName ? displayName.charAt(0) : 'S'}</Text>
             </View>
           )}
@@ -87,8 +80,25 @@ export default function Header({
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: COLORS.primary, paddingBottom: 20, paddingTop: StatusBar.currentHeight || 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 1000 },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
+  container: { 
+    backgroundColor: COLORS.primary, // ສີຂຽວ Teal
+    paddingBottom: 20, 
+    
+    // 🟢 ແກ້ໄຂຈຸດນີ້: 
+    // ລຶບ StatusBar.currentHeight ອອກ ເພາະ SafeAreaView ໃນ index.tsx ຈັດການໃຫ້ແລ້ວ
+    paddingTop: 10, 
+
+    borderBottomLeftRadius: 20, 
+    borderBottomRightRadius: 20, 
+    zIndex: 1000 
+  },
+  topBar: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    marginBottom: 20 
+  },
   leftContainer: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },
   rightIcons: { flexDirection: 'row', alignItems: 'center', gap: 15 },

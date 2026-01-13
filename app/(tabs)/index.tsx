@@ -1,7 +1,10 @@
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ແທນ (ແກ້ Warning)
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // --- Imports ---
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
@@ -43,7 +46,6 @@ const emptyProduct: Product = {
 };
 
 export default function App() {
-  // 🟢 1. Hooks ທັງໝົດຕ້ອງຢູ່ເທິງສຸດ (ຫ້າມມີ if return ຂັ້ນ)
   const [fontsLoaded] = useFonts({
     'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'), 
     'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
@@ -60,8 +62,11 @@ export default function App() {
   const [isProductModalVisible, setProductModalVisible] = useState(false);
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
 
-  // 🟢 2. useEffect ກໍຕ້ອງຢູ່ເທິງ
+  // 🟢 2. ຍ້າຍ Logic ການດຶງຂໍ້ມູນມາໄວ້ບ່ອນນີ້
+  // ມັນຈະເຮັດວຽກກໍຕໍ່ເມື່ອ isLoggedIn = true ເທົ່ານັ້ນ
   useEffect(() => {
+    if (!isLoggedIn) return; // ຖ້າຍັງບໍ່ Login ບໍ່ຕ້ອງດຶງຂໍ້ມູນ
+
     const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -76,9 +81,12 @@ export default function App() {
       }
     }, (error) => {
       console.error("Error fetching products:", error);
+      // ບໍ່ຕ້ອງ Alert ຖ້າເປັນ permission denied ເພື່ອບໍ່ໃຫ້ລົບກວນ
+      if (error.message.includes("permission_denied")) return;
+      Alert.alert("Error", "ບໍ່ສາມາດດຶງຂໍ້ມູນໄດ້: " + error.message);
     });
     return () => unsubscribe();
-  }, []);
+  }, [isLoggedIn]); // ເຮັດວຽກເມື່ອສະຖານະ Login ປ່ຽນ
 
   // --- Handlers ---
   const addToCart = (product: Product) => {
@@ -183,7 +191,6 @@ export default function App() {
     }
   };
 
-  // 🟢 3. Conditional Return (ເອົາມາໄວ້ລຸ່ມສຸດ ຫຼັງຈາກ Hooks ທຸກຢ່າງ)
   if (!fontsLoaded) {
     return (
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -199,6 +206,7 @@ export default function App() {
   const TABS = ['Home', 'POS', 'Products', 'Customers', 'Orders', 'Reports', 'Expenses', 'Debts', 'Shift'];
 
   return (
+    // 🟢 ໃຊ້ SafeAreaView ແບບຖືກຕ້ອງ
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" backgroundColor="#008B94" />
       

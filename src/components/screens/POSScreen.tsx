@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -10,12 +9,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Alert
 } from 'react-native';
-import { CartItem, COLORS, formatNumber, Product } from '../../types';
+import { COLORS, formatNumber, Product, CartItem } from '../../types';
 
 const { width, height } = Dimensions.get('window');
-const ORANGE_COLOR = '#EF6C00'; // ສີສົ້ມເຂັ້ມສຳລັບ Online/QR/THB
+const ORANGE_COLOR = '#EF6C00';
 
 interface POSScreenProps {
   products: Product[];
@@ -52,8 +52,8 @@ export default function POSScreen({
   const [orderSource, setOrderSource] = useState<'shop' | 'online'>('shop');
   const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
-  const [amountReceived, setAmountReceived] = useState(''); // ເງິນຮັບມາ
-  const [exchangeRate] = useState(680); // ອັດຕາແລກປ່ຽນສົມມຸດ (ປັບໄດ້)
+  const [amountReceived, setAmountReceived] = useState('');
+  const [exchangeRate] = useState(680); 
 
   // Receipt Modal State
   const [isReceiptVisible, setReceiptVisible] = useState(false);
@@ -74,10 +74,9 @@ export default function POSScreen({
 
   // Calculations
   const totalAmountLAK = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const totalAmountTHB = Math.ceil(totalAmountLAK / exchangeRate); // ຄຳນວນເງິນບາດ
+  const totalAmountTHB = Math.ceil(totalAmountLAK / exchangeRate);
   const displayTotal = currency === 'LAK' ? totalAmountLAK : totalAmountTHB;
   
-  // Logic ເງິນທອນ
   const receivedVal = parseFloat(amountReceived.replace(/,/g, '')) || 0;
   const change = receivedVal - displayTotal;
 
@@ -98,19 +97,14 @@ export default function POSScreen({
         date: new Date().toISOString()
     };
 
-    // ບັນທຶກລົງ Firebase
     onCheckout(orderData);
-    
-    // ເກັບຂໍ້ມູນເພື່ອໂຊໃບບິນ
     setLastOrderDetails(orderData);
     
-    // ປິດກະຕ່າ ແລ້ວເປີດໃບບິນ
     setCartVisible(false);
     setTimeout(() => setReceiptVisible(true), 500);
     setAmountReceived('');
   };
 
-  // --- Render Item ---
   const renderProductItem = ({ item }: { item: Product }) => (
     <View style={styles.productCard}>
       <TouchableOpacity activeOpacity={0.8} onPress={() => addToCart(item)} style={styles.cardContent}>
@@ -133,7 +127,6 @@ export default function POSScreen({
 
   return (
     <View style={styles.container}>
-      {/* ... (Search, Header, List ເໝືອນເດີມ) ... */}
       <FlatList
         ListHeaderComponent={
             <View>
@@ -163,12 +156,11 @@ export default function POSScreen({
         </TouchableOpacity>
       )}
 
-      {/* 🟢 Cart Modal (ແກ້ໄຂຕາມຮູບ) */}
+      {/* Cart Modal */}
       <Modal visible={isCartVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
                 
-                {/* Header */}
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>ກະຕ່າສິນຄ້າ ({cart.length})</Text>
                     <TouchableOpacity onPress={() => setCartVisible(false)}>
@@ -176,7 +168,7 @@ export default function POSScreen({
                     </TouchableOpacity>
                 </View>
 
-                {/* 1. Source Toggle (Shop/Online) */}
+                {/* Source Toggle */}
                 <View style={styles.toggleRow}>
                     <TouchableOpacity style={[styles.toggleBtn, orderSource === 'shop' ? {backgroundColor: COLORS.primary} : styles.inactiveBtn]} onPress={() => setOrderSource('shop')}>
                         <Text style={[styles.toggleText, orderSource === 'shop' ? {color:'white'} : {color:'#666'}]}>ໜ້າຮ້ານ</Text>
@@ -184,8 +176,6 @@ export default function POSScreen({
                     <TouchableOpacity style={[styles.toggleBtn, orderSource === 'online' ? {backgroundColor: ORANGE_COLOR} : styles.inactiveBtn]} onPress={() => setOrderSource('online')}>
                         <Text style={[styles.toggleText, orderSource === 'online' ? {color:'white'} : {color:'#666'}]}>Online</Text>
                     </TouchableOpacity>
-                    
-                    {/* Date Display */}
                     <View style={styles.dateBadge}>
                         <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
                         <Text style={styles.dateText}>{new Date().toLocaleDateString('en-GB')}</Text>
@@ -219,7 +209,7 @@ export default function POSScreen({
 
                 <View style={styles.divider} />
 
-                {/* 2. Currency Toggle */}
+                {/* Currency Toggle */}
                 <View style={styles.currencyRow}>
                     <TouchableOpacity style={[styles.currencyBtn, currency === 'LAK' ? {backgroundColor: COLORS.primary} : styles.inactiveBorderBtn]} onPress={() => setCurrency('LAK')}>
                         <Text style={[styles.currencyBtnText, currency === 'LAK' ? {color:'white'} : {color: COLORS.primary}]}>₭ ເງິນກີບ</Text>
@@ -240,7 +230,7 @@ export default function POSScreen({
                     </View>
                 </View>
 
-                {/* 3. Payment Method Toggle */}
+                {/* Payment Method Toggle */}
                 <View style={styles.methodRow}>
                     <TouchableOpacity style={[styles.methodBtn, paymentMethod === 'CASH' ? {borderColor: COLORS.primary, backgroundColor: '#E0F2F1'} : styles.inactiveMethod]} onPress={() => setPaymentMethod('CASH')}>
                         <Ionicons name="cash-outline" size={24} color={paymentMethod === 'CASH' ? COLORS.primary : '#999'} />
@@ -252,7 +242,7 @@ export default function POSScreen({
                     </TouchableOpacity>
                 </View>
 
-                {/* 4. Cash Input (Show only if Cash) */}
+                {/* Cash Input */}
                 {paymentMethod === 'CASH' && (
                     <View style={styles.cashSection}>
                         <View style={styles.inputGroup}>
@@ -286,7 +276,7 @@ export default function POSScreen({
         </View>
       </Modal>
 
-      {/* 🟢 Receipt Modal (ໃບບິນ) */}
+      {/* Receipt Modal */}
       <Modal visible={isReceiptVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
             <View style={styles.receiptContainer}>
@@ -355,7 +345,7 @@ const styles = StyleSheet.create({
   viewCartBtn: { backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 5 },
   viewCartText: { color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 12 },
 
-  // 🟢 Modal Overlay Styles
+  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#F5F9FA', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, height: '85%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
@@ -368,12 +358,14 @@ const styles = StyleSheet.create({
   dateBadge: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'white', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: COLORS.primary },
   dateText: { color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 12 },
 
-  itemThumb: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#eee' },
+  // 🟢 Styles ທີ່ຂາດໄປ (ເພີ່ມໃຫ້ແລ້ວ)
+  cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 15 },
+  itemThumb: { width: 50, height: 50, borderRadius: 10, backgroundColor: '#eee' },
   itemName: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#333' },
   itemPrice: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
-  qtyBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 8, paddingHorizontal: 5 },
-  qtySign: { fontSize: 20, paddingHorizontal: 10, color: '#666' },
-  qtyVal: { fontSize: 16, fontFamily: 'Lao-Bold', paddingHorizontal: 5 },
+  qtyBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 8, paddingHorizontal: 5, height: 30 },
+  qtySign: { fontSize: 18, paddingHorizontal: 10, color: '#666', fontFamily: 'Lao-Bold' },
+  qtyVal: { fontSize: 14, fontFamily: 'Lao-Bold', paddingHorizontal: 5, minWidth: 20, textAlign: 'center' },
   
   divider: { height: 1, backgroundColor: '#ddd', marginVertical: 15 },
   

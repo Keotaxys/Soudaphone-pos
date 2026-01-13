@@ -18,7 +18,7 @@ import {
 import { CartItem, COLORS, formatNumber, Product } from '../../types';
 
 const { width } = Dimensions.get('window');
-const ORANGE_THEME = '#FF8F00'; // ສີສົ້ມ Theme ທີ່ຖືກຕ້ອງ
+const ORANGE_THEME = '#FF8F00';
 
 interface POSScreenProps {
   products: Product[];
@@ -33,14 +33,13 @@ interface POSScreenProps {
   onOpenAddProduct?: () => void;
 }
 
-// Helper: ຈັດ Format ໃສ່ຈຸດເວລາພິມ (String -> String)
+// Helper Functions
 const formatInputNumber = (val: string) => {
     const numericValue = val.replace(/[^0-9]/g, '');
     if (!numericValue) return '';
     return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
-// Helper: ແປງກັບເປັນຕົວເລກ (String -> Number)
 const parseInputNumber = (val: string) => {
     return parseFloat(val.replace(/,/g, '')) || 0;
 };
@@ -68,10 +67,10 @@ export default function POSScreen({
   const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
   
-  // 🟢 State ສຳລັບການພິມຕົວເລກ (String ເພື່ອຮອງຮັບ comma)
   const [amountReceived, setAmountReceived] = useState('');
-  const [editableTotal, setEditableTotal] = useState(''); // ຍອດທີ່ແກ້ໄຂໄດ້
+  const [editableTotal, setEditableTotal] = useState(''); 
   
+  // 🟢 ກຳນົດອັດຕາແລກປ່ຽນ (ຄວນດຶງຈາກ Database ຖ້າມີ)
   const [exchangeRate] = useState(680); 
   
   // Date Picker State
@@ -82,6 +81,7 @@ export default function POSScreen({
   const [isReceiptVisible, setReceiptVisible] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
+  // Filter Logic
   useEffect(() => {
     const uniqueCats = ['All', ...new Set(products.map(p => p.category || 'ອື່ນໆ'))];
     setCategories(uniqueCats);
@@ -95,26 +95,43 @@ export default function POSScreen({
     setFilteredProducts(filtered);
   }, [searchQuery, selectedCategory, products]);
 
-  // 🟢 Effect: ອັບເດດຍອດລວມເມື່ອ Cart ຫຼື Currency ປ່ຽນ
+  // 🟢 1. Logic ຄຳນວນເງິນທີ່ຖືກຕ້ອງ (Fix Currency Issue)
+  const calculateBaseTotalLAK = () => {
+    return cart.reduce((sum, item) => {
+        let itemTotalLAK = 0;
+        // ຖ້າສິນຄ້າເປັນເງິນບາດ -> ແປງເປັນກີບກ່ອນ
+        if (item.priceCurrency === 'THB') {
+            itemTotalLAK = item.price * exchangeRate * item.quantity;
+        } else {
+            itemTotalLAK = item.price * item.quantity;
+        }
+        return sum + itemTotalLAK;
+    }, 0);
+  };
+
+  // ຄຳນວນຍອດຕາມສະກຸນເງິນທີ່ເລືອກຈ່າຍ
+  const getDisplayTotal = () => {
+    const baseTotalLAK = calculateBaseTotalLAK();
+    if (currency === 'LAK') return baseTotalLAK;
+    return Math.ceil(baseTotalLAK / exchangeRate); // ແປງກັບເປັນບາດ
+  };
+
+  // Update Editable Total when cart/currency changes
   useEffect(() => {
-    const rawTotalLAK = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const rawTotal = currency === 'LAK' ? rawTotalLAK : Math.ceil(rawTotalLAK / exchangeRate);
-    setEditableTotal(formatNumber(rawTotal)); // Reset ຍອດແກ້ໄຂໃຫ້ເທົ່າກັບຍອດຈິງ
-    setAmountReceived(''); // Reset ຍອດຮັບເງິນ
+    const total = getDisplayTotal();
+    setEditableTotal(formatNumber(total)); 
+    setAmountReceived(''); 
   }, [cart, currency]);
 
-  // Calculations
-  const rawTotalLAK = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const calculatedTotal = currency === 'LAK' ? rawTotalLAK : Math.ceil(rawTotalLAK / exchangeRate);
-  
-  // ດຶງຄ່າຈາກທີ່ພິມ (ຖ້າແກ້ໄຂ)
-  const finalTotal = parseInputNumber(editableTotal);
-  const discount = calculatedTotal - finalTotal; // ຄຳນວນສ່ວນຫຼຸດ
+  // Derived Values
+  const finalTotal = parseInputNumber(editableTotal); // ຍອດທີ່ແກ້ໄຂແລ້ວ
+  const systemTotal = getDisplayTotal(); // ຍອດຈິງຈາກລະບົບ
+  const discount = systemTotal - finalTotal; // ສ່ວນຫຼຸດ
   
   const receivedVal = parseInputNumber(amountReceived);
   const change = receivedVal - finalTotal;
 
-  // Handle Date Change
+  // 🟢 2. Handle Date Change (Fix Date Picker)
   const onDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
     if (selectedDate) setOrderDate(selectedDate);
@@ -128,14 +145,15 @@ export default function POSScreen({
 
     const orderData = {
         items: cart,
-        originalTotal: calculatedTotal, // ຍອດເຕັມ
-        total: finalTotal,              // ຍອດຫຼັງຫັກສ່ວນຫຼຸດ (ຖ້າມີ)
-        discount: discount > 0 ? discount : 0, // ບັນທຶກສ່ວນຫຼຸດ
+        originalTotal: systemTotal,
+        total: finalTotal,
+        discount: discount > 0 ? discount : 0,
         currency,
         source: orderSource,
         paymentMethod,
         amountReceived: receivedVal,
         change: change,
+        exchangeRateUsed: exchangeRate, // ບັນທຶກ Rate ທີ່ໃຊ້
         date: orderDate.toISOString()
     };
 
@@ -192,12 +210,12 @@ export default function POSScreen({
       {cart.length > 0 && (
         <TouchableOpacity style={styles.floatingCartBar} activeOpacity={0.9} onPress={() => setCartVisible(true)}>
             <View style={styles.cartIconWrapper}><Ionicons name="cart" size={24} color="white" /><View style={styles.badge}><Text style={styles.badgeText}>{cart.reduce((a,b)=>a+b.quantity,0)}</Text></View></View>
-            <View style={styles.cartTextWrapper}><Text style={styles.cartTotalLabel}>ຍອດລວມ:</Text><Text style={styles.cartTotalValue}>{formatNumber(rawTotalLAK)} ₭</Text></View>
+            <View style={styles.cartTextWrapper}><Text style={styles.cartTotalLabel}>ຍອດລວມ (ກີບ):</Text><Text style={styles.cartTotalValue}>{formatNumber(calculateBaseTotalLAK())} ₭</Text></View>
             <View style={styles.viewCartBtn}><Text style={styles.viewCartText}>ເບິ່ງກະຕ່າ</Text><Ionicons name="chevron-forward" size={16} color={COLORS.primary} /></View>
         </TouchableOpacity>
       )}
 
-      {/* 🟢 Cart Modal */}
+      {/* Cart Modal */}
       <Modal visible={isCartVisible} animationType="slide" transparent={true}>
         <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -221,7 +239,7 @@ export default function POSScreen({
                         <Text style={[styles.toggleText, orderSource === 'online' ? {color:'white'} : {color:'#666'}]}>Online</Text>
                     </TouchableOpacity>
                     
-                    {/* 🟢 1. ປຸ່ມວັນທີ (ກົດແລ້ວເປີດທັນທີ) */}
+                    {/* Date Picker Button */}
                     <TouchableOpacity style={styles.dateBadge} onPress={() => setShowDatePicker(true)}>
                         <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
                         <Text style={styles.dateText}>{orderDate.toLocaleDateString('en-GB')}</Text>
@@ -238,7 +256,7 @@ export default function POSScreen({
                                 <Image source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://via.placeholder.com/50' }} style={styles.itemThumb} />
                                 <View style={{flex: 1, marginLeft: 10}}>
                                     <Text style={styles.itemName}>{item.name}</Text>
-                                    <Text style={styles.itemPrice}>{formatNumber(item.price)} ₭</Text>
+                                    <Text style={styles.itemPrice}>{formatNumber(item.price)} {item.priceCurrency === 'THB' ? '฿' : '₭'}</Text>
                                 </View>
                                 <View style={styles.qtyBox}>
                                     <TouchableOpacity onPress={() => updateQuantity(item.id!, -1)}><Text style={styles.qtySign}>-</Text></TouchableOpacity>
@@ -253,7 +271,7 @@ export default function POSScreen({
                     />
                 </View>
 
-                {/* Payment Section (Fixed Bottom) */}
+                {/* Payment Section */}
                 <View style={styles.paymentSection}>
                     <View style={styles.currencyRow}>
                         <TouchableOpacity style={[styles.currencyBtn, currency === 'LAK' ? {backgroundColor: COLORS.primary} : styles.inactiveBorderBtn]} onPress={() => setCurrency('LAK')}>
@@ -264,11 +282,11 @@ export default function POSScreen({
                         </TouchableOpacity>
                     </View>
 
-                    {/* 🟢 3. ຍອດຊຳລະ (ແກ້ໄຂໄດ້ + ໂຊ Rate) */}
+                    {/* Total & Rate Display */}
                     <View style={styles.totalDisplayRow}>
                         <View style={{flex: 1}}>
                             <Text style={styles.totalLabel}>ຍອດຕ້ອງຊຳລະ:</Text>
-                            {/* 🟢 2. ໂຊ Rate ເປັນສີເທົານ້ອຍໆ */}
+                            {/* 🟢 Rate Display */}
                             {currency === 'THB' && (
                                 <Text style={{fontSize: 10, color: '#999'}}>Rate: 1 ฿ = {exchangeRate} ₭</Text>
                             )}
@@ -280,7 +298,7 @@ export default function POSScreen({
                                 value={editableTotal}
                                 onChangeText={(text) => setEditableTotal(formatInputNumber(text))}
                                 keyboardType="number-pad"
-                                selectTextOnFocus={true} // 🟢 4. Auto Select
+                                selectTextOnFocus={true} 
                             />
                             <Text style={[styles.currencySuffix, {color: currency === 'LAK' ? COLORS.primary : ORANGE_THEME}]}>
                                 {currency === 'LAK' ? '₭' : '฿'}
@@ -289,7 +307,6 @@ export default function POSScreen({
                         </View>
                     </View>
 
-                    {/* Payment Method */}
                     <View style={styles.methodRow}>
                         <TouchableOpacity style={[styles.methodBtn, paymentMethod === 'CASH' ? {borderColor: COLORS.primary, backgroundColor: '#E0F2F1'} : styles.inactiveMethod]} onPress={() => setPaymentMethod('CASH')}>
                             <Ionicons name="cash-outline" size={24} color={paymentMethod === 'CASH' ? COLORS.primary : '#999'} />
@@ -310,13 +327,12 @@ export default function POSScreen({
                                     keyboardType="number-pad" 
                                     placeholder="0" 
                                     value={amountReceived}
-                                    onChangeText={(text) => setAmountReceived(formatInputNumber(text))} // 🟢 5. Format comma
-                                    selectTextOnFocus={true} // 🟢 4. Auto Select
+                                    onChangeText={(text) => setAmountReceived(formatInputNumber(text))} 
+                                    selectTextOnFocus={true} 
                                 />
                             </View>
                             <View style={styles.changeGroup}>
                                 <Text style={styles.inputLabel}>ເງິນທອນ:</Text>
-                                {/* 🟢 5. ສີເງິນທອນ Teal/Orange ເທົ່ານັ້ນ */}
                                 <Text style={[styles.changeValue, change < 0 ? {color: ORANGE_THEME} : {color: COLORS.primary}]}>
                                     {formatNumber(change > 0 ? change : 0)} {currency === 'LAK' ? '₭' : '฿'}
                                 </Text>
@@ -324,7 +340,6 @@ export default function POSScreen({
                         </View>
                     )}
 
-                    {/* 🟢 4. ປຸ່ມຊຳລະເງິນເປັນສີ Teal ສະເໝີ */}
                     <TouchableOpacity 
                         style={[styles.payBigBtn, { backgroundColor: COLORS.primary }]} 
                         onPress={handlePayment}
@@ -333,35 +348,30 @@ export default function POSScreen({
                     </TouchableOpacity>
                 </View>
 
+                {/* 🟢 Date Picker Modal Inside Cart Modal */}
+                {showDatePicker && (
+                    <View style={styles.embeddedDatePickerOverlay}>
+                        <View style={styles.embeddedDatePicker}>
+                            <Text style={{fontFamily: 'Lao-Bold', marginBottom: 10, textAlign:'center'}}>ເລືອກວັນທີ</Text>
+                            <DateTimePicker 
+                                value={orderDate} 
+                                mode="date" 
+                                display="inline" 
+                                onChange={onDateChange}
+                                textColor="black"
+                                themeVariant="light"
+                                style={{backgroundColor: 'white'}}
+                            />
+                            <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.closeDateBtn}>
+                                <Text style={styles.closeDateText}>ຕົກລົງ</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+
             </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      {/* 🟢 1. Date Picker (ເປີດທັນທີ & ຮອງຮັບ Dark Mode) */}
-      {showDatePicker && (
-        Platform.OS === 'ios' ? (
-            <Modal visible={true} transparent animationType="fade">
-                <View style={styles.datePickerOverlay}>
-                    <View style={styles.datePickerContainer}>
-                        <DateTimePicker 
-                            value={orderDate} 
-                            mode="date" 
-                            display="inline" 
-                            onChange={onDateChange}
-                            textColor="black" // ບັງຄັບສີດຳ
-                            themeVariant="light" // ບັງຄັບ Light Theme
-                            style={{backgroundColor:'white'}}
-                        />
-                        <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.closeDateBtn}>
-                            <Text style={styles.closeDateText}>ຕົກລົງ</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-        ) : (
-            <DateTimePicker value={orderDate} mode="date" onChange={onDateChange} />
-        )
-      )}
 
       {/* Receipt Modal */}
       <Modal visible={isReceiptVisible} transparent animationType="fade">
@@ -374,7 +384,7 @@ export default function POSScreen({
                 </View>
                 
                 <View style={styles.receiptBody}>
-                    <View style={styles.receiptRow}><Text>ຍອດລວມ:</Text><Text style={styles.receiptValue}>{formatNumber(lastOrderDetails?.originalTotal)}</Text></View>
+                    <View style={styles.receiptRow}><Text>ຍອດລວມ:</Text><Text style={styles.receiptValue}>{formatNumber(lastOrderDetails?.originalTotal)} {lastOrderDetails?.currency === 'THB' ? '฿' : '₭'}</Text></View>
                     {lastOrderDetails?.discount > 0 && (
                         <View style={styles.receiptRow}><Text style={{color:'red'}}>ສ່ວນຫຼຸດ:</Text><Text style={{color:'red'}}>-{formatNumber(lastOrderDetails?.discount)}</Text></View>
                     )}
@@ -437,9 +447,8 @@ const styles = StyleSheet.create({
   viewCartBtn: { backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 5 },
   viewCartText: { color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 12 },
 
-  // Modal Overlay
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#F5F9FA', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, height: '85%' },
+  modalContent: { backgroundColor: '#F5F9FA', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, height: '90%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   modalTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333' },
   
@@ -469,8 +478,6 @@ const styles = StyleSheet.create({
   totalDisplayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   totalLabel: { fontSize: 16, fontFamily: 'Lao-Regular', color: '#666' },
   totalValue: { fontSize: 24, fontFamily: 'Lao-Bold' },
-  
-  // 🟢 New Editable Total Styles
   totalInput: { fontSize: 24, fontFamily: 'Lao-Bold', textAlign: 'right', minWidth: 100 },
   currencySuffix: { fontSize: 20, fontFamily: 'Lao-Bold', marginLeft: 5 },
 
@@ -489,8 +496,9 @@ const styles = StyleSheet.create({
   payBigBtn: { padding: 18, borderRadius: 15, alignItems: 'center', elevation: 3, marginBottom: 20 },
   payBigText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 20 },
 
-  datePickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
+  // Embedded Date Picker
+  embeddedDatePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
+  embeddedDatePicker: { backgroundColor: 'white', padding: 20, borderRadius: 15, width: '90%', alignItems: 'center' },
   closeDateBtn: { marginTop: 15, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 10, width: '100%', alignItems: 'center' },
   closeDateText: { fontFamily: 'Lao-Bold', color: COLORS.primary },
 

@@ -1,12 +1,12 @@
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
-import { getApp, getApps, initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
 // 🟢 1. ເພີ່ມແຖວນີ້! (ສຳຄັນ) ບັງຄັບໃຫ້ໂຫຼດ Auth Component ເພື່ອແກ້ Error "Not registered"
-import 'firebase/auth';
+import 'firebase/auth'; 
 
 // @ts-ignore
-import { getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",

@@ -20,10 +20,14 @@ interface SidebarProps {
   tabs?: string[];
 }
 
-// ລາຍການເມນູ (ຕົງກັບຮູບພາບທີ່ສົ່ງມາ)
+// 🟢 ເພີ່ມ "ປະຫວັດການຂາຍ" (history) ກັບເຂົ້າມາໃນລາຍການ
 const MENU_ITEMS = [
   { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' },
   { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart-outline' },
+  
+  // 🔥 ກູ້ຄືນເມນູນີ້ກັບມາ:
+  { id: 'history', label: 'ປະຫວັດການຂາຍ', icon: 'time-outline' },
+
   { id: 'products', label: 'ຈັດການສິນຄ້າ', icon: 'cube-outline' },
   { id: 'expenses', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet-outline' },
   { id: 'orders', label: 'ຕິດຕາມຄຳສັ່ງຊື້', icon: 'cube-outline' },
@@ -39,7 +43,7 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
 
   return (
     <View style={styles.container}>
-      {/* 🟢 Header ສີຂຽວ ຕາມຮູບ */}
+      {/* Header ສີຂຽວ */}
       <View style={styles.header}>
         <Text style={styles.title}>ເມນູຫຼັກ</Text>
         <TouchableOpacity onPress={onClose}>
@@ -101,10 +105,10 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   header: { 
-    height: 100, // ຄວາມສູງ Header
-    backgroundColor: COLORS?.primary || '#008B94', // ສີຂຽວ Teal
+    height: 100, 
+    backgroundColor: COLORS?.primary || '#008B94', 
     paddingHorizontal: 20, 
-    paddingTop: 40, // ເວັ້ນ StatusBar
+    paddingTop: 40, 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center' 
@@ -126,7 +130,7 @@ const styles = StyleSheet.create({
     marginBottom: 5 
   },
   activeItem: { 
-    backgroundColor: '#E0F2F1' // ສີຂຽວອ່ອນໆ ເວລາເລືອກ (ຕາມຮູບ)
+    backgroundColor: '#E0F2F1' 
   },
   menuText: { 
     fontSize: 16, 

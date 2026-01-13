@@ -2,7 +2,6 @@ import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ (ແກ້ Warning ແລະ Layout)
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // --- Imports ---
@@ -19,8 +18,11 @@ import LoginScreen from '../../src/components/screens/LoginScreen';
 import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
 import ProductsScreen from '../../src/components/screens/ProductsScreen';
-import ReportDashboard from '../../src/components/screens/ReportDashboard';
 import ShiftScreen from '../../src/components/screens/ShiftScreen';
+
+// 🟢 2 ໜ້າໃໝ່ທີ່ເຮົາແຍກອອກມາ
+import ReportDashboard from '../../src/components/screens/ReportDashboard';
+import SalesHistoryScreen from '../../src/components/screens/SalesHistoryScreen';
 
 // UI Components
 import Footer from '../../src/components/ui/Footer';
@@ -30,7 +32,7 @@ import Sidebar from '../../src/components/ui/Sidebar';
 // Modals
 import ProductModal from '../../src/components/modals/ProductModal';
 
-// 🔥 Force Cast Components
+// 🔥 Force Cast Components (ແກ້ບັນຫາ Type ທີ່ເຂັ້ມງວດເກີນໄປ)
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -45,7 +47,7 @@ const emptyProduct: Product = {
 };
 
 export default function App() {
-  // 🟢 1. HOOKS: ປະກາດໄວ້ເທິງສຸດສະເໝີ
+  // 🟢 1. Hooks: ຕ້ອງຢູ່ເທິງສຸດສະເໝີ
   const [fontsLoaded] = useFonts({
     'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'), 
     'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
@@ -62,7 +64,7 @@ export default function App() {
   const [isProductModalVisible, setProductModalVisible] = useState(false);
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
 
-  // 🟢 2. useEffect: ດຶງຂໍ້ມູນເມື່ອ Login ແລ້ວ
+  // 🟢 2. Fetch Data (ເຮັດວຽກເມື່ອ Login ແລ້ວ)
   useEffect(() => {
     if (!isLoggedIn) return; 
 
@@ -170,7 +172,7 @@ export default function App() {
     setProductModalVisible(false);
   };
 
-  // 🟢 3. Render Screen Logic (ແກ້ໄຂຊື່ Case ໃຫ້ກົງກັບ Footer ແລະ Sidebar)
+  // 🟢 3. Render Logic (ແຍກ history ແລະ reports)
   const renderScreen = () => {
     const tabName = activeTab.toLowerCase();
     switch (tabName) {
@@ -184,21 +186,21 @@ export default function App() {
       case 'customers': return <CustomerScreen />;
       case 'orders': return <OrderTrackingScreen />;
       
-      // 🟢 ຕ້ອງເປັນ reports (ມີ s) ຕາມ Footer
+      // 🟢 ລາຍງານ (Dashboard)
       case 'reports': return <ReportDashboard />; 
       
-      // 🟢 ຕ້ອງເປັນ expenses (ມີ s) ຕາມ Footer
+      // 🟢 ປະຫວັດການຂາຍ (ໜ້າ List)
+      case 'history': return <SalesHistoryScreen />;
+
       case 'expenses': return <ExpenseScreen />;
-      
       case 'debts': return <DebtScreen />;
       case 'shift': return <ShiftScreen />;
-      case 'history': return <ReportDashboard />; 
       
       default: return <HomeScreenAny salesHistory={salesHistory} products={products} />;
     }
   };
 
-  // 🟢 4. Conditional Returns (ຕ້ອງຢູ່ລຸ່ມສຸດ ຫຼັງຈາກ Hooks)
+  // 🟢 4. Conditional Returns (Loading / Login)
   if (!fontsLoaded) {
     return (
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -228,9 +230,8 @@ export default function App() {
                   activeTab={activeTab} 
                   onTabChange={(tab: string) => { setActiveTab(tab); setIsSidebarOpen(false); }} 
                   tabs={TABS}
-                  onClose={() => setIsSidebarOpen(false)} // ສົ່ງ onClose ໃຫ້ Sidebar ເຮັດວຽກ
+                  onClose={() => setIsSidebarOpen(false)}
                />
-               {/* ພື້ນທີ່ໂປ່ງໃສ ກົດເພື່ອປິດ */}
                <View style={styles.transparentCloseArea} onTouchEnd={() => setIsSidebarOpen(false)} />
             </View>
           )}
@@ -264,7 +265,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F9FA' },
-  mainContainer: { flex: 1, position: 'relative' }, // ໃຫ້ເປັນ relative ເພື່ອໃຫ້ sidebar absolute
+  mainContainer: { flex: 1, position: 'relative' },
   
   // Sidebar Overlay
   sidebarOverlay: {

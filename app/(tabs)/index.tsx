@@ -1,13 +1,13 @@
-import { useFonts } from 'expo-font';
+import React, { useState, useEffect } from 'react';
+import { View, Alert, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { useFonts } from 'expo-font';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
 // --- Imports ---
-import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import { db } from '../../src/firebase';
-import { CartItem, Product, SaleRecord } from '../../src/types';
+import { ref, onValue, push, set, remove, update } from 'firebase/database';
+import { Product, CartItem, SaleRecord } from '../../src/types';
 
 // Screens
 import CustomerScreen from '../../src/components/screens/CustomerScreen';
@@ -18,17 +18,20 @@ import LoginScreen from '../../src/components/screens/LoginScreen';
 import OrderTrackingScreen from '../../src/components/screens/OrderTrackingScreen';
 import POSScreen from '../../src/components/screens/POSScreen';
 import ProductsScreen from '../../src/components/screens/ProductsScreen';
-import ReportDashboard from '../../src/components/screens/ReportDashboard';
-import SalesHistoryScreen from '../../src/components/screens/SalesHistoryScreen';
 import ShiftScreen from '../../src/components/screens/ShiftScreen';
+import SalesHistoryScreen from '../../src/components/screens/SalesHistoryScreen';
+import ReportDashboard from '../../src/components/screens/ReportDashboard';
 
 // UI Components
-import ProductModal from '../../src/components/modals/ProductModal';
 import Footer from '../../src/components/ui/Footer';
 import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
-// Force Cast
+// Modals
+import ProductModal from '../../src/components/modals/ProductModal';
+// 🟢 Import Scanner Modal
+import ScannerModal from '../../src/components/modals/ScannerModal';
+
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -37,6 +40,7 @@ const SidebarAny = Sidebar as any;
 const FooterAny = Footer as any;
 const ProductModalAny = ProductModal as any;
 const LoginScreenAny = LoginScreen as any;
+const ScannerModalAny = ScannerModal as any;
 
 const emptyProduct: Product = {
   id: '', name: '', price: 0, stock: 0, priceCurrency: 'LAK', category: '', barcode: ''
@@ -58,6 +62,9 @@ export default function App() {
   
   const [isProductModalVisible, setProductModalVisible] = useState(false);
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
+  
+  // 🟢 State ສຳລັບ Scanner
+  const [isScannerVisible, setScannerVisible] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn) return; 
@@ -77,6 +84,7 @@ export default function App() {
     return () => unsubscribe();
   }, [isLoggedIn]); 
 
+  // --- Handlers ---
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
@@ -132,10 +140,35 @@ export default function App() {
     setProductModalVisible(false);
   };
 
+  // 🟢 ຈັດການເມື່ອສະແກນບາໂຄດໄດ້ (ຈາກໜ້າ Home)
+  const handleScanSuccess = (code: string) => {
+    setScannerVisible(false);
+    const foundProduct = products.find(p => p.barcode === code);
+    
+    if (foundProduct) {
+        // ຖ້າເຈີສິນຄ້າ ໃຫ້ໄປໜ້າ POS ແລະ ເພີ່ມລົງກະຕ່າ
+        addToCart(foundProduct);
+        setActiveTab('POS');
+        Alert.alert("ສຳເລັດ", `ເພີ່ມ ${foundProduct.name} ລົງກະຕ່າແລ້ວ`);
+    } else {
+        Alert.alert("ບໍ່ພົບສິນຄ້າ", `ລະຫັດ: ${code} ບໍ່ມີໃນລະບົບ`);
+    }
+  };
+
+  // Render Logic
   const renderScreen = () => {
     const tabName = activeTab.toLowerCase();
     switch (tabName) {
-      case 'home': return <HomeScreenAny salesHistory={salesHistory} products={products} />;
+      case 'home': return (
+        // 🟢 ສົ່ງ Props ໃຫ້ HomeScreen ໃຊ້ງານປຸ່ມດ່ວນ
+        <HomeScreenAny 
+            salesHistory={salesHistory} 
+            products={products} 
+            onQuickAddProduct={openAddProductModal} // ເປີດ Modal ເພີ່ມສິນຄ້າ
+            onQuickScan={() => setScannerVisible(true)} // ເປີດ Modal ສະແກນ
+            onQuickCustomer={() => setActiveTab('Customers')} // ໄປໜ້າລູກຄ້າ
+        />
+      );
       case 'pos': return <POSScreenAny products={products} cart={cart} addToCart={addToCart} removeFromCart={removeFromCart} updateQuantity={updateQuantity} clearCart={clearCart} onCheckout={handleCheckout} openEditProductModal={openEditProductModal} />;
       case 'products': return <ProductsScreenAny products={products} onAddProduct={openAddProductModal} onEditProduct={openEditProductModal} onDeleteProduct={handleDeleteProduct} />;
       case 'customers': return <CustomerScreen />;
@@ -156,13 +189,8 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {/* 🟢 ສ່ວນທີ 1: ພື້ນທີ່ Status Bar ເທິງສຸດ (ສີຂຽວ) */}
       <SafeAreaView style={{ flex: 0, backgroundColor: '#008B94' }} edges={['top']} />
-
-      {/* 🟢 ສ່ວນທີ 2: ເນື້ອຫາແອັບ (ສີເທົາອ່ອນ) */}
       <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
-        
-        {/* ຕັ້ງຄ່າໃຫ້ຕົວໜັງສືເປັນສີຂາວ */}
         <StatusBar style="light" backgroundColor="#008B94" />
         
         <HeaderAny toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} user={{ name: 'Admin', role: 'Manager' }} />
@@ -182,22 +210,20 @@ export default function App() {
 
         <FooterAny status="Online" version="1.0.0" currentTab={activeTab.toLowerCase()} onTabChange={(tab: string) => setActiveTab(tab)} />
 
+        {/* Product Modal */}
         <ProductModalAny visible={isProductModalVisible} onClose={() => setProductModalVisible(false)} product={tempProduct} setProduct={setTempProduct} onSave={onSaveProductFromModal} onPickImage={() => {}} onScan={() => {}} />
+        
+        {/* 🟢 Scanner Modal */}
+        <ScannerModalAny visible={isScannerVisible} onClose={() => setScannerVisible(false)} onScan={handleScanSuccess} />
+
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  // Container ຫຼັກຂອງເນື້ອຫາ
-  container: { 
-    flex: 1, 
-    backgroundColor: '#F5F9FA' 
-  },
-  mainContainer: { 
-    flex: 1, 
-    position: 'relative' 
-  },
+  container: { flex: 1, backgroundColor: '#F5F9FA' },
+  mainContainer: { flex: 1, position: 'relative' },
   sidebarOverlay: { position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, zIndex: 999, flexDirection: 'row' },
   transparentCloseArea: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   contentWrapper: { flex: 1, backgroundColor: '#fff', marginHorizontal: 10, marginTop: 10, marginBottom: 0, borderRadius: 10, overflow: 'hidden' }

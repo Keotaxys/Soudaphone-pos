@@ -1,7 +1,7 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
-// 🟢 1. Import ແບບທຳມະດາ (ໃຊ້ໄດ້ກັບ Firebase ທຸກລຸ້ນ)
+// 🟢 1. Import ແຄ່ນີ້ພໍ (ຕັດ getReactNativePersistence ອອກ)
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -15,18 +15,17 @@ const firebaseConfig = {
 };
 
 let app;
-let auth;
 
-// 🟢 2. Logic ກວດສອບ App (Singleton)
+// 🟢 2. Logic ກວດສອບ App
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
 } else {
   app = getApp();
 }
 
-// 🟢 3. ໃຊ້ getAuth ທຳມະດາ (ແກ້ບັນຫາ is not a function)
-// ວິທີນີ້ຈະບໍ່ເຮັດໃຫ້ແອັບ Crash ເຖິງແມ່ນວ່າ Firebase ຈະເປັນ version ໃດກໍຕາມ
-auth = getAuth(app);
+// 🟢 3. ສ້າງ Auth ແບບງ່າຍ (ໃຊ້ໄດ້ກັບທຸກ Version)
+// ວິທີນີ້ຈະບໍ່ມີ Error "no exported member" ແນ່ນອນ
+const auth = getAuth(app);
 
 const db = getDatabase(app);
 

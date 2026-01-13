@@ -1,9 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-// Use // @ts-ignore to suppress the TypeScript error for the react-native sub-module
-// @ts-ignore
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth/react-native';
+// 🟢 ໃຊ້ Module ຫຼັກ 'firebase/auth' ເພື່ອປ້ອງກັນ Error ຂອງ Metro Specifier
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",
@@ -18,11 +17,11 @@ const firebaseConfig = {
 // 1. Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// 2. Initialize Realtime Database and Export
+// 2. Initialize Realtime Database
 export const db = getDatabase(app);
 
-// 3. Initialize Auth with Persistence and Export
-// ວິທີນີ້ຈະຊ່ວຍໃຫ້ແອັບຈື່ການ Login ຂອງຜູ້ໃຊ້ໄວ້ ເວລາປິດແລ້ວເປີດແອັບໃໝ່
+// 3. Initialize Auth ໂດຍໃຊ້ Manual Persistence Configuration
+// ວິທີນີ້ຈະບໍ່ມີບັນຫາເລື່ອງ Missing Specifier ໃນ Firebase v11
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(ReactNativeAsyncStorage)
 });

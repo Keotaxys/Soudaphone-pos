@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { View, Alert, ActivityIndicator, StyleSheet, Platform, StatusBar as RNStatusBar } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ (ແກ້ Warning)
-import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ (ແກ້ Warning ແລະ Layout)
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // --- Imports ---
+import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import { db } from '../../src/firebase';
-import { ref, onValue, push, set, remove, update } from 'firebase/database';
-import { Product, CartItem, SaleRecord } from '../../src/types';
+import { CartItem, Product, SaleRecord } from '../../src/types';
 
 // Screens
 import CustomerScreen from '../../src/components/screens/CustomerScreen';
@@ -45,7 +45,7 @@ const emptyProduct: Product = {
 };
 
 export default function App() {
-  // 🟢 1. HOOKS: ປະກາດໄວ້ເທິງສຸດ
+  // 🟢 1. HOOKS: ປະກາດໄວ້ເທິງສຸດສະເໝີ
   const [fontsLoaded] = useFonts({
     'Lao-Bold': require('../../assets/fonts/NotoSansLao-Bold.ttf'), 
     'Lao-Regular': require('../../assets/fonts/NotoSansLao-Regular.ttf'),
@@ -170,7 +170,7 @@ export default function App() {
     setProductModalVisible(false);
   };
 
-  // 🟢 3. Render Screen Logic (ແກ້ໄຂໃຫ້ກົງກັບຊື່ໃນ Footer/Sidebar)
+  // 🟢 3. Render Screen Logic (ແກ້ໄຂຊື່ Case ໃຫ້ກົງກັບ Footer ແລະ Sidebar)
   const renderScreen = () => {
     const tabName = activeTab.toLowerCase();
     switch (tabName) {
@@ -187,12 +187,12 @@ export default function App() {
       // 🟢 ຕ້ອງເປັນ reports (ມີ s) ຕາມ Footer
       case 'reports': return <ReportDashboard />; 
       
-      // 🟢 ຕ້ອງເປັນ expenses (ມີ s) ຕາມ Footer/Sidebar
+      // 🟢 ຕ້ອງເປັນ expenses (ມີ s) ຕາມ Footer
       case 'expenses': return <ExpenseScreen />;
       
       case 'debts': return <DebtScreen />;
       case 'shift': return <ShiftScreen />;
-      case 'history': return <ReportDashboard />; // ຕົວຢ່າງ: ໃຫ້ History ໄປໜ້າ Report ກ່ອນ
+      case 'history': return <ReportDashboard />; 
       
       default: return <HomeScreenAny salesHistory={salesHistory} products={products} />;
     }

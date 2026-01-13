@@ -7,15 +7,13 @@ import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Dimensions,
-  Image,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  Modal
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatNumber } from '../../types';
@@ -61,7 +59,6 @@ export default function ReportDashboard() {
 
   // 2. Filter & Calculate Logic
   useEffect(() => {
-    // ກຳນົດຊ່ວງເວລາ Start - End
     const start = new Date(currentDate);
     const end = new Date(currentDate);
     start.setHours(0, 0, 0, 0);
@@ -80,26 +77,22 @@ export default function ReportDashboard() {
       end.setMonth(11, 31);
     }
 
-    // Filter Sales
     const fSales = sales.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
     });
 
-    // Filter Expenses
     const fExpenses = expenses.filter(item => {
         const d = new Date(item.date);
         return d >= start && d <= end;
     });
 
-    // Calculate Totals
     const revenue = fSales.reduce((sum, item: any) => sum + (parseFloat(item.total) || 0), 0);
     const expense = fExpenses.reduce((sum, item: any) => sum + (parseFloat(item.amount) || 0), 0);
     
     setTotalRevenue(revenue);
     setTotalExpense(expense);
 
-    // Calculate Top Products & Categories
     const prodStats: any = {};
     const catStats: any = {};
     
@@ -120,7 +113,6 @@ export default function ReportDashboard() {
     setTopProducts(Object.values(prodStats).sort((a: any, b: any) => b.totalSold - a.totalSold).slice(0, 5));
     setSalesByCategory(Object.keys(catStats).map(k => ({ label: k, value: catStats[k] })));
 
-    // Expenses Categories
     const expCatStats: any = {};
     fExpenses.forEach((e: any) => {
         const cat = e.category || 'Other';
@@ -145,11 +137,9 @@ export default function ReportDashboard() {
   // 4. Export Functions
   const generateExcel = async () => {
     let csvContent = "Date,Type,Description,Amount\n";
-    // Add Sales
     salesByCategory.forEach((cat: any) => {
         csvContent += `${formatDateLao(currentDate)},Sale,${cat.label},${cat.value}\n`;
     });
-    // Add Expenses
     expensesByCategory.forEach((cat: any) => {
         csvContent += `${formatDateLao(currentDate)},Expense,${cat.label},-${cat.value}\n`;
     });
@@ -159,7 +149,6 @@ export default function ReportDashboard() {
     csvContent += `,,Net Profit,${totalRevenue - totalExpense}\n`;
 
     try {
-        // 🟢 ແກ້ໄຂບ່ອນນີ້: ໃຊ້ (FileSystem as any) ເພື່ອບອກ TypeScript ໃຫ້ຜ່ານ
         const docDir = (FileSystem as any).documentDirectory;
         const fileName = `${docDir}report_${new Date().getTime()}.csv`;
         await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
@@ -192,7 +181,7 @@ export default function ReportDashboard() {
             <div class="row"><b>ຍອດຂາຍລວມ:</b> <span>${formatNumber(totalRevenue)} ₭</span></div>
             <div class="row"><b>ລາຍຈ່າຍລວມ:</b> <span>${formatNumber(totalExpense)} ₭</span></div>
             <hr/>
-            <div class="row" style="font-size: 18px; color: ${totalRevenue - totalExpense >= 0 ? 'green' : 'red'}">
+            <div class="row" style="font-size: 18px; color: ${totalRevenue - totalExpense >= 0 ? '#008B94' : '#F57C00'}">
                 <b>ກຳໄລສຸດທິ:</b> <span>${formatNumber(totalRevenue - totalExpense)} ₭</span>
             </div>
           </div>
@@ -231,14 +220,19 @@ export default function ReportDashboard() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ລາຍງານ</Text>
         <View style={{flexDirection: 'row', gap: 8}}>
-            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: '#1D6F42'}]} onPress={generateExcel}>
+            
+            {/* Excel = Teal */}
+            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: '#008B94'}]} onPress={generateExcel}>
                 <Ionicons name="document-text" size={16} color="white" />
                 <Text style={styles.exportText}>Excel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: '#D32F2F'}]} onPress={generatePDF}>
+
+            {/* PDF = Dark Orange */}
+            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: '#F57C00'}]} onPress={generatePDF}>
                 <Ionicons name="print" size={16} color="white" />
                 <Text style={styles.exportText}>PDF</Text>
             </TouchableOpacity>
+
         </View>
       </View>
 
@@ -270,7 +264,14 @@ export default function ReportDashboard() {
             <SummaryCard label="ຍອດຂາຍລວມ" amount={totalRevenue} color={COLORS?.primary || '#008B94'} icon="cash" />
             <SummaryCard label="ລາຍຈ່າຍລວມ" amount={totalExpense} color="#F57C00" icon="wallet" />
         </View>
-        <SummaryCard label="ກຳໄລສຸດທິ" amount={totalRevenue - totalExpense} color={totalRevenue - totalExpense >= 0 ? "#4CAF50" : "#F44336"} icon="trending-up" />
+        
+        {/* 🟢 ປັບເງື່ອນໄຂສີ: + Teal, - Orange */}
+        <SummaryCard 
+            label="ກຳໄລສຸດທິ" 
+            amount={totalRevenue - totalExpense} 
+            color={(totalRevenue - totalExpense) >= 0 ? (COLORS?.primary || '#008B94') : '#F57C00'} 
+            icon="trending-up" 
+        />
 
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>🏆 ສິນຄ້າຂາຍດີ 5 ອັນດັບ</Text>

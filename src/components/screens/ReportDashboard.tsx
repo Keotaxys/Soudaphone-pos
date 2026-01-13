@@ -1,6 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as FileSystem from 'expo-file-system';
+
+// 🟢 ແກ້ໄຂ: ໃຊ້ /legacy ແລະໃສ່ @ts-ignore ເພື່ອບໍ່ໃຫ້ມັນຟ້ອງ Error
+// @ts-ignore
+import * as FileSystem from 'expo-file-system/legacy';
+
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
@@ -170,7 +174,7 @@ export default function ReportDashboard() {
     }
   };
 
-  // 🟢 4. EXPORT EXCEL (ແກ້ໄຂແລ້ວ)
+  // 4. EXPORT EXCEL
   const generateExcel = async () => {
     try {
         const { fSales, fExpenses } = getFilteredData();
@@ -195,11 +199,12 @@ export default function ReportDashboard() {
         csv += `,,Net Profit,${totalRev - totalExp}\n`;
 
         const fileName = `Report_${new Date().getTime()}.csv`;
-        // ໃຊ້ as any ເພື່ອຂ້າມການກວດສອບ Type
-        const docDir = (FileSystem as any).documentDirectory;
+        
+        // 🟢 ໃຊ້ API ຈາກ legacy
+        const docDir = FileSystem.documentDirectory;
         const fileUri = docDir + fileName;
 
-        // 🟢 ໃຊ້ 'utf8' ແທນ FileSystem.EncodingType.UTF8
+        // 🟢 ໃຊ້ 'utf8' string ທຳມະດາ
         await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: 'utf8' });
         await shareAsync(fileUri, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
 
@@ -208,7 +213,7 @@ export default function ReportDashboard() {
     }
   };
 
-  // 🟢 5. EXPORT PDF
+  // 5. EXPORT PDF
   const generatePDF = async () => {
     try {
         const { fSales, fExpenses, start, end } = getFilteredData();
@@ -400,6 +405,7 @@ export default function ReportDashboard() {
         </View>
       </View>
 
+      {/* Date Picker Modal */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
             <Modal visible={true} transparent animationType="fade">

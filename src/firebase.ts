@@ -2,10 +2,10 @@ import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
-// 🟢 ໃຊ້ @ts-ignore ເພື່ອຜ່ານ Error ເສັ້ນແດງ
-// ແລະ Import ຈາກ path ນີ້ເພື່ອແກ້ໄຂບັນຫາ "Auth not registered"
+// 🟢 ກັບມາໃຊ້ 'firebase/auth' ປົກກະຕິ (ບໍ່ມີ /react-native)
+// ເພື່ອແກ້ບັນຫາ "Missing specifier" ຕອນ Bundle
 // @ts-ignore
-import { getReactNativePersistence, initializeAuth } from 'firebase/auth/react-native';
+import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq2zXT4AeLbbDre8lEh5KgIvq5xtoj1-o",

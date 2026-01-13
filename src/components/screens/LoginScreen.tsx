@@ -2,24 +2,31 @@ import { Ionicons } from '@expo/vector-icons';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
-import { auth } from '../../firebase'; // 🟢 ຮັບປະກັນວ່າ path ນີ້ຖືກຕ້ອງ
+import { auth } from '../../firebase';
+// ຖ້າບໍ່ມີໄຟລ໌ types ໃຫ້ລຶບແຖວນີ້ອອກ ແລ້ວໃຊ້ສີ #008B94 ແທນ COLORS.primary
 import { COLORS } from '../../types';
 
-export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+// 🟢 1. ກຳນົດ Type ຂອງ Props ທີ່ສົ່ງມາຈາກ index.tsx
+interface LoginScreenProps {
+  onLoginSuccess: () => void;
+}
+
+// 🟢 2. ຮັບ onLoginSuccess ເຂົ້າມາໃນ Component
+export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+  const [email, setEmail] = useState('admin@sdp.com'); // ໃສ່ Default ເພື່ອທົດສອບ
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -32,12 +39,18 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
+      // Login ກັບ Firebase
       await signInWithEmailAndPassword(auth, email, password);
-      // ບໍ່ຕ້ອງເຮັດຫຍັງ, App.tsx ຈະກວດສອບ User ແລະ ປ່ຽນໜ້າໃຫ້ເອງ
+      
+      // 🟢 3. ສຳຄັນຫຼາຍ! ເມື່ອ Login ຜ່ານ ຕ້ອງສັ່ງໃຫ້ App ຮູ້
+      console.log("Login Success! Switching screen...");
+      onLoginSuccess(); 
+
     } catch (error: any) {
+      console.error(error);
       let msg = 'ເຂົ້າສູ່ລະບົບບໍ່ສຳເລັດ';
       if (error.code === 'auth/invalid-email') msg = 'ຮູບແບບ Email ບໍ່ຖືກຕ້ອງ';
-      if (error.code === 'auth/user-not-found') msg = 'ບໍ່ພົບຜູ້ໃຊ້ນີ້';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') msg = 'Email ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ';
       if (error.code === 'auth/wrong-password') msg = 'ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ';
       Alert.alert('Error', msg);
     } finally {
@@ -113,24 +126,24 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.primary },
+  container: { flex: 1, backgroundColor: COLORS?.primary || '#008B94' },
   content: { flex: 1, justifyContent: 'center', padding: 20 },
   
   logoSection: { alignItems: 'center', marginBottom: 40 },
   logoCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  appTitle: { fontSize: 28, fontFamily: 'Lao-Bold', color: 'white' },
-  appSubTitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: 'rgba(255,255,255,0.8)' },
+  appTitle: { fontSize: 28, fontWeight: 'bold', color: 'white' },
+  appSubTitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
 
   formContainer: { backgroundColor: 'white', borderRadius: 20, padding: 25, elevation: 5 },
-  loginText: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text, marginBottom: 20, textAlign: 'center' },
+  loginText: { fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 20, textAlign: 'center' },
   
   inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: 12, paddingHorizontal: 15, marginBottom: 15, borderWidth: 1, borderColor: '#eee', height: 55 },
   inputIcon: { marginRight: 10 },
-  input: { flex: 1, fontFamily: 'Lao-Regular', fontSize: 16, height: '100%' },
+  input: { flex: 1, fontSize: 16, height: '100%' },
   
-  loginBtn: { backgroundColor: COLORS.primary, borderRadius: 12, height: 55, justifyContent: 'center', alignItems: 'center', marginTop: 10, shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
-  loginBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },
+  loginBtn: { backgroundColor: COLORS?.primary || '#008B94', borderRadius: 12, height: 55, justifyContent: 'center', alignItems: 'center', marginTop: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
+  loginBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
   
   footer: { marginTop: 20, alignItems: 'center' },
-  footerText: { color: '#999', fontFamily: 'Lao-Regular', fontSize: 12 }
+  footerText: { color: '#999', fontSize: 12 }
 });

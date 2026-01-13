@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-  Dimensions,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,29 +10,27 @@ import {
 } from 'react-native';
 import { COLORS } from '../../types';
 
-// 🟢 ຖ້າຍັງບໍ່ມີໄຟລ໌ນີ້ ໃຫ້ຄອມເມັ້ນໄວ້ກ່ອນ
+// 🟢 ຖ້າມີ Modal ຕັ້ງຄ່າໃບບິນ ໃຫ້ເປີດໃຊ້ບ່ອນນີ້
 // import BillSettingsModal from '../modals/BillSettingsModal';
-
-const { width } = Dimensions.get('window');
 
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  onClose?: () => void; // ເພີ່ມໂຕນີ້ເພື່ອໃຫ້ປຸ່ມ X ເຮັດວຽກ
-  tabs?: string[]; // ຮັບໄວ້ຊື່ໆເພື່ອບໍ່ໃຫ້ index.tsx error
+  onClose?: () => void;
+  tabs?: string[];
 }
 
+// ລາຍການເມນູ (ຕົງກັບຮູບພາບທີ່ສົ່ງມາ)
 const MENU_ITEMS = [
   { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' },
   { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart-outline' },
-  { id: 'history', label: 'ປະຫວັດການຂາຍ', icon: 'time-outline' }, // ຫມາຍເຫດ: ຕ້ອງເພີ່ມ case 'history' ໃນ index.tsx
   { id: 'products', label: 'ຈັດການສິນຄ້າ', icon: 'cube-outline' },
-  { id: 'expenses', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet-outline' }, // ແກ້ expense -> expenses ໃຫ້ຕົງກັບ index
+  { id: 'expenses', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet-outline' },
   { id: 'orders', label: 'ຕິດຕາມຄຳສັ່ງຊື້', icon: 'cube-outline' },
   { id: 'customers', label: 'ຂໍ້ມູນລູກຄ້າ', icon: 'people-outline' },
-  { id: 'debts', label: 'ໜີ້ສິນ', icon: 'document-text-outline' },
-  { id: 'reports', label: 'ລາຍງານ', icon: 'bar-chart-outline' }, // ແກ້ report -> reports
-  { id: 'shift', label: 'ປິດກະລາຍວັນ', icon: 'time-outline' }, // ແກ້ shifts -> shift
+  { id: 'debts', label: 'ຕິດໜີ້', icon: 'document-text-outline' },
+  { id: 'reports', label: 'ລາຍງານ', icon: 'bar-chart-outline' },
+  { id: 'shift', label: 'ປິດກະລາຍວັນ', icon: 'time-outline' },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProps) {
@@ -41,7 +39,7 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* 🟢 Header ສີຂຽວ ຕາມຮູບ */}
       <View style={styles.header}>
         <Text style={styles.title}>ເມນູຫຼັກ</Text>
         <TouchableOpacity onPress={onClose}>
@@ -51,7 +49,9 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
 
       <ScrollView contentContainerStyle={styles.menuContainer} showsVerticalScrollIndicator={false}>
         {MENU_ITEMS.map((item) => {
+          // ກວດສອບ Active Tab (ທຽບແບບ case-insensitive)
           const isActive = activeTab.toLowerCase() === item.id.toLowerCase();
+          
           return (
             <TouchableOpacity 
               key={item.id} 
@@ -70,14 +70,15 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
           );
         })}
 
+        {/* ເສັ້ນຂັ້ນ */}
         <View style={styles.divider} />
 
+        {/* ປຸ່ມຕັ້ງຄ່າໃບບິນ */}
         <TouchableOpacity 
           style={styles.menuItem}
           onPress={() => {
-             // ຖ້າມີ Modal ໃຫ້ເປີດ, ຖ້າບໍ່ມີໃຫ້ແຈ້ງເຕືອນ
              setShowBillSettings(true);
-             // Alert.alert("Settings", "ເປີດການຕັ້ງຄ່າໃບບິນ");
+             Alert.alert("Coming Soon", "ຟັງຊັນຕັ້ງຄ່າໃບບິນ");
           }}
         >
           <Ionicons name="settings-outline" size={24} color="#333" />
@@ -86,7 +87,6 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
 
       </ScrollView>
       
-      {/* 🟢 ຖ້າມີໄຟລ໌ BillSettingsModal ໃຫ້ເປີດ Comment ນີ້ */}
       {/* <BillSettingsModal visible={showBillSettings} onClose={() => setShowBillSettings(false)} /> */}
 
     </View>
@@ -101,10 +101,10 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   header: { 
-    height: 120, 
-    backgroundColor: COLORS?.primary || '#008B94', 
-    padding: 20, 
-    paddingTop: 50, 
+    height: 100, // ຄວາມສູງ Header
+    backgroundColor: COLORS?.primary || '#008B94', // ສີຂຽວ Teal
+    paddingHorizontal: 20, 
+    paddingTop: 40, // ເວັ້ນ StatusBar
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center' 
@@ -120,13 +120,13 @@ const styles = StyleSheet.create({
   menuItem: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    paddingVertical: 15, 
-    paddingHorizontal: 10, 
+    paddingVertical: 12, 
+    paddingHorizontal: 15, 
     borderRadius: 10, 
     marginBottom: 5 
   },
   activeItem: { 
-    backgroundColor: '#E0F2F1' 
+    backgroundColor: '#E0F2F1' // ສີຂຽວອ່ອນໆ ເວລາເລືອກ (ຕາມຮູບ)
   },
   menuText: { 
     fontSize: 16, 
@@ -141,6 +141,6 @@ const styles = StyleSheet.create({
   divider: { 
     height: 1, 
     backgroundColor: '#eee', 
-    marginVertical: 10 
+    marginVertical: 15 
   }
 });

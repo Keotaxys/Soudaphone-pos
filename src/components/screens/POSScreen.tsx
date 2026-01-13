@@ -1,254 +1,298 @@
 import { Ionicons } from '@expo/vector-icons';
-import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
-  ScrollView,
+  FlatList,
+  Image,
+  Modal,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
-import { db } from '../../firebase';
-import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../types';
+import { CartItem, COLORS, formatNumber, Product } from '../../types';
 
 const { width } = Dimensions.get('window');
-const ORANGE_COLOR = '#FF7043';
-const ORANGE_BG = '#FFF3E0';
 
-interface HomeScreenProps {
-  salesHistory: SaleRecord[];
+interface POSScreenProps {
   products: Product[];
-  onQuickAddProduct: () => void;
-  onQuickScan: () => void;
-  onQuickCustomer: () => void;
+  cart: CartItem[];
+  addToCart: (product: Product) => void;
+  removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, delta: number) => void;
+  clearCart: () => void;
+  onCheckout: (details: any) => void;
+  openEditProductModal?: (product: Product) => void;
+  // 🟢 ເພີ່ມ Props ເພື່ອຮັບຄຳສັ່ງເປີດ Modal ຈາກປຸ່ມດ້ານເທິງ
+  onOpenScan?: () => void;
+  onOpenAddProduct?: () => void;
 }
 
-type FilterType = 'day' | 'week' | 'month' | 'year';
-
-export default function HomeScreen({ 
-  salesHistory, 
+export default function POSScreen({
   products,
-  onQuickAddProduct,
-  onQuickScan,
-  onQuickCustomer
-}: HomeScreenProps) {
+  cart,
+  addToCart,
+  removeFromCart,
+  updateQuantity,
+  clearCart,
+  onCheckout,
+  onOpenScan,
+  onOpenAddProduct
+}: POSScreenProps) {
   
-  const [filterType, setFilterType] = useState<FilterType>('day');
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>(['All']);
   
-  const [expensesData, setExpensesData] = useState<any[]>([]);
-  const [filteredTotal, setFilteredTotal] = useState(0);
-  const [filteredOrders, setFilteredOrders] = useState(0);
-  const [filteredExpenses, setFilteredExpenses] = useState(0);
+  // State ສຳລັບເປີດເບິ່ງກະຕ່າ (Cart Modal)
+  const [isCartVisible, setCartVisible] = useState(false);
 
+  // ຄຳນວນ Category ແລະ Filter
   useEffect(() => {
-    const expenseRef = ref(db, 'expenses');
-    const unsubscribe = onValue(expenseRef, (snapshot) => {
-      if (snapshot.exists()) setExpensesData(Object.values(snapshot.val()));
-      else setExpensesData([]);
+    const uniqueCats = ['All', ...new Set(products.map(p => p.category || 'ອື່ນໆ'))];
+    setCategories(uniqueCats);
+
+    const filtered = products.filter(p => {
+      const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (p.barcode && p.barcode.includes(searchQuery));
+      const matchCat = selectedCategory === 'All' || (p.category || 'ອື່ນໆ') === selectedCategory;
+      return matchSearch && matchCat;
     });
-    return () => unsubscribe();
-  }, []);
+    setFilteredProducts(filtered);
+  }, [searchQuery, selectedCategory, products]);
 
-  const getDateRange = () => {
-    let start = new Date(currentDate);
-    let end = new Date(currentDate);
-    start.setHours(0, 0, 0, 0);
-    end.setHours(23, 59, 59, 999);
+  const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-    switch (filterType) {
-      case 'week':
-        const day = start.getDay();
-        const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-        start.setDate(diff);
-        end.setDate(start.getDate() + 6);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case 'month':
-        start.setDate(1);
-        end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case 'year':
-        start.setMonth(0, 1);
-        end.setMonth(11, 31);
-        end.setHours(23, 59, 59, 999);
-        break;
-    }
-    return { start, end };
-  };
+  // --- Render Item (ບັດສິນຄ້າແບບ Grid 2 ຄໍລຳ) ---
+  const renderProductItem = ({ item }: { item: Product }) => (
+    <View style={styles.productCard}>
+      <TouchableOpacity 
+        activeOpacity={0.8}
+        onPress={() => addToCart(item)}
+        style={styles.cardContent}
+      >
+        {/* Currency Tag */}
+        <View style={[styles.currencyTag, item.priceCurrency === 'THB' ? {backgroundColor: '#FF9800'} : {backgroundColor: COLORS.primary}]}>
+            <Text style={styles.currencyText}>{item.priceCurrency || 'LAK'}</Text>
+        </View>
 
-  useEffect(() => {
-    const { start, end } = getDateRange();
-    
-    const fSales = salesHistory.filter(sale => {
-      const d = new Date(sale.date);
-      return d >= start && d <= end && sale.status !== 'ຍົກເລີກ';
-    });
-
-    const fExp = expensesData.filter(exp => {
-      const d = new Date(exp.date);
-      return d >= start && d <= end;
-    });
-
-    setFilteredTotal(fSales.reduce((sum, sale) => sum + sale.total, 0));
-    setFilteredOrders(fSales.length);
-    setFilteredExpenses(fExp.reduce((sum, exp) => sum + exp.amount, 0));
-
-  }, [salesHistory, expensesData, filterType, currentDate]);
-
-  const handleNavigateDate = (dir: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
-    const val = dir === 'next' ? 1 : -1;
-    if (filterType === 'day') newDate.setDate(newDate.getDate() + val);
-    else if (filterType === 'week') newDate.setDate(newDate.getDate() + (val * 7));
-    else if (filterType === 'month') newDate.setMonth(newDate.getMonth() + val);
-    else if (filterType === 'year') newDate.setFullYear(newDate.getFullYear() + val);
-    setCurrentDate(newDate);
-  };
-
-  const getDateLabel = () => {
-    const { start } = getDateRange();
-    return formatDate(start); 
-  };
-
-  const profit = filteredTotal - filteredExpenses;
+        <Image 
+          source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://via.placeholder.com/150' }} 
+          style={styles.productImage} 
+        />
+        
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
+          
+          <View style={styles.priceRow}>
+            <Text style={styles.productPrice}>{formatNumber(item.price)} {item.priceCurrency === 'THB' ? '฿' : '₭'}</Text>
+            
+            {/* 🟢 ປຸ່ມບວກສີ Teal */}
+            <TouchableOpacity style={styles.addBtnSmall} onPress={() => addToCart(item)}>
+                <Ionicons name="add" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
       
-      {/* 🟢 ສ່ວນທີ 1: Header Fixed (ລັອກໄວ້ດ້ານເທິງ) */}
-      <View style={styles.fixedHeader}>
-        {/* Filter Tabs */}
-        <View style={styles.filterTabs}>
-          {['day', 'week', 'month', 'year'].map((type) => (
-            <TouchableOpacity 
-                key={type} 
-                style={[styles.filterTab, filterType === type && styles.activeTab]} 
-                onPress={() => setFilterType(type as FilterType)}
-            >
-              <Text style={[styles.filterText, filterType === type && styles.activeText]}>
-                  {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : 'ປີ'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Date Navigator */}
-        <View style={styles.navRow}>
-            <TouchableOpacity onPress={() => handleNavigateDate('prev')} style={styles.navBtn}>
-                <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
-            </TouchableOpacity>
-            <Text style={styles.dateLabel}>{getDateLabel()}</Text>
-            <TouchableOpacity onPress={() => handleNavigateDate('next')} style={styles.navBtn}>
-                <Ionicons name="chevron-forward" size={24} color={COLORS.primary} />
-            </TouchableOpacity>
-        </View>
+      {/* 1. Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#999" />
+        <TextInput 
+          style={styles.searchInput}
+          placeholder="ຄົ້ນຫາສິນຄ້າ (ຊື່ ຫຼື ບາໂຄດ)..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
       </View>
 
-      {/* 🟢 ສ່ວນທີ 2: Scrollable Content (ເນື້ອຫາທີ່ເລື່ອນໄດ້) */}
-      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+      {/* 2. Action Buttons (Scan & Add) */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primary, marginRight: 10 }]} onPress={onOpenScan}>
+            <Ionicons name="qr-code-outline" size={20} color="white" />
+            <Text style={styles.actionBtnText}>ສະແກນ</Text>
+        </TouchableOpacity>
         
-        {/* Stats Grid (2 Columns) */}
-        <View style={styles.statsGrid}>
-            {/* Card 1: ຍອດຂາຍ */}
-            <View style={[styles.statCard, { backgroundColor: COLORS.primary }]}>
-            <View style={styles.iconCircleWhite}><Ionicons name="cash" size={24} color={COLORS.primary} /></View>
-            <View><Text style={styles.statLabelWhite}>ຍອດຂາຍ</Text><Text style={styles.statValueWhite}>{formatNumber(filteredTotal)} ₭</Text></View>
+        {/* 🟢 ປຸ່ມເພີ່ມສິນຄ້າ ສີ Teal ຕາມທີ່ຕ້ອງການ */}
+        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primary }]} onPress={onOpenAddProduct}>
+            <Ionicons name="add-circle-outline" size={20} color="white" />
+            <Text style={styles.actionBtnText}>ເພີ່ມສິນຄ້າ</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 3. Categories */}
+      <View style={{ marginBottom: 10 }}>
+        <FlatList 
+          horizontal
+          data={categories}
+          keyExtractor={item => item}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 15 }}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={[styles.catChip, selectedCategory === item && styles.activeCatChip]}
+              onPress={() => setSelectedCategory(item)}
+            >
+              <Text style={[styles.catText, selectedCategory === item && styles.activeCatText]}>{item}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+
+      {/* 4. Product Grid */}
+      <FlatList
+        data={filteredProducts}
+        keyExtractor={item => item.id!}
+        numColumns={2}
+        contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 100 }}
+        renderItem={renderProductItem}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="cube-outline" size={60} color="#ddd" />
+            <Text style={styles.emptyText}>ບໍ່ພົບສິນຄ້າ</Text>
+          </View>
+        }
+      />
+
+      {/* 5. Floating Cart Bar (ສະແດງເມື່ອມີສິນຄ້າໃນກະຕ່າ) */}
+      {cart.length > 0 && (
+        <View style={styles.floatingCartBar}>
+            <View style={styles.cartInfo}>
+                <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText}>{totalItems}</Text>
+                </View>
+                <Text style={styles.cartTotalText}>ລວມ: {formatNumber(totalAmount)} ₭</Text>
+            </View>
+            <TouchableOpacity style={styles.viewCartBtn} onPress={() => setCartVisible(true)}>
+                <Text style={styles.viewCartText}>ເບິ່ງກະຕ່າ</Text>
+                <Ionicons name="chevron-forward" size={18} color="white" />
+            </TouchableOpacity>
+        </View>
+      )}
+
+      {/* 6. Cart Modal (ໜ້າກະຕ່າສິນຄ້າ) */}
+      <Modal visible={isCartVisible} animationType="slide" transparent={false}>
+        <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={() => setCartVisible(false)}>
+                    <Ionicons name="close" size={28} color="#333" />
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>ກະຕ່າສິນຄ້າ ({totalItems})</Text>
+                <TouchableOpacity onPress={() => { clearCart(); setCartVisible(false); }}>
+                    <Text style={{color: 'red', fontFamily: 'Lao-Bold'}}>ລ້າງ</Text>
+                </TouchableOpacity>
             </View>
 
-            {/* Card 2: ກຳໄລ */}
-            <View style={[styles.statCard, { backgroundColor: '#E0F2F1', borderWidth: 1, borderColor: COLORS.primary }]}>
-            <View style={[styles.iconCircle, { backgroundColor: 'white' }]}><Ionicons name="trending-up" size={24} color={COLORS.primary} /></View>
-            <View><Text style={[styles.statLabel, {color: COLORS.primary}]}>ກຳໄລ</Text><Text style={[styles.statValue, { color: profit >= 0 ? COLORS.primary : ORANGE_COLOR }]}>{profit >= 0 ? '+' : ''}{formatNumber(profit)}</Text></View>
-            </View>
+            <FlatList 
+                data={cart}
+                keyExtractor={item => item.id!}
+                contentContainerStyle={{padding: 15}}
+                renderItem={({item}) => (
+                    <View style={styles.cartItem}>
+                        <View style={{flex: 1}}>
+                            <Text style={styles.cartItemName}>{item.name}</Text>
+                            <Text style={styles.cartItemPrice}>{formatNumber(item.price)} x {item.quantity} = {formatNumber(item.price * item.quantity)}</Text>
+                        </View>
+                        <View style={styles.qtyControls}>
+                            <TouchableOpacity onPress={() => updateQuantity(item.id!, -1)}><Ionicons name="remove-circle" size={28} color="#ccc" /></TouchableOpacity>
+                            <Text style={styles.qtyText}>{item.quantity}</Text>
+                            <TouchableOpacity onPress={() => updateQuantity(item.id!, 1)}><Ionicons name="add-circle" size={28} color={COLORS.primary} /></TouchableOpacity>
+                        </View>
+                        <TouchableOpacity onPress={() => removeFromCart(item.id!)} style={{marginLeft: 10}}>
+                            <Ionicons name="trash-outline" size={24} color="red" />
+                        </TouchableOpacity>
+                    </View>
+                )}
+            />
 
-            {/* Card 3: ອໍເດີ */}
-            <View style={[styles.statCard, { backgroundColor: COLORS.secondary }]}>
-            <View style={styles.iconCircleWhite}><Ionicons name="receipt" size={24} color={COLORS.secondaryDark} /></View>
-            <View><Text style={styles.statLabelWhite}>ອໍເດີ</Text><Text style={styles.statValueWhite}>{filteredOrders}</Text></View>
-            </View>
-
-            {/* Card 4: ລາຍຈ່າຍ */}
-            <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
-            <View style={[styles.iconCircle, { backgroundColor: ORANGE_BG }]}><Ionicons name="wallet-outline" size={24} color={ORANGE_COLOR} /></View>
-            <View><Text style={styles.statLabel}>ລາຍຈ່າຍ</Text><Text style={[styles.statValue, { color: ORANGE_COLOR }]}>{formatNumber(filteredExpenses)}</Text></View>
+            <View style={styles.modalFooter}>
+                <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>ຍອດລວມ:</Text>
+                    <Text style={styles.totalValue}>{formatNumber(totalAmount)} ₭</Text>
+                </View>
+                <TouchableOpacity 
+                    style={styles.checkoutBtn} 
+                    onPress={() => {
+                        setCartVisible(false);
+                        onCheckout({ amountReceived: totalAmount, paymentMethod: 'CASH' });
+                    }}
+                >
+                    <Text style={styles.checkoutText}>ຊຳລະເງິນ</Text>
+                </TouchableOpacity>
             </View>
         </View>
+      </Modal>
 
-        {/* Quick Menu */}
-        <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>ເມນູດ່ວນ</Text>
-        </View>
-        
-        <View style={styles.quickMenu}>
-            <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickAddProduct}>
-                <View style={styles.quickMenuIcon}><Ionicons name="add-circle-outline" size={28} color={COLORS.primary} /></View>
-                <Text style={styles.quickMenuText}>ເພີ່ມສິນຄ້າ</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickScan}>
-                <View style={styles.quickMenuIcon}><Ionicons name="qr-code-outline" size={28} color={COLORS.primary} /></View>
-                <Text style={styles.quickMenuText}>ສະແກນ</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickCustomer}>
-                <View style={styles.quickMenuIcon}><Ionicons name="people-outline" size={28} color={COLORS.primary} /></View>
-                <Text style={styles.quickMenuText}>ລູກຄ້າ</Text>
-            </TouchableOpacity>
-        </View>
-
-      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: '#F5F9FA' },
   
-  // 🟢 Fixed Header Styles
-  fixedHeader: {
-    backgroundColor: 'white',
-    paddingBottom: 15,
-    paddingTop: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    elevation: 2, // ເງົາ Android
-    shadowColor: '#000', // ເງົາ iOS
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    zIndex: 10 // ໃຫ້ຢູ່ເທິງສຸດ
-  },
-  
-  // Filter Styles
-  filterTabs: { flexDirection: 'row', justifyContent: 'center', marginBottom: 10, gap: 5 },
-  filterTab: { paddingHorizontal: 15, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0' },
-  activeTab: { backgroundColor: COLORS.primary },
-  filterText: { fontFamily: 'Lao-Regular', color: '#666', fontSize: 12 },
-  activeText: { color: 'white', fontFamily: 'Lao-Bold' },
-  navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 },
-  navBtn: { padding: 5 },
-  dateLabel: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
+  // Search
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', margin: 15, paddingHorizontal: 15, height: 50, borderRadius: 10, elevation: 2 },
+  searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 16 },
 
-  // Scroll Content
-  scrollContent: { flex: 1 },
+  // Action Buttons
+  actionButtons: { flexDirection: 'row', paddingHorizontal: 15, marginBottom: 15 },
+  actionBtn: { flex: 1, flexDirection: 'row', height: 45, borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 8, elevation: 2 },
+  actionBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 14 },
 
-  // Grid Styles
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 15, justifyContent: 'space-between', gap: 12 },
-  statCard: { width: '48%', padding: 15, borderRadius: 16, marginBottom: 0, elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width:0, height:2 }, flexDirection: 'column', justifyContent: 'space-between', minHeight: 130, gap: 10 },
-  
-  iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  iconCircleWhite: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  
-  statLabel: { fontSize: 12, fontFamily: 'Lao-Regular', color: COLORS.textLight },
-  statValue: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text },
-  statLabelWhite: { fontSize: 12, fontFamily: 'Lao-Regular', color: 'rgba(255,255,255,0.9)' },
-  statValueWhite: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },
+  // Categories
+  catChip: { paddingHorizontal: 20, paddingVertical: 8, backgroundColor: 'white', borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: '#eee' },
+  activeCatChip: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  catText: { fontFamily: 'Lao-Regular', color: '#666' },
+  activeCatText: { color: 'white', fontFamily: 'Lao-Bold' },
 
-  // Quick Menu
-  sectionHeader: { marginTop: 5, paddingHorizontal: 20, marginBottom: 10 },
-  sectionTitle: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text },
-  quickMenu: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'white', padding: 20, marginHorizontal: 15, borderRadius: 15, elevation: 2, marginBottom: 30 },
-  quickMenuItem: { alignItems: 'center', gap: 5 },
-  quickMenuIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F0F9FA', justifyContent: 'center', alignItems: 'center' },
-  quickMenuText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#555' }
+  // Product Grid
+  productCard: { width: '50%', padding: 5 },
+  cardContent: { backgroundColor: 'white', borderRadius: 12, padding: 10, elevation: 2, alignItems: 'center' },
+  productImage: { width: '100%', height: 120, borderRadius: 10, backgroundColor: '#f0f0f0', marginBottom: 10, resizeMode: 'cover' },
+  productInfo: { width: '100%' },
+  productName: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#333', marginBottom: 5 },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  productPrice: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.primary },
+  addBtnSmall: { backgroundColor: COLORS.primary, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  
+  currencyTag: { position: 'absolute', top: 10, left: 10, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, zIndex: 1 },
+  currencyText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
+
+  // Empty State
+  emptyContainer: { alignItems: 'center', marginTop: 50 },
+  emptyText: { fontFamily: 'Lao-Regular', color: '#999', marginTop: 10 },
+
+  // Floating Cart Bar
+  floatingCartBar: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#333', borderRadius: 30, padding: 10, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 10 },
+  cartInfo: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cartBadge: { backgroundColor: COLORS.primary, width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  cartBadgeText: { color: 'white', fontFamily: 'Lao-Bold' },
+  cartTotalText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
+  viewCartBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  viewCartText: { color: 'white', fontFamily: 'Lao-Bold' },
+
+  // Modal Styles
+  modalContainer: { flex: 1, backgroundColor: '#F5F9FA' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: 'white', elevation: 2 },
+  modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold' },
+  cartItem: { flexDirection: 'row', backgroundColor: 'white', padding: 15, marginHorizontal: 15, marginTop: 10, borderRadius: 10, alignItems: 'center', elevation: 1 },
+  cartItemName: { fontFamily: 'Lao-Bold', fontSize: 16, marginBottom: 5 },
+  cartItemPrice: { fontFamily: 'Lao-Regular', color: COLORS.primary },
+  qtyControls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  qtyText: { fontFamily: 'Lao-Bold', fontSize: 16 },
+  
+  modalFooter: { backgroundColor: 'white', padding: 20, borderTopWidth: 1, borderTopColor: '#eee' },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
+  totalLabel: { fontFamily: 'Lao-Regular', fontSize: 16 },
+  totalValue: { fontFamily: 'Lao-Bold', fontSize: 20, color: COLORS.primary },
+  checkoutBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 10, alignItems: 'center' },
+  checkoutText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 }
 });

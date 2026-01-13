@@ -1,51 +1,57 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system';
-import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Image, // Import Image
+  Image,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  Modal
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatNumber } from '../../types';
 
 // Helper: ຈັດ Format ວັນທີພາສາລາວ
 const formatDateLao = (date: Date) => {
-  return date.toLocaleDateString('lo-LA', { day: 'numeric', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString('lo-LA', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-// Helper: ແປງຄ່າເງິນຈາກ String ທີ່ມີ , ຫຼື space ໃຫ້ເປັນຕົວເລກ
+// Helper: Parse Currency
 const parseCurrency = (value: any): number => {
     if (value === undefined || value === null || value === '') return 0;
-    // ແປງເປັນ string, ລຶບ , ແລະ ຊ່ອງວ່າງອອກ
     const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
     const num = parseFloat(strVal);
     return isNaN(num) ? 0 : num;
 };
 
-type FilterType = 'day' | 'week' | 'month' | 'year';
+// 🟢 ເພີ່ມ custom ເຂົ້າໄປໃນ Type
+type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 
 export default function ReportDashboard() {
-  // Raw Data
+  // Data
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   
   // Filter State
   const [filterType, setFilterType] = useState<FilterType>('day');
-  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // 🟢 State ສຳລັບວັນທີ
+  const [currentDate, setCurrentDate] = useState(new Date()); // ສຳລັບ Day/Week/Month/Year
+  const [startDate, setStartDate] = useState(new Date());     // ສຳລັບ Custom
+  const [endDate, setEndDate] = useState(new Date());         // ສຳລັບ Custom
+  
+  // 🟢 State ຄວບຄຸມ DatePicker
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'single' | 'start' | 'end'>('single');
 
-  // Filtered Data & Stats
+  // Stats
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
   const [topProducts, setTopProducts] = useState<any[]>([]);
@@ -67,25 +73,36 @@ export default function ReportDashboard() {
     });
   }, []);
 
-  // 2. Filter & Calculate Logic
+  // 2. Filter Logic
   useEffect(() => {
-    const start = new Date(currentDate);
-    const end = new Date(currentDate);
+    let start = new Date();
+    let end = new Date();
+
+    // 🟢 Logic ຄຳນວນວັນທີຕາມ Filter
+    if (filterType === 'custom') {
+        start = new Date(startDate);
+        end = new Date(endDate);
+    } else {
+        start = new Date(currentDate);
+        end = new Date(currentDate);
+        
+        if (filterType === 'week') {
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+            start.setDate(diff);
+            end.setDate(start.getDate() + 6);
+        } else if (filterType === 'month') {
+            start.setDate(1);
+            end.setMonth(start.getMonth() + 1, 0);
+        } else if (filterType === 'year') {
+            start.setMonth(0, 1);
+            end.setMonth(11, 31);
+        }
+    }
+
+    // Reset ເວລາໃຫ້ກວມເອົາທັງໝົດ
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
-
-    if (filterType === 'week') {
-      const day = start.getDay();
-      const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-      start.setDate(diff);
-      end.setDate(start.getDate() + 6);
-    } else if (filterType === 'month') {
-      start.setDate(1);
-      end.setMonth(start.getMonth() + 1, 0);
-    } else if (filterType === 'year') {
-      start.setMonth(0, 1);
-      end.setMonth(11, 31);
-    }
 
     const fSales = sales.filter(item => {
         const d = new Date(item.date);
@@ -97,21 +114,19 @@ export default function ReportDashboard() {
         return d >= start && d <= end;
     });
 
-    // ໃຊ້ parseCurrency ເພື່ອຄວາມຊົວ
+    // Calculate
     const revenue = fSales.reduce((sum, item: any) => sum + parseCurrency(item.total), 0);
     const expense = fExpenses.reduce((sum, item: any) => sum + parseCurrency(item.amount), 0);
     
     setTotalRevenue(revenue);
     setTotalExpense(expense);
 
-    // Calculate Top Products & Categories
+    // Top Products
     const prodStats: any = {};
     const catStats: any = {};
-    
     fSales.forEach((sale: any) => {
         if(sale.items) {
             sale.items.forEach((p: any) => {
-                // ເກັບຂໍ້ມູນສິນຄ້າ ລວມທັງຮູບພາບ (imageUrl)
                 if(!prodStats[p.id]) prodStats[p.id] = { ...p, totalSold: 0, totalAmount: 0 };
                 prodStats[p.id].totalSold += p.quantity;
                 prodStats[p.id].totalAmount += (p.price * p.quantity);
@@ -135,10 +150,12 @@ export default function ReportDashboard() {
     });
     setExpensesByCategory(Object.keys(expCatStats).map(k => ({ label: k, value: expCatStats[k] })).sort((a,b) => b.value - a.value));
 
-  }, [sales, expenses, filterType, currentDate]);
+  }, [sales, expenses, filterType, currentDate, startDate, endDate]); // Trigger ເມື່ອວັນທີປ່ຽນ
 
-  // 3. Date Navigation
+  // 3. Navigation & Picker Handlers
   const handleNavigateDate = (dir: 'prev' | 'next') => {
+    if (filterType === 'custom') return; // Custom ບໍ່ໃຫ້ກົດ Next/Prev
+
     const newDate = new Date(currentDate);
     const val = dir === 'next' ? 1 : -1;
     if (filterType === 'day') newDate.setDate(newDate.getDate() + val);
@@ -148,15 +165,41 @@ export default function ReportDashboard() {
     setCurrentDate(newDate);
   };
 
-  // 4. Export Functions (Excel/PDF) - ຫຍໍ້ໄວ້ຄືເກົ່າ
-  const generateExcel = async () => { /* ... Logic ເດີມ ... */ 
-    Alert.alert("Coming Soon", "Excel export function handles here.");
-  };
-  const generatePDF = async () => { /* ... Logic ເດີມ ... */ 
-    Alert.alert("Coming Soon", "PDF export function handles here.");
+  // 🟢 ເປີດ Picker ຕາມໂໝດ
+  const openDatePicker = (mode: 'single' | 'start' | 'end') => {
+    setPickerMode(mode);
+    setShowDatePicker(true);
   };
 
-  // --- Components ---
+  // 🟢 ຮັບຄ່າເມື່ອເລືອກວັນທີ
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    
+    if (selectedDate) {
+        if (pickerMode === 'single') setCurrentDate(selectedDate);
+        if (pickerMode === 'start') setStartDate(selectedDate);
+        if (pickerMode === 'end') setEndDate(selectedDate);
+    }
+  };
+
+  // 4. Export Functions
+  const generateExcel = async () => {
+    let csvContent = "Date,Type,Description,Amount\n";
+    salesByCategory.forEach((cat: any) => csvContent += `${formatDateLao(currentDate)},Sale,${cat.label},${cat.value}\n`);
+    expensesByCategory.forEach((cat: any) => csvContent += `${formatDateLao(currentDate)},Expense,${cat.label},-${cat.value}\n`);
+    try {
+        const docDir = (FileSystem as any).documentDirectory;
+        const fileName = `${docDir}report_${new Date().getTime()}.csv`;
+        await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
+        await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+    } catch (error) { Alert.alert("Error", "Export Failed"); }
+  };
+
+  const generatePDF = async () => {
+    Alert.alert("Coming Soon", "PDF Export will be available here.");
+  };
+
+  // Components
   const SummaryCard = ({ label, amount, color, icon }: any) => (
     <View style={[styles.card, { borderLeftColor: color }]}>
         <View>
@@ -167,42 +210,6 @@ export default function ReportDashboard() {
     </View>
   );
 
-  // Chart 1: ປຽບທຽບ ລາຍຮັບ vs ລາຍຈ່າຍ (ແນວນອນ)
-  const HorizontalComparisonChart = () => {
-    const maxVal = Math.max(totalRevenue, totalExpense) || 1;
-    const primaryColor = COLORS?.primary || '#008B94';
-    const expenseColor = '#F57C00';
-
-    return (
-        <View style={styles.section}>
-            <Text style={styles.sectionTitle}>⚖️ ປຽບທຽບ ລາຍຮັບ vs ລາຍຈ່າຍ</Text>
-            
-            {/* Revenue Bar */}
-            <View style={styles.hChartRow}>
-                <View style={styles.hChartLabels}>
-                    <Text style={styles.hChartLabelText}>ລາຍຮັບ</Text>
-                    <Text style={[styles.hChartValueText, {color: primaryColor}]}>{formatNumber(totalRevenue)} ₭</Text>
-                </View>
-                <View style={styles.barContainer}>
-                    <View style={[styles.bar, { width: `${(totalRevenue / maxVal) * 100}%`, backgroundColor: primaryColor }]} />
-                </View>
-            </View>
-
-            {/* Expense Bar */}
-            <View style={styles.hChartRow}>
-                <View style={styles.hChartLabels}>
-                    <Text style={styles.hChartLabelText}>ລາຍຈ່າຍ</Text>
-                    <Text style={[styles.hChartValueText, {color: expenseColor}]}>{formatNumber(totalExpense)} ₭</Text>
-                </View>
-                <View style={styles.barContainer}>
-                    <View style={[styles.bar, { width: `${(totalExpense / maxVal) * 100}%`, backgroundColor: expenseColor }]} />
-                </View>
-            </View>
-        </View>
-    );
-  };
-
-  // Chart 2 & 3: Chart ແບບCategory (ໃຊ້ຮ່ວມກັນໄດ້)
   const CategoryChart = ({ title, data, barColor }: { title: string, data: any[], barColor: string }) => {
     const maxVal = Math.max(...data.map(d => d.value)) || 1;
     return (
@@ -221,49 +228,77 @@ export default function ReportDashboard() {
     );
   };
 
+  const HorizontalComparisonChart = () => {
+    const maxVal = Math.max(totalRevenue, totalExpense) || 1;
+    const primaryColor = COLORS?.primary || '#008B94';
+    const expenseColor = '#F57C00';
+    return (
+        <View style={styles.section}>
+            <Text style={styles.sectionTitle}>⚖️ ປຽບທຽບ ລາຍຮັບ vs ລາຍຈ່າຍ</Text>
+            <View style={styles.hChartRow}>
+                <View style={styles.hChartLabels}><Text style={styles.hChartLabelText}>ລາຍຮັບ</Text><Text style={[styles.hChartValueText, {color: primaryColor}]}>{formatNumber(totalRevenue)} ₭</Text></View>
+                <View style={styles.barContainer}><View style={[styles.bar, { width: `${(totalRevenue / maxVal) * 100}%`, backgroundColor: primaryColor }]} /></View>
+            </View>
+            <View style={styles.hChartRow}>
+                <View style={styles.hChartLabels}><Text style={styles.hChartLabelText}>ລາຍຈ່າຍ</Text><Text style={[styles.hChartValueText, {color: expenseColor}]}>{formatNumber(totalExpense)} ₭</Text></View>
+                <View style={styles.barContainer}><View style={[styles.bar, { width: `${(totalExpense / maxVal) * 100}%`, backgroundColor: expenseColor }]} /></View>
+            </View>
+        </View>
+    );
+  };
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header & Export */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ລາຍງານ</Text>
         <View style={{flexDirection: 'row', gap: 8}}>
-            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: '#008B94'}]} onPress={generateExcel}>
-                <Ionicons name="document-text" size={16} color="white" />
-                <Text style={styles.exportText}>Excel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: '#F57C00'}]} onPress={generatePDF}>
-                <Ionicons name="print" size={16} color="white" />
-                <Text style={styles.exportText}>PDF</Text>
-            </TouchableOpacity>
+            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: '#008B94'}]} onPress={generateExcel}><Ionicons name="document-text" size={16} color="white" /><Text style={styles.exportText}>Excel</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.exportBtn, {backgroundColor: '#F57C00'}]} onPress={generatePDF}><Ionicons name="print" size={16} color="white" /><Text style={styles.exportText}>PDF</Text></TouchableOpacity>
         </View>
       </View>
 
-      {/* Filter Bar */}
+      {/* 🟢 Filter Tabs */}
       <View style={styles.filterBar}>
          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginRight: 10}}>
-            {['day', 'week', 'month', 'year'].map((t) => (
+            {['day', 'week', 'month', 'year', 'custom'].map((t) => (
                 <TouchableOpacity 
                     key={t} 
                     style={[styles.filterChip, filterType === t && styles.activeFilter]}
                     onPress={() => setFilterType(t as FilterType)}
                 >
                     <Text style={[styles.filterText, filterType === t && {color: 'white'}]}>
-                        {t === 'day' ? 'ມື້' : t === 'week' ? 'ອາທິດ' : t === 'month' ? 'ເດືອນ' : 'ປີ'}
+                        {t === 'day' ? 'ມື້' : t === 'week' ? 'ອາທິດ' : t === 'month' ? 'ເດືອນ' : t === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
                     </Text>
                 </TouchableOpacity>
             ))}
          </ScrollView>
+
+         {/* 🟢 Date Navigator: ປ່ຽນຕາມ Filter Type */}
          <View style={styles.dateNav}>
-             <TouchableOpacity onPress={() => handleNavigateDate('prev')}><Ionicons name="chevron-back" size={20} color="#666" /></TouchableOpacity>
-             <TouchableOpacity onPress={() => setShowDatePicker(true)}><Text style={styles.dateLabel}>{formatDateLao(currentDate)}</Text></TouchableOpacity>
-             <TouchableOpacity onPress={() => handleNavigateDate('next')}><Ionicons name="chevron-forward" size={20} color="#666" /></TouchableOpacity>
+             {filterType !== 'custom' ? (
+                 <>
+                    <TouchableOpacity onPress={() => handleNavigateDate('prev')}><Ionicons name="chevron-back" size={20} color="#666" /></TouchableOpacity>
+                    {/* ກົດທີ່ວັນທີເພື່ອເລືອກທັນທີ */}
+                    <TouchableOpacity onPress={() => openDatePicker('single')}>
+                        <Text style={styles.dateLabel}>{formatDateLao(currentDate)}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleNavigateDate('next')}><Ionicons name="chevron-forward" size={20} color="#666" /></TouchableOpacity>
+                 </>
+             ) : (
+                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
+                    <TouchableOpacity onPress={() => openDatePicker('start')} style={styles.customDateBtn}>
+                        <Text style={styles.customDateText}>{formatDateLao(startDate)}</Text>
+                    </TouchableOpacity>
+                    <Text>-</Text>
+                    <TouchableOpacity onPress={() => openDatePicker('end')} style={styles.customDateBtn}>
+                        <Text style={styles.customDateText}>{formatDateLao(endDate)}</Text>
+                    </TouchableOpacity>
+                 </View>
+             )}
          </View>
       </View>
 
-      {/* Content */}
       <View style={styles.content}>
-        {/* Summary Cards */}
         <View style={styles.summaryRow}>
             <SummaryCard label="ຍອດຂາຍລວມ" amount={totalRevenue} color={COLORS?.primary || '#008B94'} icon="cash" />
             <SummaryCard label="ລາຍຈ່າຍລວມ" amount={totalExpense} color="#F57C00" icon="wallet" />
@@ -275,31 +310,17 @@ export default function ReportDashboard() {
             icon="trending-up" 
         />
 
-        {/* 1. Chart ປຽບທຽບ ລາຍຮັບ vs ລາຍຈ່າຍ */}
         <HorizontalComparisonChart />
-
-        {/* 2. Chart ລາຍຮັບແຍກຕາມໝວດໝູ່ */}
         <CategoryChart title="💰 ລາຍຮັບຕາມໝວດໝູ່" data={salesByCategory} barColor={COLORS?.primary || '#008B94'} />
-
-        {/* 3. Chart ລາຍຈ່າຍແຍກຕາມໝວດໝູ່ */}
         <CategoryChart title="💸 ລາຍຈ່າຍຕາມໝວດໝູ່" data={expensesByCategory} barColor="#F57C00" />
 
-        {/* Top 5 Products with Images */}
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>🏆 5 ອັນດັບສິນຄ້າຂາຍດີ</Text>
             {topProducts.length > 0 ? topProducts.map((prod, index) => (
                 <View key={index} style={styles.prodRow}>
                     <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
-                        {/* Rank # */}
                         <Text style={styles.rank}>#{index + 1}</Text>
-                        
-                        {/* Product Image */}
-                        <Image 
-                            source={prod.imageUrl ? { uri: prod.imageUrl } : { uri: 'https://via.placeholder.com/50' }} 
-                            style={styles.prodImage} 
-                        />
-                        
-                        {/* Product Name & Sold Count */}
+                        <Image source={prod.imageUrl ? { uri: prod.imageUrl } : { uri: 'https://via.placeholder.com/50' }} style={styles.prodImage} />
                         <View style={{marginLeft: 10, flex: 1}}>
                             <Text style={styles.prodName} numberOfLines={1}>{prod.name}</Text>
                             <Text style={styles.prodSold}>ຂາຍແລ້ວ: {prod.totalSold}</Text>
@@ -309,7 +330,6 @@ export default function ReportDashboard() {
                 </View>
             )) : <Text style={styles.emptyText}>ບໍ່ມີຂໍ້ມູນ</Text>}
         </View>
-
       </View>
 
       {/* Date Picker Modal */}
@@ -318,12 +338,24 @@ export default function ReportDashboard() {
             <Modal visible={true} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.dateContainer}>
-                        <DateTimePicker value={currentDate} mode="date" display="inline" onChange={(e, d) => { setShowDatePicker(false); if(d) setCurrentDate(d); }} />
+                        <DateTimePicker 
+                            value={pickerMode === 'start' ? startDate : pickerMode === 'end' ? endDate : currentDate} 
+                            mode="date" 
+                            display="inline" 
+                            onChange={onDateChange} 
+                        />
+                        <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.closeBtn}>
+                            <Text style={styles.closeBtnText}>ປິດ</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
         ) : (
-            <DateTimePicker value={currentDate} mode="date" onChange={(e, d) => { setShowDatePicker(false); if(d) setCurrentDate(d); }} />
+            <DateTimePicker 
+                value={pickerMode === 'start' ? startDate : pickerMode === 'end' ? endDate : currentDate} 
+                mode="date" 
+                onChange={onDateChange} 
+            />
         )
       )}
     </ScrollView>
@@ -340,32 +372,32 @@ const styles = StyleSheet.create({
   filterChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 15, backgroundColor: '#f0f0f0', marginRight: 5 },
   activeFilter: { backgroundColor: COLORS?.primary || '#008B94' },
   filterText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
+  
   dateNav: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f9f9f9', padding: 5, borderRadius: 10 },
   dateLabel: { fontFamily: 'Lao-Bold', fontSize: 13, color: '#333' },
+  customDateBtn: { padding: 5, backgroundColor: '#fff', borderRadius: 5, borderWidth: 1, borderColor: '#ddd' },
+  customDateText: { fontSize: 11, fontFamily: 'Lao-Bold', color: '#333' },
+
   content: { padding: 15 },
   summaryRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   card: { flex: 1, backgroundColor: 'white', padding: 15, borderRadius: 12, borderLeftWidth: 5, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, elevation: 2 },
   cardLabel: { fontFamily: 'Lao-Regular', color: '#666', fontSize: 12 },
   cardAmount: { fontFamily: 'Lao-Bold', fontSize: 16, marginTop: 5 },
   
-  // Section & Charts
   section: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginTop: 15, elevation: 2 },
   sectionTitle: { fontFamily: 'Lao-Bold', fontSize: 16, marginBottom: 15, color: '#333' },
   
-  // Horizontal Chart Styles
   hChartRow: { marginBottom: 12 },
   hChartLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
   hChartLabelText: { fontFamily: 'Lao-Regular', fontSize: 13, color: '#555' },
   hChartValueText: { fontFamily: 'Lao-Bold', fontSize: 13 },
-
-  // Category Chart Styles
+  
   catRow: { marginBottom: 12 },
   catLabel: { fontFamily: 'Lao-Regular', fontSize: 12, marginBottom: 4, color: '#555' },
   barContainer: { height: 8, backgroundColor: '#eee', borderRadius: 4, overflow: 'hidden' },
   bar: { height: '100%', borderRadius: 4 },
   catValue: { fontFamily: 'Lao-Bold', fontSize: 11, alignSelf: 'flex-end', marginTop: 2, color: '#777' },
   
-  // Top Product Styles
   prodRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderColor: '#f0f0f0' },
   rank: { fontFamily: 'Lao-Bold', marginRight: 10, color: '#999', fontSize: 12 },
   prodImage: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#f0f0f0' },
@@ -375,5 +407,7 @@ const styles = StyleSheet.create({
 
   emptyText: { textAlign: 'center', color: '#999', fontFamily: 'Lao-Regular', marginVertical: 10 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  dateContainer: { backgroundColor: 'white', padding: 20, borderRadius: 15, width: '90%' }
+  dateContainer: { backgroundColor: 'white', padding: 20, borderRadius: 15, width: '90%' },
+  closeBtn: { marginTop: 10, padding: 10, alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },
+  closeBtnText: { fontFamily: 'Lao-Bold', color: '#333' }
 });

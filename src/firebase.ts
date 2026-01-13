@@ -1,8 +1,6 @@
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-
-// 🟢 ເພີ່ມ getAuth ເຂົ້າມານຳ ເພື່ອເອີ້ນໃຊ້ Auth ທີ່ມີຢູ່ແລ້ວ
 // @ts-ignore
 import { getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
 
@@ -16,28 +14,29 @@ const firebaseConfig = {
   appId: "1:1085134944350:web:cdd4c563a7891c176d9ccf"
 };
 
-// ປະກາດຕົວປ່ຽນໄວ້ຂ້າງນອກ
 let app;
 let auth;
 
-// 🔥 Logic ແກ້ໄຂ: ກວດສອບວ່າ Firebase App ຖືກສ້າງແລ້ວຫຼືຍັງ
+// 1. ກວດສອບ ແລະ ສ້າງ App
 if (!getApps().length) {
-  // 🟢 ກໍລະນີທີ 1: ຍັງບໍ່ທັນມີ App (ສ້າງໃໝ່)
   app = initializeApp(firebaseConfig);
-  
-  // @ts-ignore
+} else {
+  app = getApp();
+}
+
+// 2. 🔥🔥🔥 SOLUTION: ໃຊ້ Try-Catch ເພື່ອແກ້ບັນຫາ Auth Error 🔥🔥🔥
+try {
+  // ພະຍາຍາມ Initialize Auth ໃໝ່ (ສຳລັບຄັ້ງທຳອິດ)
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(ReactNativeAsyncStorage)
   });
-} else {
-  // 🟢 ກໍລະນີທີ 2: ມີ App ຢູ່ແລ້ວ (ດຶງຕົວເກົ່າມາໃຊ້ ບໍ່ສ້າງຊ້ຳ)
-  app = getApp();
+} catch (error) {
+  // ຖ້າເກີດ Error (ເຊັ່ນ: ມີ Auth ຢູ່ແລ້ວ ຫຼື ບັນຫາ Registered)
+  // ໃຫ້ດຶງເອົາ Auth instance ທີ່ມີຢູ່ແລ້ວມາໃຊ້ແທນ
   auth = getAuth(app);
 }
 
-// ໃຊ້ Database ຈາກ app ທີ່ໄດ້ມາ
 const db = getDatabase(app);
 
-// Export ອອກໄປໃຊ້
 export { auth, db };
 export default app;

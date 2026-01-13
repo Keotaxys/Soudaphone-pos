@@ -4,7 +4,11 @@ import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'reac
 import { COLORS } from '../../types';
 
 interface HeaderProps {
-  onMenuPress: () => void;
+  // 🟢 ຮັບຊື່ນີ້ໃຫ້ກົງກັບ index.tsx
+  toggleSidebar: () => void; 
+  user?: { name: string; role: string }; // ຮັບຂໍ້ມູນ User ມາໂຊ
+  
+  // 🟢 Props ເສີມ (ເພື່ອຮັກສາຄວາມສາມາດເດີມ)
   title?: string;
   shopName?: string;
   shopId?: string;
@@ -14,7 +18,8 @@ interface HeaderProps {
 }
 
 export default function Header({ 
-  onMenuPress, 
+  toggleSidebar, 
+  user,
   title = "Soudaphone POS",
   shopName = "ຮ້ານ ສຸດາພອນ",
   shopId = "ID: 8888 9999",
@@ -22,6 +27,11 @@ export default function Header({
   onEditPress,
   onLogout 
 }: HeaderProps) {
+  
+  // ຖ້າມີຂໍ້ມູນ User ສົ່ງມາ ໃຫ້ໃຊ້ User (ຖ້າບໍ່ມີໃຊ້ ShopName ເດີມ)
+  const displayName = user?.name || shopName;
+  const displayDetail = user?.role ? `Role: ${user.role}` : shopId;
+
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
@@ -31,7 +41,7 @@ export default function Header({
         
         {/* 🟢 ດ້ານຊ້າຍ: ເມນູ + ຊື່ແອັບ */}
         <View style={styles.leftContainer}>
-          <TouchableOpacity onPress={onMenuPress}>
+          <TouchableOpacity onPress={toggleSidebar}>
             <Ionicons name="menu" size={30} color="white" />
           </TouchableOpacity>
           <Text style={styles.appTitle}>{title}</Text>
@@ -50,20 +60,21 @@ export default function Header({
 
       </View>
 
-      {/* Shop Info Card */}
+      {/* Shop Info Card (UI ເດີມທີ່ສວຍງາມ) */}
       <View style={styles.shopCard}>
         <View style={styles.shopInfo}>
           {shopLogo ? (
             <Image source={{ uri: shopLogo }} style={styles.shopLogo} />
           ) : (
             <View style={styles.shopLogoPlaceholder}>
-              <Text style={styles.shopLogoText}>{shopName ? shopName.charAt(0) : 'S'}</Text>
+              {/* ຕົວອັກສອນທຳອິດຂອງຊື່ */}
+              <Text style={styles.shopLogoText}>{displayName ? displayName.charAt(0) : 'S'}</Text>
             </View>
           )}
           
           <View>
-            <Text style={styles.shopName}>{shopName}</Text>
-            <Text style={styles.shopId}>{shopId}</Text>
+            <Text style={styles.shopName}>{displayName}</Text>
+            <Text style={styles.shopId}>{displayDetail}</Text>
           </View>
         </View>
         
@@ -76,7 +87,7 @@ export default function Header({
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: COLORS.primary, paddingBottom: 20, paddingTop: StatusBar.currentHeight || 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
+  container: { backgroundColor: COLORS.primary, paddingBottom: 20, paddingTop: StatusBar.currentHeight || 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 1000 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
   leftContainer: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },

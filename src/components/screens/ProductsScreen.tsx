@@ -18,6 +18,8 @@ import {
 import { db } from '../../firebase';
 import { COLORS, formatNumber, Product } from '../../types';
 
+const ORANGE_THEME = '#FF8F00'; // 🟢 2. ສີສົ້ມຕາມ Theme
+
 interface ProductsScreenProps {
   products: Product[];
   onAddProduct: () => void;
@@ -117,7 +119,7 @@ export default function ProductsScreen({
                 source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://via.placeholder.com/150' }} 
                 style={styles.image} 
             />
-            <View style={[styles.tag, { backgroundColor: item.priceCurrency === 'LAK' ? COLORS.primary : COLORS.secondary }]}>
+            <View style={[styles.tag, { backgroundColor: item.priceCurrency === 'LAK' ? COLORS.primary : ORANGE_THEME }]}>
                 <Text style={styles.tagText}>{item.priceCurrency}</Text>
             </View>
         </View>
@@ -127,7 +129,8 @@ export default function ProductsScreen({
             <Text style={styles.price}>
                 {formatNumber(item.price)} {item.priceCurrency === 'LAK' ? '₭' : '฿'}
             </Text>
-            <Text style={[styles.stock, item.stock <= 5 && { color: COLORS.danger }]}>
+            {/* 🟢 2. ປ່ຽນສີແດງເປັນສີສົ້ມ */}
+            <Text style={[styles.stock, item.stock <= 5 && { color: ORANGE_THEME }]}>
                 ຄົງເຫຼືອ: {item.stock}
             </Text>
         </View>
@@ -136,14 +139,14 @@ export default function ProductsScreen({
             <TouchableOpacity style={styles.editBtn} onPress={() => onEditProduct(item)}>
                 <Ionicons name="pencil" size={20} color={COLORS.primary} />
             </TouchableOpacity>
+            {/* 🟢 2. ປ່ຽນສີແດງເປັນສີສົ້ມ */}
             <TouchableOpacity style={styles.deleteBtn} onPress={() => onDeleteProduct(item.id!)}>
-                <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
+                <Ionicons name="trash-outline" size={20} color={ORANGE_THEME} />
             </TouchableOpacity>
         </View>
     </View>
   );
 
-  // 🟢 Header Component (Search + Actions) ທີ່ຈະເລື່ອນໄປພ້ອມ List
   const ListHeader = () => (
     <View style={styles.headerArea}>
         <View style={styles.searchBar}>
@@ -178,11 +181,10 @@ export default function ProductsScreen({
   return (
     <View style={styles.container}>
       
-      {/* 🟢 FlatList ກວມເອົາທັງໝົດ */}
       <FlatList
         data={filteredProducts}
         keyExtractor={(item) => item.id!}
-        ListHeaderComponent={ListHeader} // 🟢 ຍ້າຍ Header ມາໃສ່ບ່ອນນີ້
+        ListHeaderComponent={ListHeader}
         renderItem={renderProductItem}
         contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
         ListEmptyComponent={
@@ -193,6 +195,7 @@ export default function ProductsScreen({
         }
       />
 
+      {/* 🟢 1. ປຸ່ມເພີ່ມສິນຄ້າ (FAB) */}
       <TouchableOpacity style={styles.fab} onPress={onAddProduct}>
           <Ionicons name="add" size={30} color="white" />
           <Text style={styles.fabText}>ເພີ່ມສິນຄ້າ</Text>
@@ -204,7 +207,6 @@ export default function ProductsScreen({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   
-  // Header Area
   headerArea: { paddingBottom: 10 },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, elevation: 2, marginBottom: 10 },
   searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 16 },
@@ -225,9 +227,9 @@ const styles = StyleSheet.create({
 
   actions: { flexDirection: 'row', gap: 10 },
   editBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
-  deleteBtn: { padding: 8, backgroundColor: '#FFEBEE', borderRadius: 8 },
+  deleteBtn: { padding: 8, backgroundColor: '#FFF3E0', borderRadius: 8 }, // 🟢 2. ສີພື້ນຫຼັງປຸ່ມລຶບ
 
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.secondary, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, flexDirection: 'row', alignItems: 'center', elevation: 5 },
+  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, flexDirection: 'row', alignItems: 'center', elevation: 5 },
   fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 5 },
 
   emptyContainer: { alignItems: 'center', marginTop: 100 },

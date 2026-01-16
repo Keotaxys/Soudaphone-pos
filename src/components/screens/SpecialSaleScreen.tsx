@@ -70,7 +70,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     return () => unsub();
   }, []);
 
-  // 1. Template
+  // 1. Template Function
   const handleDownloadTemplate = async () => {
     setLoading(true);
     try {
@@ -84,20 +84,28 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         
         const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
         
-        // 🟢 ແກ້ໄຂ: ໃຊ້ (FileSystem as any) ເພື່ອແກ້ບັນຫາ TypeScript
         const fileDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory;
-        const filename = fileDir + "SpecialSale_Template.xlsx";
+        const uri = fileDir + "SpecialSale_Template.xlsx";
         
-        await FileSystem.writeAsStringAsync(filename, base64, { encoding: 'base64' });
-        await Sharing.shareAsync(filename);
-    } catch (e) {
-        Alert.alert("Error", "ບໍ່ສາມາດສ້າງ Template ໄດ້");
+        // 🟢 ແກ້ໄຂ: ໃຊ້ string 'base64' ແທນ Enum
+        await FileSystem.writeAsStringAsync(uri, base64, { encoding: 'base64' });
+        
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+            await Sharing.shareAsync(uri);
+        } else {
+            Alert.alert("Error", "ອຸປະກອນນີ້ບໍ່ຮອງຮັບການແບ່ງປັນຟາຍ");
+        }
+
+    } catch (e: any) {
+        console.error(e);
+        Alert.alert("Error", "ບໍ່ສາມາດສ້າງ Template ໄດ້: " + e.message);
     } finally {
         setLoading(false);
     }
   };
 
-  // 2. Export
+  // 2. Export Function
   const handleExport = async () => {
     if (history.length === 0) {
         Alert.alert("ແຈ້ງເຕືອນ", "ບໍ່ມີຂໍ້ມູນໃຫ້ສົ່ງອອກ");
@@ -123,24 +131,28 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
         const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
         
-        // 🟢 ແກ້ໄຂ: ໃຊ້ (FileSystem as any) ເພື່ອແກ້ບັນຫາ TypeScript
         const fileDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory;
-        const filename = fileDir + `SpecialSales_${new Date().getTime()}.xlsx`;
+        const uri = fileDir + `SpecialSales_${new Date().getTime()}.xlsx`;
 
-        await FileSystem.writeAsStringAsync(filename, base64, { encoding: 'base64' });
-        await Sharing.shareAsync(filename);
-    } catch (e) {
-        Alert.alert("Error", "ສົ່ງອອກຂໍ້ມູນບໍ່ສຳເລັດ");
+        // 🟢 ແກ້ໄຂ: ໃຊ້ string 'base64'
+        await FileSystem.writeAsStringAsync(uri, base64, { encoding: 'base64' });
+        
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+            await Sharing.shareAsync(uri);
+        }
+    } catch (e: any) {
+        Alert.alert("Error", "ສົ່ງອອກຂໍ້ມູນບໍ່ສຳເລັດ: " + e.message);
     } finally {
         setLoading(false);
     }
   };
 
-  // 3. Import
+  // 3. Import Function
   const handleImport = async () => {
     try {
         const result = await DocumentPicker.getDocumentAsync({
-            type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/comma-separated-values'],
+            type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv'],
             copyToCacheDirectory: true
         });
 
@@ -148,6 +160,8 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
         setLoading(true);
         const fileUri = result.assets[0].uri;
+        
+        // 🟢 ແກ້ໄຂ: ໃຊ້ string 'base64'
         const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
         
         const wb = XLSX.read(fileContent, { type: 'base64' });
@@ -156,15 +170,14 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
-        if (data.length === 0) {
+        if (!data || data.length === 0) {
             Alert.alert("Error", "ບໍ່ພົບຂໍ້ມູນໃນຟາຍ");
             setLoading(false);
             return;
         }
 
         let successCount = 0;
-        for (const rowItem of data) {
-            const row = rowItem as any;
+        for (const row of data) {
             const name = row["ຊື່ສິນຄ້າ"];
             const cat = row["ໝວດໝູ່"] || "ທົ່ວໄປ";
             const price = parseFloat(row["ລາຄາ"] || 0);
@@ -196,9 +209,9 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         
         Alert.alert("ສຳເລັດ", `ນຳເຂົ້າຂໍ້ມູນສຳເລັດ ${successCount} ລາຍການ`);
 
-    } catch (e) {
+    } catch (e: any) {
         console.log(e);
-        Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດໃນການອ່ານຟາຍ");
+        Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດໃນການອ່ານຟາຍ: " + e.message);
     } finally {
         setLoading(false);
     }

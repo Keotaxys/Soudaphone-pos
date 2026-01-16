@@ -3,14 +3,14 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Dimensions,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Dimensions,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../types';
@@ -40,7 +40,6 @@ export default function HomeScreen({
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // State ສຳລັບ Custom Filter
   const [customStartDate, setCustomStartDate] = useState(new Date());
   const [customEndDate, setCustomEndDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -236,11 +235,13 @@ export default function HomeScreen({
       </View>
       
       <View style={styles.quickMenu}>
+          {/* 🟢 1. ປ່ຽນປຸ່ມ "ເພີ່ມສິນຄ້າ" -> "ຂາຍພິເສດ" */}
           <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickAddProduct}>
               <View style={styles.quickMenuIcon}>
-                <Ionicons name="add-circle-outline" size={28} color={COLORS.primary} />
+                {/* 🟢 ປ່ຽນ Icon ເປັນ cart (ຫຼື pricetag) */}
+                <Ionicons name="pricetag-outline" size={28} color={COLORS.primary} />
               </View>
-              <Text style={styles.quickMenuText}>ເພີ່ມສິນຄ້າ</Text>
+              <Text style={styles.quickMenuText}>ຂາຍພິເສດ</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickScan}>
@@ -272,8 +273,8 @@ export default function HomeScreen({
                             mode="date"
                             display="inline"
                             onChange={onDateChange}
-                            textColor="black" // 🟢 ບັງຄັບໂຕໜັງສືສີດຳ
-                            themeVariant="light" // 🟢 ບັງຄັບ Light Mode ໃນ iOS
+                            textColor="black"
+                            themeVariant="light"
                             style={{backgroundColor: 'white'}}
                         />
                         <TouchableOpacity style={styles.closeBtn} onPress={() => setShowDatePicker(false)}>

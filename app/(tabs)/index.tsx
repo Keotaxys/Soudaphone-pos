@@ -2,7 +2,7 @@ import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import { db } from '../../src/firebase';
@@ -209,15 +209,15 @@ export default function App() {
   const TABS = ['Home', 'POS', 'Products', 'Customers', 'Orders', 'Reports', 'Expenses', 'Debts', 'Shift'];
 
   return (
-    // 🟢 1. ຕັ້ງພື້ນຫຼັງແມ່ສຸດເປັນ Teal. ຈຸດນີ້ສຳຄັນ! 
-    // ມັນຈະເປັນພື້ນຫຼັງໃຫ້ Status Bar ຖ້າ SafeAreaView ທາງໃນບໍ່ເຮັດວຽກ
+    // 🟢 1. ຕັ້ງສີພື້ນຫຼັງ Provider ເປັນ Teal ເພື່ອຮອງຮັບ Status Bar ທຸກກໍລະນີ
     <SafeAreaProvider style={{ backgroundColor: '#008B94' }}>
       
-      {/* 🟢 2. ໃຊ້ View ທຳມະດາແທນ SafeAreaView ເພື່ອຄວບຄຸມ Background ເອງ */}
+      {/* 🟢 2. ກຳນົດ Container ແມ່ເປັນສີ Teal */}
       <View style={styles.container}>
-        <StatusBar style="light" backgroundColor="#008B94" />
+        {/* 🟢 3. ຕັ້ງ StatusBar ເປັນ Translucent (ໂປ່ງໃສ) ເພື່ອໃຫ້ສີ Teal ຂອງ Container ທາງຫຼັງສະແດງຂຶ້ນມາ */}
+        <StatusBar style="light" backgroundColor="transparent" translucent={true} />
         
-        {/* Header ຈະຈັດການ Top Padding ເອງດ້ວຍ SafeAreaView ພາຍໃນຕົວມັນ */}
+        {/* Header ຈະຢືດຂຶ້ນໄປເຕັມຈໍເອງ ຍ້ອນການຕັ້ງຄ່າໃນ Header.tsx */}
         <HeaderAny 
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
             user={{ name: 'Admin', role: 'Manager' }} 
@@ -228,7 +228,7 @@ export default function App() {
             onLogout={() => setIsLoggedIn(false)}
         />
 
-        {/* 🟢 3. ສ່ວນເນື້ອຫາທາງລຸ່ມເປັນສີເທົາ */}
+        {/* 🟢 4. ສ່ວນເນື້ອຫາທາງລຸ່ມໃຫ້ເປັນສີເທົາ */}
         <View style={styles.mainContainer}>
           {isSidebarOpen && (
             <View style={styles.sidebarOverlay}>
@@ -259,11 +259,10 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  // 🟢 4. Container ແມ່ຕ້ອງເປັນສີ Teal. 
-  // ຖ້າມີ Notch, ພື້ນທີ່ຫຼັງ Notch ຈະເປັນສີນີ້
+  // 🟢 5. Container ແມ່ຕ້ອງເປັນສີ Teal (#008B94)
   container: { flex: 1, backgroundColor: '#008B94' },
   
-  // 🟢 5. Main Content ທາງໃນຈຶ່ງເປັນສີເທົາ
+  // 🟢 6. Main Content ທາງໃນຈຶ່ງເປັນສີເທົາ (#F5F9FA)
   mainContainer: { flex: 1, position: 'relative', backgroundColor: '#F5F9FA' },
   
   sidebarOverlay: { position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, zIndex: 999, flexDirection: 'row' },

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// ໃຊ້ SafeAreaView ຢູ່ທີ່ນີ້ເພື່ອຈັດການພື້ນທີ່ດ້ານເທິງໂດຍສະເພາະ
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// 🟢 1. ປ່ຽນຈາກ SafeAreaView ມາໃຊ້ useSafeAreaInsets
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../types';
 
 interface HeaderProps {
@@ -27,14 +27,16 @@ export default function Header({
   onLogout 
 }: HeaderProps) {
   
+  // 🟢 2. ດຶງຄ່າໄລຍະຫ່າງຂອງຕິ່ງໜ້າຈໍ (Notch)
+  const insets = useSafeAreaInsets();
+  
   const displayName = shopName || user?.name || "ຮ້ານ ສຸດາພອນ";
   const displayDetail = shopId || (user?.role ? `Role: ${user.role}` : "");
 
   return (
-    // 🟢 Container ຫຼັກຂອງ Header ເປັນ SafeAreaView
-    // edges={['top']} ຄືຄຳສັ່ງສັກສິດທີ່ບອກໃຫ້ມັນດັນສີພື້ນຫຼັງຂຶ້ນໄປກວມ Status Bar
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
+    // 🟢 3. ກຳນົດ paddingTop ຕາມຄ່າ insets.top ເພື່ອດັນເນື້ອຫາລົງມາ ແຕ່ພື້ນຫຼັງຍັງເປັນສີ Teal
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" translucent={true} />
       
       {/* Top Bar */}
       <View style={styles.topBar}>
@@ -76,18 +78,17 @@ export default function Header({
           <Text style={styles.editBtnText}>ແກ້ໄຂ</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
-    backgroundColor: COLORS.primary, // ສີ Teal ຈະຢືດຂຶ້ນໄປດ້ານເທິງສຸດ
+    backgroundColor: COLORS.primary, // 🟢 ສີ Teal ຈະຢູ່ເຕັມພື້ນທີ່ດ້ານເທິງສຸດ
     paddingBottom: 20, 
     borderBottomLeftRadius: 20, 
     borderBottomRightRadius: 20, 
-    zIndex: 1000,
-    //  paddingTop: 10 // ລຶບອອກ ໃຫ້ SafeAreaView ຈັດການເອງ
+    zIndex: 1000, 
   },
   topBar: { 
     flexDirection: 'row', 
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     paddingHorizontal: 20, 
     marginBottom: 20,
-    marginTop: 10 // ເພີ່ມໄລຍະຫ່າງໜ້ອຍໜຶ່ງຫຼັງຈາກ Status Bar
+    marginTop: 10 // ເພີ່ມໄລຍະຫ່າງໜ້ອຍໜຶ່ງ
   },
   leftContainer: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },

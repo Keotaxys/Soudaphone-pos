@@ -39,12 +39,13 @@ const parseCurrency = (value: any) => {
 
 interface DebtItem {
   id: string;
-  customer: string; // ປ່ຽນຈາກ creditor ເປັນ customer
+  customer: string;
   totalAmount: number;
   paidAmount: number;
   remaining: number;
   note: string;
   date: string;
+  currency: 'LAK' | 'THB'; // 🟢 ເພີ່ມ Field currency
   history?: Record<string, any>;
   [key: string]: any; 
 }
@@ -67,6 +68,7 @@ export default function DebtsReceivableScreen() {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date());
+  const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK'); // 🟢 State ສະກຸນເງິນ
   
   // Payment Form
   const [payAmount, setPayAmount] = useState('');
@@ -76,9 +78,9 @@ export default function DebtsReceivableScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateMode, setDateMode] = useState<'due' | 'payment'>('due');
 
-  // 1. ດຶງຂໍ້ມູນໜີ້ຕ້ອງຮັບ (Debts Receivable)
+  // 1. Fetch Data
   useEffect(() => {
-    const debtRef = ref(db, 'debts_receivable'); // 🟢 Node: debts_receivable
+    const debtRef = ref(db, 'debts_receivable');
     return onValue(debtRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
@@ -87,7 +89,8 @@ export default function DebtsReceivableScreen() {
             return { 
                 id: key, 
                 ...item,
-                remaining: item.remaining || (item.totalAmount - (item.paidAmount || 0))
+                currency: item.currency || 'LAK', // Default to LAK if missing
+                remaining: item.remaining !== undefined ? item.remaining : (item.totalAmount - (item.paidAmount || 0))
             };
         });
         setDebts(list.reverse() as DebtItem[]);
@@ -97,7 +100,7 @@ export default function DebtsReceivableScreen() {
     });
   }, []);
 
-  // 2. ຈັດການປະຫວັດ (History)
+  // 2. History Logic
   useEffect(() => {
     if (selectedDebt && historyModalVisible) {
         const currentDebt = debts.find(d => d.id === selectedDebt.id);
@@ -114,7 +117,7 @@ export default function DebtsReceivableScreen() {
     }
   }, [debts, selectedDebt, historyModalVisible]);
 
-  // 🟢 ຟັງຊັນເພີ່ມ/ແກ້ໄຂ ໜີ້ຕ້ອງຮັບ
+  // 🟢 ບັນທຶກ (Save)
   const handleSaveDebt = async () => {
     if (!customer || !amount) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ລູກຄ້າ ແລະ ຈຳນວນເງິນ');
@@ -129,6 +132,7 @@ export default function DebtsReceivableScreen() {
       paidAmount: 0,
       remaining: total,
       note,
+      currency, // 🟢 ບັນທຶກສະກຸນເງິນ
       date: date.toISOString(),
       status: 'PENDING',
       updatedAt: new Date().toISOString()
@@ -136,7 +140,7 @@ export default function DebtsReceivableScreen() {
 
     try {
       if (currentId) {
-          // ແກ້ໄຂ
+          // Edit Mode
           const oldDebt = debts.find(d => d.id === currentId);
           const oldPaid = oldDebt?.paidAmount || 0;
           const newRemaining = total - oldPaid;
@@ -148,7 +152,7 @@ export default function DebtsReceivableScreen() {
           });
           Alert.alert('ສຳເລັດ', 'ແກ້ໄຂຂໍ້ມູນຮຽບຮ້ອຍ');
       } else {
-          // ເພີ່ມໃໝ່
+          // Add Mode
           await push(ref(db, 'debts_receivable'), { ...debtData, createdAt: new Date().toISOString(), history: [] });
           Alert.alert('ສຳເລັດ', 'ເພີ່ມລາຍການໜີ້ຕ້ອງຮັບຮຽບຮ້ອຍ');
       }
@@ -164,11 +168,11 @@ export default function DebtsReceivableScreen() {
       setCustomer(item.customer);
       setAmount(formatNumber(item.totalAmount));
       setNote(item.note);
+      setCurrency(item.currency); // 🟢 Load existing currency
       setDate(new Date(item.date));
       setModalVisible(true);
   };
 
-  // 🟢 ຟັງຊັນຮັບຊຳລະໜີ້
   const handlePayment = async () => {
     if (!selectedDebt || !payAmount) return;
     const payVal = parseCurrency(payAmount);
@@ -217,6 +221,7 @@ export default function DebtsReceivableScreen() {
     setCustomer('');
     setAmount('');
     setNote('');
+    setCurrency('LAK'); // Reset to default
     setDate(new Date());
   };
 
@@ -255,8 +260,12 @@ export default function DebtsReceivableScreen() {
       setHistoryModalVisible(true);
   };
 
+  // Helper to get Symbol
+  const getSymbol = (curr: string) => curr === 'THB' ? '฿' : '₭';
+
   const renderItem = ({ item }: { item: DebtItem }) => {
     const progress = (item.paidAmount || 0) / item.totalAmount;
+    const symbol = getSymbol(item.currency);
     
     return (
         <View style={styles.card}>
@@ -278,23 +287,24 @@ export default function DebtsReceivableScreen() {
 
             <View style={styles.amountRow}>
                 <Text style={styles.label}>ຍອດໜີ້ລວມ:</Text>
-                <Text style={styles.amountTotal}>{formatNumber(item.totalAmount)} ກີບ</Text>
+                <Text style={styles.amountTotal}>{formatNumber(item.totalAmount)} {symbol}</Text>
             </View>
 
-            {/* Progress Bar */}
             <View style={styles.progressContainer}>
                 <View style={[styles.progressBar, { width: `${Math.min(progress * 100, 100)}%` }]} />
             </View>
             <View style={styles.progressInfo}>
                 <Text style={styles.progressText}>ຮັບແລ້ວ {formatNumber(item.paidAmount || 0)}</Text>
-                <Text style={styles.remainingText}>ຄ້າງຮັບ {formatNumber(item.remaining)}</Text>
+                <Text style={styles.remainingText}>ຄ້າງຮັບ {formatNumber(item.remaining)} {symbol}</Text>
             </View>
 
             <View style={styles.divider} />
 
             <View style={styles.footerRow}>
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
-                    <Ionicons name="alert-circle-outline" size={14} color={item.remaining === 0 ? COLORS.primary : ORANGE_COLOR} />
+                    <View style={[styles.currencyTag, item.currency === 'THB' ? {backgroundColor: ORANGE_COLOR} : {backgroundColor: COLORS.primary}]}>
+                        <Text style={styles.currencyTagText}>{item.currency}</Text>
+                    </View>
                     <Text style={[styles.statusText, {color: item.remaining === 0 ? COLORS.primary : ORANGE_COLOR}]}>
                         {item.remaining === 0 ? 'ຊຳລະຄົບແລ້ວ' : 'ລໍຖ້າຊຳລະ'}
                     </Text>
@@ -319,13 +329,11 @@ export default function DebtsReceivableScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.headerContainer}>
         <View style={{flex: 1}}>
             <Text style={styles.headerTitle}>ໜີ້ຕ້ອງຮັບ (Receivables)</Text>
             <Text style={styles.headerSub}>ຕິດຕາມລູກຄ້າທີ່ຕິດໜີ້ຮ້ານ</Text>
         </View>
-        {/* 🟢 Add Button in Header */}
         <TouchableOpacity style={styles.headerAddBtn} onPress={() => { resetForm(); setModalVisible(true); }}>
             <Ionicons name="add-circle" size={32} color={COLORS.primary} />
             <Text style={styles.headerAddText}>ເພີ່ມ</Text>
@@ -345,7 +353,6 @@ export default function DebtsReceivableScreen() {
         }
       />
 
-      {/* 🟢 Floating Add Button (Option) */}
       <TouchableOpacity style={styles.fab} onPress={() => { resetForm(); setModalVisible(true); }}>
         <Ionicons name="add" size={24} color="white" />
         <Text style={styles.fabText}>ເພີ່ມໜີ້</Text>
@@ -364,16 +371,26 @@ export default function DebtsReceivableScreen() {
                     <Text style={styles.inputLabel}>ຊື່ລູກຄ້າ *</Text>
                     <TextInput style={styles.input} value={customer} onChangeText={setCustomer} placeholder="ຊື່ລູກຄ້າ..." />
 
-                    <Text style={styles.inputLabel}>ລາຍລະອຽດ / ໝາຍເຫດ</Text>
-                    <TextInput style={styles.input} value={note} onChangeText={setNote} placeholder="ເຊັ່ນ: ຄ່າສິນຄ້າ..." />
+                    <Text style={styles.inputLabel}>ສະກຸນເງິນ *</Text>
+                    <View style={styles.currencyRow}>
+                        <TouchableOpacity style={[styles.currencyOption, currency === 'LAK' && styles.currencyActive]} onPress={() => setCurrency('LAK')}>
+                            <Text style={[styles.currencyText, currency === 'LAK' && {color:'white'}]}>₭ ເງິນກີບ (LAK)</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.currencyOption, currency === 'THB' && {borderColor: ORANGE_COLOR}, currency === 'THB' && {backgroundColor: ORANGE_COLOR}]} onPress={() => setCurrency('THB')}>
+                            <Text style={[styles.currencyText, currency === 'THB' && {color:'white'}, currency !== 'THB' && {color: ORANGE_COLOR}]}>฿ ເງິນບາດ (THB)</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                    <Text style={styles.inputLabel}>ຈຳນວນເງິນ (ກີບ) *</Text>
+                    <Text style={styles.inputLabel}>ຈຳນວນເງິນ ({currency}) *</Text>
                     <CurrencyInput 
                         style={styles.input} 
                         value={amount} 
                         onChangeValue={setAmount} 
                         placeholder="0" 
                     />
+
+                    <Text style={styles.inputLabel}>ລາຍລະອຽດ / ໝາຍເຫດ</Text>
+                    <TextInput style={styles.input} value={note} onChangeText={setNote} placeholder="ເຊັ່ນ: ຄ່າສິນຄ້າ..." />
 
                     <Text style={styles.inputLabel}>ວັນທີ</Text>
                     <TouchableOpacity style={styles.dateInput} onPress={() => toggleDatePicker('due')}>
@@ -407,7 +424,7 @@ export default function DebtsReceivableScreen() {
                     {selectedDebt && (
                         <View style={{marginBottom: 20}}>
                             <Text style={{fontFamily: 'Lao-Regular', color: '#666'}}>ຈາກລູກຄ້າ: <Text style={{fontFamily:'Lao-Bold', color: COLORS.text}}>{selectedDebt.customer}</Text></Text>
-                            <Text style={{fontFamily: 'Lao-Regular', color: '#666'}}>ຍອດຄ້າງຮັບ: <Text style={{fontFamily:'Lao-Bold', color: ORANGE_COLOR}}>{formatNumber(selectedDebt.remaining)} ກີບ</Text></Text>
+                            <Text style={{fontFamily: 'Lao-Regular', color: '#666'}}>ຍອດຄ້າງຮັບ: <Text style={{fontFamily:'Lao-Bold', color: selectedDebt.currency === 'THB' ? ORANGE_COLOR : COLORS.primary}}>{formatNumber(selectedDebt.remaining)} {getSymbol(selectedDebt.currency)}</Text></Text>
                         </View>
                     )}
 
@@ -417,7 +434,7 @@ export default function DebtsReceivableScreen() {
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(paymentDate)}</Text>
                     </TouchableOpacity>
 
-                    <Text style={styles.inputLabel}>ຈຳນວນເງິນ *</Text>
+                    <Text style={styles.inputLabel}>ຈຳນວນເງິນ ({selectedDebt ? getSymbol(selectedDebt.currency) : ''}) *</Text>
                     <CurrencyInput 
                         style={[styles.inputLarge, { color: COLORS.primary }]} 
                         value={payAmount} 
@@ -452,7 +469,7 @@ export default function DebtsReceivableScreen() {
                 {selectedDebt && (
                     <View style={{marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#eee'}}>
                         <Text style={{fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text}}>{selectedDebt.customer}</Text>
-                        <Text style={{fontFamily: 'Lao-Regular', fontSize: 12, color: '#666'}}>ຍອດທັງໝົດ: {formatNumber(selectedDebt.totalAmount)}</Text>
+                        <Text style={{fontFamily: 'Lao-Regular', fontSize: 12, color: '#666'}}>ຍອດທັງໝົດ: {formatNumber(selectedDebt.totalAmount)} {getSymbol(selectedDebt.currency)}</Text>
                     </View>
                 )}
 
@@ -468,7 +485,7 @@ export default function DebtsReceivableScreen() {
                     renderItem={({item}) => (
                         <View style={styles.historyItem}>
                             <Text style={styles.historyDate}>{formatDate(new Date(item.date))}</Text>
-                            <Text style={styles.historyAmount}>+ {formatNumber(item.amount)}</Text>
+                            <Text style={styles.historyAmount}>+ {formatNumber(item.amount)} {selectedDebt ? getSymbol(selectedDebt.currency) : ''}</Text>
                         </View>
                     )}
                 />
@@ -548,6 +565,14 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
   
+  // 🟢 Currency Selector Styles
+  currencyRow: { flexDirection: 'row', gap: 10, marginBottom: 5 },
+  currencyOption: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8, borderWidth: 1, borderColor: COLORS.primary },
+  currencyActive: { backgroundColor: COLORS.primary },
+  currencyText: { fontFamily: 'Lao-Bold', fontSize: 12, color: COLORS.primary },
+  currencyTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginRight: 5 },
+  currencyTagText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
+
   datePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
   datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
   datePickerBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },

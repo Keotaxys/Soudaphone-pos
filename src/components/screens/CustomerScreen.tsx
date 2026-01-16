@@ -24,6 +24,7 @@ import { COLORS } from '../../types';
 const { width } = Dimensions.get('window');
 const CARD_GAP = 10;
 const CARD_WIDTH = (width - 30 - CARD_GAP) / 2;
+const ORANGE_THEME = '#FF8F00'; // 🟢 ກຳນົດສີສົ້ມ
 
 interface Customer {
   id: string;
@@ -59,6 +60,8 @@ export default function CustomerScreen() {
       } else {
         setCustomers([]);
       }
+    }, (error) => {
+        console.log(error); 
     });
     return () => unsubscribe();
   }, []);
@@ -164,7 +167,8 @@ export default function CustomerScreen() {
                 <Ionicons name="pencil" size={14} color={COLORS.primary} />
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionBtn, {marginTop: 5}]} onPress={() => handleDelete(item.id)}>
-                <Ionicons name="trash" size={14} color={COLORS.danger} />
+                {/* 🟢 ປ່ຽນເປັນສີສົ້ມຕາມຄຳຂໍ */}
+                <Ionicons name="trash" size={14} color={ORANGE_THEME} /> 
             </TouchableOpacity>
         </View>
       </View>
@@ -191,7 +195,6 @@ export default function CustomerScreen() {
     </View>
   );
 
-  // 🟢 ListHeader: ຍ້າຍ Header ເຂົ້າມາໄວ້ໃນນີ້ເພື່ອໃຫ້ Scroll ໄດ້
   const ListHeader = () => (
     <View style={styles.headerContainer}>
         <Text style={styles.title}>ຂໍ້ມູນລູກຄ້າ</Text>
@@ -211,11 +214,10 @@ export default function CustomerScreen() {
   return (
     <SafeAreaView style={styles.container}>
       
-      {/* 🟢 FlatList ກວມເອົາທັງໝົດ */}
       <FlatList 
         data={filteredCustomers}
         keyExtractor={item => item.id}
-        ListHeaderComponent={ListHeader} // 🟢 ເອົາ Header ມາໃສ່ບ່ອນນີ້
+        ListHeaderComponent={ListHeader}
         renderItem={renderItem}
         contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
         numColumns={2}
@@ -228,7 +230,12 @@ export default function CustomerScreen() {
         }
       />
 
-      <TouchableOpacity style={styles.fab} onPress={() => { resetForm(); setModalVisible(true); }}>
+      {/* 🟢 ປຸ່ມເພີ່ມລູກຄ້າ (FAB) ທີ່ຫາຍໄປ ຖືກນຳກັບມາແລ້ວ */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => { resetForm(); setModalVisible(true); }}
+        activeOpacity={0.8}
+      >
         <Ionicons name="add" size={30} color="white" />
         <Text style={styles.fabText}>ເພີ່ມ</Text>
       </TouchableOpacity>
@@ -271,10 +278,10 @@ export default function CustomerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerContainer: { paddingBottom: 15, backgroundColor: COLORS.background }, // 🟢 ປັບພື້ນຫຼັງ Header
+  headerContainer: { paddingBottom: 15, backgroundColor: COLORS.background }, 
   title: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.primary },
   subtitle: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666', marginBottom: 15 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 10, borderWidth: 1, borderColor: '#eee' }, // 🟢 ປັບ Search Bar ໃຫ້ງາມຂຶ້ນໜ້ອຍໜຶ່ງ
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 10, borderWidth: 1, borderColor: '#eee' }, 
   searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 14 },
   
   businessCard: { width: CARD_WIDTH, backgroundColor: 'white', borderRadius: 12, marginBottom: 15, elevation: 3, overflow: 'hidden', borderWidth: 1, borderColor: '#eee' },
@@ -290,9 +297,21 @@ const styles = StyleSheet.create({
   fbButton: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: '#E3F2FD', padding: 5, borderRadius: 6, justifyContent: 'center' },
   fbText: { fontFamily: 'Lao-Bold', color: '#1877F2', fontSize: 11 },
   
-  // 🟢 ແກ້ໄຂສີ FAB ໃຫ້ເປັນ COLORS.primary (Teal)
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 30, elevation: 5 },
-  fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 14, marginLeft: 5 },
+  // 🟢 ປຸ່ມ FAB ສີສົ້ມ
+  fab: { 
+    position: 'absolute', 
+    bottom: 90, // ຍົກຂຶ້ນເພື່ອບໍ່ໃຫ້ Footer ບັງ
+    right: 20, 
+    backgroundColor: ORANGE_THEME, // ສີສົ້ມ
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 12, 
+    paddingHorizontal: 20, 
+    borderRadius: 30, 
+    elevation: 5,
+    zIndex: 999 
+  },
+  fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 5 },
   
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },

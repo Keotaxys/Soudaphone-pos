@@ -10,8 +10,8 @@ import { CartItem, Product, SaleRecord } from '../../src/types';
 
 import CustomerScreen from '../../src/components/screens/CustomerScreen';
 import DebtScreen from '../../src/components/screens/DebtScreen';
-import DebtsReceivableScreen from '../../src/components/screens/DebtsReceivableScreen'; 
-import SpecialSaleScreen from '../../src/components/screens/SpecialSaleScreen'; 
+import DebtsReceivableScreen from '../../src/components/screens/DebtsReceivableScreen';
+import SpecialSaleScreen from '../../src/components/screens/SpecialSaleScreen';
 
 import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
@@ -164,7 +164,16 @@ export default function App() {
   const renderScreen = () => {
     const tabName = activeTab.toLowerCase();
     switch (tabName) {
-      case 'home': return <HomeScreenAny salesHistory={salesHistory} products={products} onQuickAddProduct={openAddProductModal} onQuickScan={() => setScannerVisible(true)} onQuickCustomer={() => setActiveTab('Customers')} />;
+      case 'home': return (
+        <HomeScreenAny 
+            salesHistory={salesHistory} 
+            products={products} 
+            onQuickAddProduct={openAddProductModal} // ຍັງເກັບໄວ້ໃຊ້ຢູ່
+            onSpecialSale={() => setActiveTab('special_sale')} // 🟢 ເພີ່ມ Prop ນີ້
+            onQuickScan={() => setScannerVisible(true)} 
+            onQuickCustomer={() => setActiveTab('Customers')} 
+        />
+      );
       case 'pos': return (
           <POSScreenAny 
             products={products} 

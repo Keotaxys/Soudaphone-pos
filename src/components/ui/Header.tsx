@@ -25,13 +25,14 @@ export default function Header({
   onLogout 
 }: HeaderProps) {
   
-  const displayName = user?.name || shopName;
-  const displayDetail = user?.role ? `Role: ${user.role}` : shopId;
+  // 🟢 2. ປ່ຽນໃຫ້ສະແດງຊື່ຮ້ານກ່ອນ ຖ້າມີ
+  const displayName = shopName || user?.name || "ຮ້ານ ສຸດາພອນ";
+  const displayDetail = shopId || (user?.role ? `Role: ${user.role}` : "");
 
   return (
     <View style={styles.container}>
-      {/* ຄວບຄຸມສີ Status Bar ໃຫ້ເປັນສີຂຽວ ແລະ ຕົວໜັງສືສີຂາວ */}
-      <StatusBar backgroundColor={COLORS?.primary || '#008B94'} barStyle="light-content" />
+      {/* 🟢 1. ຕັ້ງຄ່າ Status Bar ໃຫ້ເປັນສີດຽວກັນ */}
+      <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
       
       {/* Top Bar */}
       <View style={styles.topBar}>
@@ -59,12 +60,15 @@ export default function Header({
             <Image source={{ uri: shopLogo }} style={styles.shopLogo} />
           ) : (
             <View style={styles.shopLogoPlaceholder}>
+              {/* 🟢 ດຶງຕົວອັກສອນທຳອິດຈາກ displayName */}
               <Text style={styles.shopLogoText}>{displayName ? displayName.charAt(0) : 'S'}</Text>
             </View>
           )}
           
           <View>
+            {/* 🟢 ສະແດງຊື່ຮ້ານ */}
             <Text style={styles.shopName}>{displayName}</Text>
+            {/* 🟢 ສະແດງ ID ຮ້ານ */}
             <Text style={styles.shopId}>{displayDetail}</Text>
           </View>
         </View>
@@ -79,9 +83,8 @@ export default function Header({
 
 const styles = StyleSheet.create({
   container: { 
-    backgroundColor: COLORS?.primary || '#008B94', 
+    backgroundColor: COLORS.primary, // 🟢 1. ໃຊ້ສີ Teal (Primary)
     paddingBottom: 20, 
-    // ໃຊ້ paddingTop ໜ້ອຍໜຶ່ງພໍ ເພາະ SafeAreaView ຈັດການສ່ວນ Notch ໃຫ້ແລ້ວ
     paddingTop: Platform.OS === 'android' ? 10 : 0, 
     borderBottomLeftRadius: 20, 
     borderBottomRightRadius: 20, 
@@ -97,6 +100,7 @@ const styles = StyleSheet.create({
   leftContainer: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },
   rightIcons: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  
   shopCard: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -114,8 +118,8 @@ const styles = StyleSheet.create({
   shopInfo: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   shopLogo: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eee' },
   shopLogoPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E0F2F1', justifyContent: 'center', alignItems: 'center' },
-  shopLogoText: { fontSize: 24, fontFamily: 'Lao-Bold', color: COLORS?.primary || '#008B94' },
-  shopName: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS?.text || '#333' },
+  shopLogoText: { fontSize: 24, fontFamily: 'Lao-Bold', color: COLORS.primary },
+  shopName: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text },
   shopId: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
   editBtn: { backgroundColor: '#f0f0f0', paddingVertical: 5, paddingHorizontal: 15, borderRadius: 20 },
   editBtnText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },

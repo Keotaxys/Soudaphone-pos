@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// 🟢 1. Import SafeAreaView
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../types';
 
 interface HeaderProps {
@@ -25,13 +27,13 @@ export default function Header({
   onLogout 
 }: HeaderProps) {
   
-  // 🟢 2. ປ່ຽນໃຫ້ສະແດງຊື່ຮ້ານກ່ອນ ຖ້າມີ
   const displayName = shopName || user?.name || "ຮ້ານ ສຸດາພອນ";
   const displayDetail = shopId || (user?.role ? `Role: ${user.role}` : "");
 
   return (
-    <View style={styles.container}>
-      {/* 🟢 1. ຕັ້ງຄ່າ Status Bar ໃຫ້ເປັນສີດຽວກັນ */}
+    // 🟢 2. ປ່ຽນ View ເປັນ SafeAreaView ແລະກຳນົດ edges=['top']
+    // ວິທີນີ້ຈະເຮັດໃຫ້ພື້ນຫຼັງສີ Teal ຂະຫຍາຍຂຶ້ນໄປເຕັມ Status Bar ດ້ານເທິງສຸດ
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
       
       {/* Top Bar */}
@@ -60,15 +62,12 @@ export default function Header({
             <Image source={{ uri: shopLogo }} style={styles.shopLogo} />
           ) : (
             <View style={styles.shopLogoPlaceholder}>
-              {/* 🟢 ດຶງຕົວອັກສອນທຳອິດຈາກ displayName */}
               <Text style={styles.shopLogoText}>{displayName ? displayName.charAt(0) : 'S'}</Text>
             </View>
           )}
           
           <View>
-            {/* 🟢 ສະແດງຊື່ຮ້ານ */}
             <Text style={styles.shopName}>{displayName}</Text>
-            {/* 🟢 ສະແດງ ID ຮ້ານ */}
             <Text style={styles.shopId}>{displayDetail}</Text>
           </View>
         </View>
@@ -77,18 +76,21 @@ export default function Header({
           <Text style={styles.editBtnText}>ແກ້ໄຂ</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
-    backgroundColor: COLORS.primary, // 🟢 1. ໃຊ້ສີ Teal (Primary)
+    backgroundColor: COLORS.primary, // ສີ Teal ຢູ່ນີ້ຈະຂະຫຍາຍໄປເຕັມ Status Bar
     paddingBottom: 20, 
-    paddingTop: Platform.OS === 'android' ? 10 : 0, 
+    // 🟢 3. ລຶບ paddingTop ແບບ manual ອອກ ເພາະ SafeAreaView ຈັດການໃຫ້ແລ້ວ
+    // paddingTop: Platform.OS === 'android' ? 10 : 0, 
     borderBottomLeftRadius: 20, 
     borderBottomRightRadius: 20, 
-    zIndex: 1000 
+    zIndex: 1000,
+    // 🟢 4. ເພີ່ມ padding ດ້ານເທິງເລັກນ້ອຍສຳລັບເນື້ອຫາພາຍໃນ ບໍ່ໃຫ້ຕິດຂອບເກີນໄປ
+    paddingTop: 10, 
   },
   topBar: { 
     flexDirection: 'row', 

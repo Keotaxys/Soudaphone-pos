@@ -20,7 +20,7 @@ const MENU_ITEMS = [
   // ກຸ່ມຂາຍ
   { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' },
   { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart-outline' },
-  { id: 'special_sale', label: 'ຂາຍພິເສດ', icon: 'flash-outline' }, // 🟢 ເພີ່ມໃໝ່
+  { id: 'special_sale', label: 'ຂາຍພິເສດ', icon: 'flash-outline' },
   { id: 'history', label: 'ປະຫວັດການຂາຍ', icon: 'time-outline' },
 
   // ກຸ່ມສິນຄ້າ
@@ -29,8 +29,8 @@ const MENU_ITEMS = [
   
   // ກຸ່ມການເງິນ & ໜີ້ສິນ
   { id: 'customers', label: 'ຂໍ້ມູນລູກຄ້າ', icon: 'people-outline' },
-  { id: 'debts_receivable', label: 'ໜີ້ຕ້ອງຮັບ', icon: 'download-outline' }, // 🟢 ເພີ່ມໃໝ່ (ຮັບຈາກລູກຄ້າ)
-  { id: 'debts_payable', label: 'ໜີ້ຕ້ອງສົ່ງ', icon: 'arrow-up-circle-outline' }, // 🟢 ປ່ຽນຊື່ (ສົ່ງໃຫ້ Supplier)
+  { id: 'debts_receivable', label: 'ໜີ້ຕ້ອງຮັບ', icon: 'download-outline' },
+  { id: 'debts_payable', label: 'ໜີ້ຕ້ອງສົ່ງ', icon: 'arrow-up-circle-outline' },
   { id: 'expenses', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet-outline' },
 
   // ອື່ນໆ
@@ -51,7 +51,6 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
       <ScrollView contentContainerStyle={styles.menuContainer} showsVerticalScrollIndicator={false}>
         {MENU_ITEMS.map((item, index) => {
           const isActive = activeTab.toLowerCase() === item.id.toLowerCase();
-          // ເພີ່ມເສັ້ນຂັ້ນລະຫວ່າງກຸ່ມ
           const isGroupDivider = index === 4 || index === 6 || index === 10;
 
           return (
@@ -78,7 +77,7 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
 
         <TouchableOpacity 
           style={styles.menuItem}
-          onPress={() => Alert.alert("Coming Soon", "ຟັງຊັນຕັ້ງຄ່າໃບບິນ")}
+          onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "ຟັງຊັນນີ້ຈະເປີດໃຫ້ໃຊ້ງານໄວໆນີ້")}
         >
           <Ionicons name="settings-outline" size={24} color="#555" />
           <Text style={styles.menuText}>ຕັ້ງຄ່າໃບບິນ</Text>

@@ -4,17 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
-// --- Imports ---
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import { db } from '../../src/firebase';
 import { CartItem, Product, SaleRecord } from '../../src/types';
 
-// Screens
 import CustomerScreen from '../../src/components/screens/CustomerScreen';
 import DebtScreen from '../../src/components/screens/DebtScreen';
-// 🟢 Import Screens ໃໝ່
-import DebtsReceivableScreen from '../../src/components/screens/DebtsReceivableScreen';
-import SpecialSaleScreen from '../../src/components/screens/SpecialSaleScreen';
+import DebtsReceivableScreen from '../../src/components/screens/DebtsReceivableScreen'; 
+import SpecialSaleScreen from '../../src/components/screens/SpecialSaleScreen'; 
 
 import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
@@ -26,17 +23,14 @@ import ReportDashboard from '../../src/components/screens/ReportDashboard';
 import SalesHistoryScreen from '../../src/components/screens/SalesHistoryScreen';
 import ShiftScreen from '../../src/components/screens/ShiftScreen';
 
-// UI Components
 import Footer from '../../src/components/ui/Footer';
 import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
-// Modals
 import EditShopModal from '../../src/components/modals/EditShopModal';
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
 
-// 🔥 Force Cast Components
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -185,10 +179,9 @@ export default function App() {
             onOpenAddProduct={openAddProductModal} 
           />
       );
-      // 🟢 ເພີ່ມ Case ໃໝ່
       case 'special_sale': return <SpecialSaleScreen products={products} />; 
       case 'debts_receivable': return <DebtsReceivableScreen />; 
-      case 'debts_payable': return <DebtScreen />; // ໃຊ້ DebtScreen ເດີມເປັນ "ໜີ້ຕ້ອງສົ່ງ"
+      case 'debts_payable': return <DebtScreen />; 
 
       case 'products': return <ProductsScreenAny products={products} onAddProduct={openAddProductModal} onEditProduct={openEditProductModal} onDeleteProduct={handleDeleteProduct} />;
       case 'customers': return <CustomerScreen />;

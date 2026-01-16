@@ -25,7 +25,6 @@ interface SpecialSaleScreenProps {
 }
 
 export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) {
-  // Form State
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [source, setSource] = useState<'Shop' | 'Online'>('Shop');
@@ -38,7 +37,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
   const [history, setHistory] = useState<any[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
 
-  // Fetch History & Categories
   useEffect(() => {
     const cats = [...new Set(products.map(p => p.category || 'ທົ່ວໄປ'))];
     setCategories(cats);
@@ -50,7 +48,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         const data = snapshot.val();
         const list = Object.keys(data)
           .map(k => ({ id: k, ...data[k] }))
-          .filter((item: any) => item.isSpecial === true) // ກັ່ນຕອງສະເພາະບິນພິເສດ
+          .filter((item: any) => item.isSpecial === true)
           .reverse();
         setHistory(list);
       }
@@ -60,7 +58,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
   const handleSave = () => {
     if (!detail || !price || !qty) {
-      Alert.alert("Error", "ກະລຸນາປ້ອນຂໍ້ມູນໃຫ້ຄົບ");
+      Alert.alert("ແຈ້ງເຕືອນ", "ກະລຸນາປ້ອນຂໍ້ມູນໃຫ້ຄົບຖ້ວນ");
       return;
     }
 
@@ -70,7 +68,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
       date: date.toISOString(),
       source: source === 'Shop' ? 'POS' : 'ONLINE',
       paymentMethod,
-      currency: 'LAK', // Default manual sale to LAK
+      currency: 'LAK',
       items: [{
         name: detail,
         price: parseFloat(price),
@@ -88,12 +86,12 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
     push(ref(db, 'sales'), newSale)
       .then(() => {
-        Alert.alert("Success", "ບັນທຶກສຳເລັດ!");
+        Alert.alert("ສຳເລັດ", "ບັນທຶກຂໍ້ມູນການຂາຍຮຽບຮ້ອຍແລ້ວ!");
         setDetail('');
         setPrice('');
         setQty('1');
       })
-      .catch(err => Alert.alert("Error", err.message));
+      .catch(err => Alert.alert("ເກີດຂໍ້ຜິດພາດ", err.message));
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
@@ -103,27 +101,25 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
   return (
     <View style={styles.container}>
-      {/* Header with Tools */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ຂາຍພິເສດ (Manual Sale)</Text>
         <View style={styles.tools}>
-            <TouchableOpacity style={styles.toolBtn} onPress={() => Alert.alert("Template", "ເລືອກ Template (Coming Soon)")}>
+            <TouchableOpacity style={styles.toolBtn} onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "ລະບົບແບບຟອມ ຈະມາໄວໆນີ້")}>
                 <Ionicons name="copy-outline" size={18} color="white" />
-                <Text style={styles.toolText}>Template</Text>
+                <Text style={styles.toolText}>ແບບຟອມ</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.toolBtn} onPress={() => Alert.alert("Import", "Import Excel (Coming Soon)")}>
+            <TouchableOpacity style={styles.toolBtn} onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "ລະບົບນຳເຂົ້າ Excel ຈະມາໄວໆນີ້")}>
                 <Ionicons name="cloud-upload-outline" size={18} color="white" />
-                <Text style={styles.toolText}>Import</Text>
+                <Text style={styles.toolText}>ນຳເຂົ້າ</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.toolBtn, {backgroundColor: ORANGE_THEME}]} onPress={() => Alert.alert("Export", "Export Excel (Coming Soon)")}>
+            <TouchableOpacity style={[styles.toolBtn, {backgroundColor: ORANGE_THEME}]} onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "ລະບົບສົ່ງອອກ Excel ຈະມາໄວໆນີ້")}>
                 <Ionicons name="download-outline" size={18} color="white" />
-                <Text style={styles.toolText}>Export</Text>
+                <Text style={styles.toolText}>ສົ່ງອອກ</Text>
             </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.content}>
-        {/* Left: Form */}
         <ScrollView style={styles.formSection}>
             <Text style={styles.label}>ວັນທີ *</Text>
             <TouchableOpacity style={styles.inputBox} onPress={() => setShowDatePicker(true)}>
@@ -185,7 +181,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
             </TouchableOpacity>
         </ScrollView>
 
-        {/* Right: History */}
         <View style={styles.historySection}>
             <Text style={styles.historyTitle}>ປະຫວັດລາຍຮັບ (ຂາຍພິເສດ)</Text>
             <FlatList 

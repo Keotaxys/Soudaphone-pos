@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
-// 🟢 ແກ້ໄຂ 1: ປ່ຽນ import ໄປໃຊ້ legacy ຕາມທີ່ Error ແນະນຳ
+// 🟢 ໃຊ້ Legacy Import ເພື່ອແກ້ໄຂ Error writeAsStringAsync
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { onValue, push, ref } from 'firebase/database';
@@ -85,11 +85,9 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         
         const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
         
-        // 🟢 ແກ້ໄຂ 2: ໃຊ້ (FileSystem as any) ເພື່ອອ້າງອີງ Path ໄດ້ທັງ iOS/Android
         const fileDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory;
         const uri = fileDir + "SpecialSale_Template.xlsx";
         
-        // 🟢 ແກ້ໄຂ 3: ໃຊ້ string 'base64' ໂດຍກົງ
         await FileSystem.writeAsStringAsync(uri, base64, { encoding: 'base64' });
         
         const canShare = await Sharing.isAvailableAsync();
@@ -162,7 +160,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         setLoading(true);
         const fileUri = result.assets[0].uri;
         
-        // 🟢 ອ່ານຟາຍດ້ວຍ legacy API
         const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
         
         const wb = XLSX.read(fileContent, { type: 'base64' });
@@ -274,6 +271,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
   return (
     <View style={styles.container}>
+      {/* Loading Overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color={COLORS.primary} />
@@ -283,18 +281,16 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ຂາຍພິເສດ (Manual Sale)</Text>
+        {/* 🟢 3. ຕັດຊື່ຫົວຂໍ້ icon ອອກ */}
         <View style={styles.tools}>
             <TouchableOpacity style={styles.toolBtn} onPress={handleDownloadTemplate}>
-                <Ionicons name="copy-outline" size={18} color="white" />
-                <Text style={styles.toolText}>Template</Text>
+                <Ionicons name="copy-outline" size={20} color="white" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.toolBtn} onPress={handleImport}>
-                <Ionicons name="cloud-upload-outline" size={18} color="white" />
-                <Text style={styles.toolText}>Import</Text>
+                <Ionicons name="cloud-upload-outline" size={20} color="white" />
             </TouchableOpacity>
             <TouchableOpacity style={[styles.toolBtn, {backgroundColor: COLORS.primary}]} onPress={handleExport}>
-                <Ionicons name="download-outline" size={18} color="white" />
-                <Text style={styles.toolText}>Export</Text>
+                <Ionicons name="download-outline" size={20} color="white" />
             </TouchableOpacity>
         </View>
       </View>
@@ -303,6 +299,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         
         <View style={styles.formSection}>
             
+            {/* Row 1: Date & Source */}
             <View style={styles.row}>
                 <View style={{flex: 1}}>
                     <Text style={styles.label}>ວັນທີ *</Text>
@@ -329,7 +326,8 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                                         }
                                     ]}
                                 >
-                                    <Text style={[styles.chipText, isActive && {color:'white'}]}>{s === 'Shop' ? 'ຮ້ານ' : 'Online'}</Text>
+                                    {/* 🟢 1. ປ່ຽນຊື່ປຸ່ມ "ຮ້ານ" -> "ໜ້າຮ້ານ" */}
+                                    <Text style={[styles.chipText, isActive && {color:'white'}]}>{s === 'Shop' ? 'ໜ້າຮ້ານ' : 'Online'}</Text>
                                 </TouchableOpacity>
                             );
                         })}
@@ -337,15 +335,17 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                 </View>
             </View>
 
+            {/* Row 2: Currency & Payment */}
             <View style={styles.row}>
                 <View style={{flex: 1}}>
                     <Text style={styles.label}>ສະກຸນເງິນ *</Text>
                     <View style={styles.chipRow}>
                         <TouchableOpacity style={[styles.chipSmall, currency === 'LAK' && styles.activeChip]} onPress={() => setCurrency('LAK')}>
-                            <Text style={[styles.chipText, currency === 'LAK' && {color:'white'}]}>₭ LAK</Text>
+                            {/* 🟢 2. ປ່ຽນຊື່ສະກຸນເງິນ */}
+                            <Text style={[styles.chipText, currency === 'LAK' && {color:'white'}]}>₭ ກີບ</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.chipSmall, currency === 'THB' && {backgroundColor: ORANGE_THEME, borderColor: ORANGE_THEME}]} onPress={() => setCurrency('THB')}>
-                            <Text style={[styles.chipText, currency === 'THB' && {color:'white'}]}>฿ THB</Text>
+                            <Text style={[styles.chipText, currency === 'THB' && {color:'white'}]}>฿ ບາດ</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -386,7 +386,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
             <View style={styles.row}>
                 <View style={{flex: 1, marginRight: 10}}>
-                    <Text style={styles.label}>ລາຄາ ({currency}) *</Text>
+                    <Text style={styles.label}>ລາຄາ ({currency === 'THB' ? 'ບາດ' : 'ກີບ'}) *</Text>
                     <TextInput style={styles.inputBox} keyboardType="numeric" placeholder="0" value={price} onChangeText={setPrice} />
                 </View>
                 <View style={{flex: 1}}>
@@ -503,9 +503,8 @@ const styles = StyleSheet.create({
   loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.8)', zIndex: 9999, justifyContent: 'center', alignItems: 'center' },
   header: { padding: 15, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 2 },
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333' },
-  tools: { flexDirection: 'row', gap: 5 },
-  toolBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, gap: 5, alignItems: 'center' },
-  toolText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 10 },
+  tools: { flexDirection: 'row', gap: 10 },
+  toolBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, gap: 5, alignItems: 'center' },
   
   content: { flex: 1, padding: 10 },
   formSection: { backgroundColor: 'white', borderRadius: 10, padding: 15, elevation: 2, marginBottom: 15 },

@@ -15,10 +15,12 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+// 🟢 1. ໃຊ້ SafeAreaView ເພື່ອບໍ່ໃຫ້ປຸ່ມຕົກຂອບ
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { db } from '../../firebase';
 import { COLORS, formatNumber, Product } from '../../types';
 
-const ORANGE_THEME = '#FF8F00'; // 🟢 2. ສີສົ້ມຕາມ Theme
+const ORANGE_THEME = '#FF8F00'; 
 
 interface ProductsScreenProps {
   products: Product[];
@@ -36,13 +38,13 @@ export default function ProductsScreen({
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  // ກັ່ນຕອງສິນຄ້າຕາມການຄົ້ນຫາ
+  // ກັ່ນຕອງສິນຄ້າ
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (p.barcode && p.barcode.includes(searchQuery))
   );
 
-  // 1. ຟັງຊັນ Download Template
+  // 1. Download Template
   const handleDownloadTemplate = async () => {
       const csvContent = "Name,Price,Stock,Currency(LAK/THB),Barcode,Category\nເສື້ອຢືດ,50000,10,LAK,88889999,ເສື້ອຜ້າ\n";
       const fileName = `${FileSystem.documentDirectory}product_template.csv`;
@@ -54,7 +56,7 @@ export default function ProductsScreen({
       }
   };
 
-  // 2. ຟັງຊັນ Export
+  // 2. Export
   const handleExport = async () => {
       let csvContent = "Name,Price,Stock,Currency,Barcode,Category\n";
       products.forEach(p => {
@@ -69,7 +71,7 @@ export default function ProductsScreen({
       }
   };
 
-  // 3. ຟັງຊັນ Import
+  // 3. Import
   const handleImport = async () => {
       try {
           const result = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'application/vnd.ms-excel', '*/*'] });
@@ -129,7 +131,6 @@ export default function ProductsScreen({
             <Text style={styles.price}>
                 {formatNumber(item.price)} {item.priceCurrency === 'LAK' ? '₭' : '฿'}
             </Text>
-            {/* 🟢 2. ປ່ຽນສີແດງເປັນສີສົ້ມ */}
             <Text style={[styles.stock, item.stock <= 5 && { color: ORANGE_THEME }]}>
                 ຄົງເຫຼືອ: {item.stock}
             </Text>
@@ -139,7 +140,6 @@ export default function ProductsScreen({
             <TouchableOpacity style={styles.editBtn} onPress={() => onEditProduct(item)}>
                 <Ionicons name="pencil" size={20} color={COLORS.primary} />
             </TouchableOpacity>
-            {/* 🟢 2. ປ່ຽນສີແດງເປັນສີສົ້ມ */}
             <TouchableOpacity style={styles.deleteBtn} onPress={() => onDeleteProduct(item.id!)}>
                 <Ionicons name="trash-outline" size={20} color={ORANGE_THEME} />
             </TouchableOpacity>
@@ -179,7 +179,8 @@ export default function ProductsScreen({
   );
 
   return (
-    <View style={styles.container}>
+    // 🟢 2. ໃຊ້ SafeAreaView ແທນ View ປົກກະຕິ
+    <SafeAreaView style={styles.container}>
       
       <FlatList
         data={filteredProducts}
@@ -195,12 +196,12 @@ export default function ProductsScreen({
         }
       />
 
-      {/* 🟢 1. ປຸ່ມເພີ່ມສິນຄ້າ (FAB) */}
+      {/* 🟢 3. ປຸ່ມເພີ່ມສິນຄ້າ (FAB) ແກ້ໄຂ zIndex ແລະ ຕຳແໜ່ງ */}
       <TouchableOpacity style={styles.fab} onPress={onAddProduct}>
           <Ionicons name="add" size={30} color="white" />
           <Text style={styles.fabText}>ເພີ່ມສິນຄ້າ</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -227,9 +228,26 @@ const styles = StyleSheet.create({
 
   actions: { flexDirection: 'row', gap: 10 },
   editBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
-  deleteBtn: { padding: 8, backgroundColor: '#FFF3E0', borderRadius: 8 }, // 🟢 2. ສີພື້ນຫຼັງປຸ່ມລຶບ
+  deleteBtn: { padding: 8, backgroundColor: '#FFF3E0', borderRadius: 8 },
 
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, flexDirection: 'row', alignItems: 'center', elevation: 5 },
+  // 🟢 4. Style ສຳລັບ FAB (ເພີ່ມ zIndex ແລະ Elevation)
+  fab: { 
+    position: 'absolute', 
+    bottom: 30, // ຍັບຂຶ້ນມາເລັກນ້ອຍ
+    right: 20, 
+    backgroundColor: COLORS.primary, 
+    paddingVertical: 12, 
+    paddingHorizontal: 20, 
+    borderRadius: 30, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    elevation: 10, // ສຳລັບ Android
+    zIndex: 999,   // ສຳລັບ iOS
+    shadowColor: '#000', // ເງົາ
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+  },
   fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 5 },
 
   emptyContainer: { alignItems: 'center', marginTop: 100 },

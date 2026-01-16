@@ -24,7 +24,6 @@ import { COLORS } from '../../types';
 const { width } = Dimensions.get('window');
 const CARD_GAP = 10;
 const CARD_WIDTH = (width - 30 - CARD_GAP) / 2;
-const ORANGE_THEME = '#FF8F00'; // 🟢 ກຳນົດສີສົ້ມ
 
 interface Customer {
   id: string;
@@ -167,8 +166,7 @@ export default function CustomerScreen() {
                 <Ionicons name="pencil" size={14} color={COLORS.primary} />
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionBtn, {marginTop: 5}]} onPress={() => handleDelete(item.id)}>
-                {/* 🟢 ປ່ຽນເປັນສີສົ້ມຕາມຄຳຂໍ */}
-                <Ionicons name="trash" size={14} color={ORANGE_THEME} /> 
+                <Ionicons name="trash" size={14} color={COLORS.danger} /> 
             </TouchableOpacity>
         </View>
       </View>
@@ -230,7 +228,7 @@ export default function CustomerScreen() {
         }
       />
 
-      {/* 🟢 ປຸ່ມເພີ່ມລູກຄ້າ (FAB) ທີ່ຫາຍໄປ ຖືກນຳກັບມາແລ້ວ */}
+      {/* 🟢 2. ປ່ຽນປຸ່ມ FAB ກັບມາເປັນສີ Teal (COLORS.primary) */}
       <TouchableOpacity 
         style={styles.fab} 
         onPress={() => { resetForm(); setModalVisible(true); }}
@@ -250,31 +248,73 @@ export default function CustomerScreen() {
                     </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
-                    {imageUrl ? (
-                        <Image source={{ uri: imageUrl }} style={styles.previewImage} />
-                    ) : (
-                        <View style={styles.placeholderImage}>
-                            <Ionicons name="camera" size={30} color="#ccc" />
-                            <Text style={styles.uploadText}>ເພີ່ມຮູບ</Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                    <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
+                        {imageUrl ? (
+                            <Image source={{ uri: imageUrl }} style={styles.previewImage} />
+                        ) : (
+                            <View style={styles.placeholderImage}>
+                                <Ionicons name="camera" size={30} color="#ccc" />
+                                <Text style={styles.uploadText}>ເພີ່ມຮູບ</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
 
-                <TextInput style={styles.input} placeholder="ຊື່ລູກຄ້າ *" value={name} onChangeText={setName} />
-                <TextInput style={styles.input} placeholder="ເບີໂທ *" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
-                <TextInput style={styles.input} placeholder="Facebook URL" value={facebookUrl} onChangeText={setFacebookUrl} autoCapitalize="none" />
-                <TextInput style={styles.input} placeholder="ທີ່ຢູ່" value={address} onChangeText={setAddress} />
+                    {/* 🟢 1. ເພີ່ມ Label ແລະ ປັບ Placeholder ໃຫ້ເຫັນຊັດເຈນ */}
+                    
+                    <Text style={styles.inputLabel}>ຊື່ລູກຄ້າ <Text style={{color:'red'}}>*</Text></Text>
+                    <TextInput 
+                        style={styles.input} 
+                        placeholder="ປ້ອນຊື່ລູກຄ້າ..." 
+                        placeholderTextColor="#999" 
+                        value={name} 
+                        onChangeText={setName} 
+                    />
 
-                <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                    <Text style={styles.saveBtnText}>ບັນທຶກຂໍ້ມູນ</Text>
-                </TouchableOpacity>
+                    <Text style={styles.inputLabel}>ເບີໂທ <Text style={{color:'red'}}>*</Text></Text>
+                    <TextInput 
+                        style={styles.input} 
+                        placeholder="ປ້ອນເບີໂທຕິດຕໍ່..." 
+                        placeholderTextColor="#999"
+                        keyboardType="phone-pad" 
+                        value={phone} 
+                        onChangeText={setPhone} 
+                    />
+
+                    <Text style={styles.inputLabel}>Facebook URL</Text>
+                    <TextInput 
+                        style={styles.input} 
+                        placeholder="ວາງລິ້ງ Facebook..." 
+                        placeholderTextColor="#999"
+                        value={facebookUrl} 
+                        onChangeText={setFacebookUrl} 
+                        autoCapitalize="none" 
+                    />
+
+                    <Text style={styles.inputLabel}>ທີ່ຢູ່</Text>
+                    <TextInput 
+                        style={[styles.input, {height: 80, textAlignVertical: 'top'}]} 
+                        placeholder="ປ້ອນທີ່ຢູ່..." 
+                        placeholderTextColor="#999"
+                        value={address} 
+                        onChangeText={setAddress} 
+                        multiline
+                    />
+
+                    <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                        <Text style={styles.saveBtnText}>ບັນທຶກຂໍ້ມູນ</Text>
+                    </TouchableOpacity>
+                    <View style={{height: 20}} />
+                </ScrollView>
             </View>
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
 }
+
+// 🟢 ຕ້ອງການ import ScrollView ເພີ່ມໃນບັນທັດເທິງສຸດ
+import { ScrollView } from 'react-native';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
@@ -297,12 +337,12 @@ const styles = StyleSheet.create({
   fbButton: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: '#E3F2FD', padding: 5, borderRadius: 6, justifyContent: 'center' },
   fbText: { fontFamily: 'Lao-Bold', color: '#1877F2', fontSize: 11 },
   
-  // 🟢 ປຸ່ມ FAB ສີສົ້ມ
+  // 🟢 2. ສີ FAB ກັບມາເປັນ Teal
   fab: { 
     position: 'absolute', 
-    bottom: 90, // ຍົກຂຶ້ນເພື່ອບໍ່ໃຫ້ Footer ບັງ
+    bottom: 90, 
     right: 20, 
-    backgroundColor: ORANGE_THEME, // ສີສົ້ມ
+    backgroundColor: COLORS.primary, // Teal
     flexDirection: 'row', 
     alignItems: 'center', 
     paddingVertical: 12, 
@@ -316,14 +356,18 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 5 },
+  modalContent: { backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 5, maxHeight: '80%' }, // Limit height for scroll
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
   imagePicker: { alignSelf: 'center', marginBottom: 20 },
   placeholderImage: { width: 100, height: 100, borderRadius: 10, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
   previewImage: { width: 100, height: 100, borderRadius: 10 },
   uploadText: { fontSize: 12, color: '#999', marginTop: 5, fontFamily: 'Lao-Regular' },
-  input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, marginBottom: 10, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Regular' },
-  saveBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+  
+  // 🟢 Style ສຳລັບຫົວຂໍ້
+  inputLabel: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text, marginBottom: 5, marginTop: 5 },
+  input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, marginBottom: 5, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Regular', color: '#333' },
+  
+  saveBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 15 },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 }
 });

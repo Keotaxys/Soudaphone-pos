@@ -22,7 +22,7 @@ const ORANGE_BG = '#FFF3E0';
 interface HomeScreenProps {
   salesHistory: SaleRecord[];
   products: Product[];
-  onQuickAddProduct: () => void;
+  onSpecialSale: () => void; // 🟢 1. ປ່ຽນຈາກ onQuickAddProduct ເປັນ onSpecialSale
   onQuickScan: () => void;
   onQuickCustomer: () => void;
 }
@@ -32,7 +32,7 @@ type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 export default function HomeScreen({ 
   salesHistory, 
   products,
-  onQuickAddProduct,
+  onSpecialSale, // 🟢 ຮັບ Prop ໃໝ່
   onQuickScan,
   onQuickCustomer
 }: HomeScreenProps) {
@@ -235,11 +235,10 @@ export default function HomeScreen({
       </View>
       
       <View style={styles.quickMenu}>
-          {/* 🟢 1. ປ່ຽນປຸ່ມ "ເພີ່ມສິນຄ້າ" -> "ຂາຍພິເສດ" */}
-          <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickAddProduct}>
+          {/* 🟢 2. ເຊື່ອມຕໍ່ກັບ onSpecialSale */}
+          <TouchableOpacity style={styles.quickMenuItem} onPress={onSpecialSale}>
               <View style={styles.quickMenuIcon}>
-                {/* 🟢 ປ່ຽນ Icon ເປັນ cart (ຫຼື pricetag) */}
-                <Ionicons name="pricetag-outline" size={28} color={COLORS.primary} />
+                <Ionicons name="flash-outline" size={28} color={COLORS.primary} />
               </View>
               <Text style={styles.quickMenuText}>ຂາຍພິເສດ</Text>
           </TouchableOpacity>

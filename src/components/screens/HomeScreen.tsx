@@ -1,16 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker'; // 🟢 Import ປະຕິທິນ
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Dimensions,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Dimensions,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../types';
@@ -27,7 +27,6 @@ interface HomeScreenProps {
   onQuickCustomer: () => void;
 }
 
-// 🟢 ເພີ່ມ 'custom' ເຂົ້າໄປໃນ Type
 type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 
 export default function HomeScreen({ 
@@ -41,7 +40,7 @@ export default function HomeScreen({
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // 🟢 State ສຳລັບ Custom Filter
+  // State ສຳລັບ Custom Filter
   const [customStartDate, setCustomStartDate] = useState(new Date());
   const [customEndDate, setCustomEndDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -85,7 +84,6 @@ export default function HomeScreen({
         end.setMonth(11, 31);
         end.setHours(23, 59, 59, 999);
         break;
-      // 🟢 Logic ສຳລັບ Custom Range
       case 'custom':
         start = new Date(customStartDate);
         start.setHours(0, 0, 0, 0);
@@ -116,7 +114,7 @@ export default function HomeScreen({
   }, [salesHistory, expensesData, filterType, currentDate, customStartDate, customEndDate]);
 
   const handleNavigateDate = (dir: 'prev' | 'next') => {
-    if (filterType === 'custom') return; // ຖ້າເປັນ Custom ບໍ່ໃຫ້ກົດເລື່ອນ
+    if (filterType === 'custom') return;
     
     const newDate = new Date(currentDate);
     const val = dir === 'next' ? 1 : -1;
@@ -135,22 +133,18 @@ export default function HomeScreen({
     return formatDate(start); 
   };
 
-  // 🟢 Handle ເປີດປະຕິທິນ
   const openDatePicker = (mode: 'start' | 'end') => {
     setDatePickerMode(mode);
     setShowDatePicker(true);
   };
 
-  // 🟢 Handle ເລືອກວັນທີ
   const onDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
     if (selectedDate) {
         if (datePickerMode === 'start') {
             setCustomStartDate(selectedDate);
-            // ຖ້າວັນເລີ່ມ ຫຼາຍກວ່າ ວັນຈົບ, ໃຫ້ດັນວັນຈົບໄປເທົ່າກັນ
             if (selectedDate > customEndDate) setCustomEndDate(selectedDate);
         } else {
-            // ຖ້າວັນຈົບ ນ້ອຍກວ່າ ວັນເລີ່ມ, ບໍ່ໃຫ້ເລືອກ (ຫຼືໃຫ້ເທົ່າກັນ)
             if (selectedDate < customStartDate) {
                 setCustomEndDate(customStartDate);
             } else {
@@ -165,7 +159,7 @@ export default function HomeScreen({
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       
-      {/* --- Filter Section --- */}
+      {/* Filter Section */}
       <View style={styles.filterSection}>
         <View style={styles.filterTabs}>
           {['day', 'week', 'month', 'year', 'custom'].map((type) => (
@@ -181,7 +175,6 @@ export default function HomeScreen({
           ))}
         </View>
 
-        {/* 🟢 Nav Row ປັບປຸງໃໝ່ */}
         <View style={styles.navRow}>
             {filterType !== 'custom' ? (
                 <>
@@ -194,7 +187,6 @@ export default function HomeScreen({
                     </TouchableOpacity>
                 </>
             ) : (
-                // 🟢 UI ສຳລັບ Custom Date
                 <View style={styles.customDateContainer}>
                     <TouchableOpacity style={styles.datePickBtn} onPress={() => openDatePicker('start')}>
                         <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
@@ -210,7 +202,7 @@ export default function HomeScreen({
         </View>
       </View>
 
-      {/* --- Stats Grid --- */}
+      {/* Stats Grid */}
       <View style={styles.statsGrid}>
         <View style={[styles.statCard, { backgroundColor: COLORS.primary }]}>
           <View style={styles.iconCircleWhite}><Ionicons name="cash" size={24} color={COLORS.primary} /></View>
@@ -238,7 +230,7 @@ export default function HomeScreen({
         </View>
       </View>
 
-      {/* --- Quick Menu --- */}
+      {/* Quick Menu */}
       <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>ເມນູດ່ວນ</Text>
       </View>
@@ -266,7 +258,7 @@ export default function HomeScreen({
           </TouchableOpacity>
       </View>
 
-      {/* 🟢 Date Picker Component */}
+      {/* Date Picker Component */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
             <Modal transparent animationType="fade">
@@ -280,7 +272,9 @@ export default function HomeScreen({
                             mode="date"
                             display="inline"
                             onChange={onDateChange}
-                            textColor={COLORS.primary}
+                            textColor="black" // 🟢 ບັງຄັບໂຕໜັງສືສີດຳ
+                            themeVariant="light" // 🟢 ບັງຄັບ Light Mode ໃນ iOS
+                            style={{backgroundColor: 'white'}}
                         />
                         <TouchableOpacity style={styles.closeBtn} onPress={() => setShowDatePicker(false)}>
                             <Text style={styles.closeBtnText}>ຕົກລົງ</Text>
@@ -315,12 +309,10 @@ const styles = StyleSheet.create({
   navBtn: { padding: 5 },
   dateLabel: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
 
-  // 🟢 Styles ສຳລັບ Custom Date
   customDateContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' },
   datePickBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', padding: 8, borderRadius: 8, gap: 5 },
   datePickText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 14 },
 
-  // Date Picker Modal (iOS)
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 15, width: '90%', alignItems: 'center' },
   pickerTitle: { fontFamily: 'Lao-Bold', fontSize: 16, marginBottom: 10, color: COLORS.primary },

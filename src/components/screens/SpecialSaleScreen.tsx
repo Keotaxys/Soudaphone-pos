@@ -19,45 +19,40 @@ import { COLORS, formatNumber, Product } from '../../types';
 
 const ORANGE_THEME = '#FF8F00';
 
+// 🟢 2. ລາຍການໝວດໝູ່ຕາມທີ່ກຳນົດ
+const STATIC_CATEGORIES = [
+    'ເສື້ອ', 'ໂສ້ງ', 'ໂສ້ງຊ້ອນໃນ', 'ກະໂປງ', 'ຊຸດ', 'ກະເປົາ', 
+    'ໝວກ', 'ຖົງຕີນ', 'ເກີບ', 'ເຄື່ອງສຳອາງ', 'ເຄື່ອງປະດັບ', 'ທົ່ວໄປ'
+];
+
 interface SpecialSaleScreenProps {
   products: Product[];
 }
 
 export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) {
-  // Form State
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [source, setSource] = useState<'Shop' | 'Online'>('Shop');
-  
-  // 🟢 2. ວິທີຊຳລະເງິນ ມີແຕ່ CASH ແລະ QR
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
-  
-  // 🟢 4. ເພີ່ມສະກຸນເງິນ
   const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK'); 
 
-  const [category, setCategory] = useState('');
-  const [showCatDropdown, setShowCatDropdown] = useState(false); // State ສຳລັບ Dropdown
+  const [category, setCategory] = useState(STATIC_CATEGORIES[0]);
+  const [showCatDropdown, setShowCatDropdown] = useState(false);
 
   const [detail, setDetail] = useState('');
   const [price, setPrice] = useState('');
   const [qty, setQty] = useState('1');
-  
-  // 🟢 5. State ສຳລັບເງິນສົດ
   const [amountReceived, setAmountReceived] = useState(''); 
 
   const [history, setHistory] = useState<any[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
 
-  // Derived Values (ຄຳນວນອັດຕະໂນມັດ)
+  // Derived Values
   const totalVal = (parseFloat(price) || 0) * (parseInt(qty) || 0);
   const receivedVal = parseFloat(amountReceived) || 0;
   const changeVal = receivedVal - totalVal;
 
   useEffect(() => {
-    const cats = [...new Set(products.map(p => p.category || 'ທົ່ວໄປ'))];
-    setCategories(cats);
-    if (!category && cats.length > 0) setCategory(cats[0]);
-
+    // ດຶງຂໍ້ມູນປະຫວັດການຂາຍ
     const salesRef = ref(db, 'sales');
     const unsub = onValue(salesRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -70,7 +65,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
       }
     });
     return () => unsub();
-  }, [products]);
+  }, []);
 
   const handleSave = () => {
     if (!detail || !price || !qty) {
@@ -78,7 +73,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
       return;
     }
 
-    // ຖ້າເປັນເງິນສົດ ຕ້ອງກວດສອບວ່າຮັບເງິນພໍບໍ່
     if (paymentMethod === 'CASH' && receivedVal < totalVal) {
         Alert.alert("ແຈ້ງເຕືອນ", "ເງິນທີ່ຮັບມາບໍ່ພຽງພໍ!");
         return;
@@ -89,7 +83,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
       date: date.toISOString(),
       source: source === 'Shop' ? 'POS' : 'ONLINE',
       paymentMethod,
-      currency, // ບັນທຶກສະກຸນເງິນ
+      currency,
       items: [{
         name: detail,
         price: parseFloat(price),
@@ -108,7 +102,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     push(ref(db, 'sales'), newSale)
       .then(() => {
         Alert.alert("ສຳເລັດ", "ບັນທຶກຂໍ້ມູນການຂາຍຮຽບຮ້ອຍແລ້ວ!");
-        // Reset Form
         setDetail('');
         setPrice('');
         setQty('1');
@@ -122,9 +115,15 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     if (selectedDate) setDate(selectedDate);
   };
 
+  // Helper function ເພື່ອເລືອກສີປຸ່ມ
+  const getActiveColor = (isActive: boolean, type: 'default' | 'alert') => {
+      if (!isActive) return '#eee'; // ສີພື້ນຫຼັງຕອນບໍ່ເລືອກ
+      if (type === 'alert') return ORANGE_THEME; // 🟢 4. ສີສົ້ມສຳລັບ Online/QR
+      return COLORS.primary; // ສີ Teal ປົກກະຕິ
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ຂາຍພິເສດ (Manual Sale)</Text>
         <View style={styles.tools}>
@@ -134,7 +133,8 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
             <TouchableOpacity style={styles.toolBtn} onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "Coming Soon")}>
                 <Ionicons name="cloud-upload-outline" size={18} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.toolBtn, {backgroundColor: ORANGE_THEME}]} onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "Coming Soon")}>
+            {/* 🟢 3. ປ່ຽນສີປຸ່ມ Export ເປັນສີ Teal (COLORS.primary) */}
+            <TouchableOpacity style={[styles.toolBtn, {backgroundColor: COLORS.primary}]} onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "Coming Soon")}>
                 <Ionicons name="download-outline" size={18} color="white" />
             </TouchableOpacity>
         </View>
@@ -142,27 +142,40 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         
-        {/* 🟢 1. Form Section (Full Width) */}
         <View style={styles.formSection}>
             
             {/* Row 1: Date & Source */}
             <View style={styles.row}>
                 <View style={{flex: 1}}>
                     <Text style={styles.label}>ວັນທີ *</Text>
+                    {/* 🟢 1. ກົດແລ້ວເປີດ Modal ປະຕິທິນ */}
                     <TouchableOpacity style={styles.inputBox} onPress={() => setShowDatePicker(true)}>
                         <Text>{date.toLocaleDateString('en-GB')}</Text>
                         <Ionicons name="calendar" size={20} color="#666" />
                     </TouchableOpacity>
-                    {showDatePicker && <DateTimePicker value={date} mode="date" onChange={onDateChange} />}
                 </View>
                 <View style={{flex: 1, marginLeft: 10}}>
                     <Text style={styles.label}>ແຫຼ່ງຂາຍ *</Text>
                     <View style={styles.chipRow}>
-                        {['Shop', 'Online'].map(s => (
-                            <TouchableOpacity key={s} onPress={() => setSource(s as any)} style={[styles.chipSmall, source === s && styles.activeChip]}>
-                                <Text style={[styles.chipText, source === s && {color:'white'}]}>{s === 'Shop' ? 'ຮ້ານ' : 'Online'}</Text>
-                            </TouchableOpacity>
-                        ))}
+                        {['Shop', 'Online'].map(s => {
+                            const isOnline = s === 'Online';
+                            const isActive = source === s;
+                            return (
+                                <TouchableOpacity 
+                                    key={s} 
+                                    onPress={() => setSource(s as any)} 
+                                    style={[
+                                        styles.chipSmall, 
+                                        { 
+                                            backgroundColor: isActive ? getActiveColor(true, isOnline ? 'alert' : 'default') : 'white',
+                                            borderColor: isActive ? getActiveColor(true, isOnline ? 'alert' : 'default') : '#eee'
+                                        }
+                                    ]}
+                                >
+                                    <Text style={[styles.chipText, isActive && {color:'white'}]}>{s === 'Shop' ? 'ຮ້ານ' : 'Online'}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
                 </View>
             </View>
@@ -183,16 +196,29 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                 <View style={{flex: 1, marginLeft: 10}}>
                     <Text style={styles.label}>ຊຳລະໂດຍ *</Text>
                     <View style={styles.chipRow}>
-                        {['CASH', 'QR'].map(m => (
-                            <TouchableOpacity key={m} onPress={() => setPaymentMethod(m as any)} style={[styles.chipSmall, paymentMethod === m && styles.activeChip]}>
-                                <Text style={[styles.chipText, paymentMethod === m && {color:'white'}]}>{m === 'CASH' ? 'ເງິນສົດ' : 'QR'}</Text>
-                            </TouchableOpacity>
-                        ))}
+                        {['CASH', 'QR'].map(m => {
+                            const isQR = m === 'QR';
+                            const isActive = paymentMethod === m;
+                            return (
+                                <TouchableOpacity 
+                                    key={m} 
+                                    onPress={() => setPaymentMethod(m as any)} 
+                                    style={[
+                                        styles.chipSmall, 
+                                        { 
+                                            backgroundColor: isActive ? getActiveColor(true, isQR ? 'alert' : 'default') : 'white',
+                                            borderColor: isActive ? getActiveColor(true, isQR ? 'alert' : 'default') : '#eee'
+                                        }
+                                    ]}
+                                >
+                                    <Text style={[styles.chipText, isActive && {color:'white'}]}>{m === 'CASH' ? 'ເງິນສົດ' : 'QR'}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
                 </View>
             </View>
 
-            {/* 🟢 3. Category Dropdown */}
             <Text style={styles.label}>ໝວດໝູ່ *</Text>
             <TouchableOpacity style={styles.inputBox} onPress={() => setShowCatDropdown(true)}>
                 <Text>{category || 'ເລືອກໝວດໝູ່'}</Text>
@@ -202,7 +228,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
             <Text style={styles.label}>ລາຍລະອຽດສິນຄ້າ *</Text>
             <TextInput style={styles.inputBox} placeholder="ພິມຊື່ສິນຄ້າ..." value={detail} onChangeText={setDetail} />
 
-            {/* Price & Qty */}
             <View style={styles.row}>
                 <View style={{flex: 1, marginRight: 10}}>
                     <Text style={styles.label}>ລາຄາ ({currency}) *</Text>
@@ -219,7 +244,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                 <Text style={styles.totalValue}>{formatNumber(totalVal)} {currency === 'THB' ? '฿' : '₭'}</Text>
             </View>
 
-            {/* 🟢 5. Cash Input Section */}
             {paymentMethod === 'CASH' && (
                 <View style={styles.cashSection}>
                     <Text style={styles.sectionHeader}>🧮 ຄິດໄລ່ເງິນສົດ</Text>
@@ -251,13 +275,12 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
             </TouchableOpacity>
         </View>
 
-        {/* 🟢 1. History Section (Moved to Bottom) */}
         <View style={styles.historySection}>
             <Text style={styles.historyTitle}>ປະຫວັດລາຍຮັບ (ຂາຍພິເສດ)</Text>
             <FlatList 
                 data={history}
                 keyExtractor={item => item.id}
-                scrollEnabled={false} // Disable scroll to work inside ScrollView
+                scrollEnabled={false} 
                 renderItem={({item}) => (
                     <View style={styles.historyCard}>
                         <View>
@@ -282,7 +305,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
             <View style={styles.dropdownContent}>
                 <Text style={styles.dropdownTitle}>ເລືອກໝວດໝູ່</Text>
                 <FlatList 
-                    data={categories}
+                    data={STATIC_CATEGORIES}
                     keyExtractor={i => i}
                     renderItem={({item}) => (
                         <TouchableOpacity style={styles.dropdownItem} onPress={() => { setCategory(item); setShowCatDropdown(false); }}>
@@ -294,6 +317,26 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
             </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* 🟢 1. Date Picker Modal (Fix Dark Mode on iOS) */}
+      {showDatePicker && (
+        <View style={styles.datePickerOverlay}>
+            <View style={styles.datePickerContainer}>
+                <DateTimePicker 
+                    value={date} 
+                    mode="date" 
+                    display="inline" 
+                    onChange={onDateChange} 
+                    textColor="black" // ບັງຄັບສີດຳ
+                    themeVariant="light" // ບັງຄັບພື້ນຫຼັງຂາວ (Light Mode)
+                    style={{backgroundColor: 'white'}}
+                />
+                <TouchableOpacity style={styles.closeDateBtn} onPress={() => setShowDatePicker(false)}>
+                    <Text style={styles.closeDateText}>ຕົກລົງ</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+      )}
 
     </View>
   );
@@ -307,9 +350,7 @@ const styles = StyleSheet.create({
   toolBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, padding: 8, borderRadius: 8, gap: 5, alignItems: 'center' },
   toolText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 12 },
   
-  content: { flex: 1, padding: 10 }, // No Row, just padding
-  
-  // Sections
+  content: { flex: 1, padding: 10 },
   formSection: { backgroundColor: 'white', borderRadius: 10, padding: 15, elevation: 2, marginBottom: 15 },
   historySection: { backgroundColor: 'white', borderRadius: 10, padding: 15, elevation: 2, marginBottom: 20 },
   
@@ -339,9 +380,14 @@ const styles = StyleSheet.create({
   historyPrice: { fontFamily: 'Lao-Bold', color: COLORS.primary },
   historySource: { fontSize: 12, color: ORANGE_THEME },
 
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   dropdownContent: { backgroundColor: 'white', width: '80%', padding: 20, borderRadius: 15, maxHeight: '60%' },
   dropdownTitle: { fontFamily: 'Lao-Bold', fontSize: 18, marginBottom: 15, textAlign: 'center' },
-  dropdownItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#eee' }
+  dropdownItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
+
+  // Date Picker Overlay
+  datePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
+  datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
+  closeDateBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },
+  closeDateText: { fontFamily: 'Lao-Bold', color: COLORS.primary },
 });

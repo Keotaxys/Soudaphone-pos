@@ -2,7 +2,7 @@ import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
 import { db } from '../../src/firebase';
@@ -209,14 +209,15 @@ export default function App() {
   const TABS = ['Home', 'POS', 'Products', 'Customers', 'Orders', 'Reports', 'Expenses', 'Debts', 'Shift'];
 
   return (
-    // 🟢 1. ຕັ້ງພື້ນຫຼັງຂອງ Provider ໃຫ້ເປັນສີ Teal (ສຳຄັນຫຼາຍ)
+    // 🟢 1. ຕັ້ງພື້ນຫຼັງແມ່ສຸດເປັນ Teal. ຈຸດນີ້ສຳຄັນ! 
+    // ມັນຈະເປັນພື້ນຫຼັງໃຫ້ Status Bar ຖ້າ SafeAreaView ທາງໃນບໍ່ເຮັດວຽກ
     <SafeAreaProvider style={{ backgroundColor: '#008B94' }}>
       
-      {/* 🟢 2. ຕັ້ງພື້ນຫຼັງຂອງ Container ຫຼັກໃຫ້ເປັນສີ Teal ເພື່ອບໍ່ໃຫ້ມີຂອບຂາວດ້ານເທິງ */}
-      {/* ໃຊ້ edges ແບບນີ້ເພື່ອໃຫ້ພື້ນທີ່ດ້ານເທິງສຸດສະແດງສີ Teal ຂອງ Container */}
-      <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      {/* 🟢 2. ໃຊ້ View ທຳມະດາແທນ SafeAreaView ເພື່ອຄວບຄຸມ Background ເອງ */}
+      <View style={styles.container}>
         <StatusBar style="light" backgroundColor="#008B94" />
         
+        {/* Header ຈະຈັດການ Top Padding ເອງດ້ວຍ SafeAreaView ພາຍໃນຕົວມັນ */}
         <HeaderAny 
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
             user={{ name: 'Admin', role: 'Manager' }} 
@@ -227,7 +228,7 @@ export default function App() {
             onLogout={() => setIsLoggedIn(false)}
         />
 
-        {/* 🟢 3. ສ່ວນເນື້ອຫາທາງໃນ (Main Container) ໃຫ້ເປັນສີເທົາອ່ອນ */}
+        {/* 🟢 3. ສ່ວນເນື້ອຫາທາງລຸ່ມເປັນສີເທົາ */}
         <View style={styles.mainContainer}>
           {isSidebarOpen && (
             <View style={styles.sidebarOverlay}>
@@ -252,16 +253,17 @@ export default function App() {
             onSave={handleSaveShopInfo}
         />
 
-      </SafeAreaView>
+      </View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  // 🟢 4. ຈຸດສຳຄັນ: ປ່ຽນພື້ນຫຼັງແມ່ໃຫ້ເປັນສີ Teal (#008B94) ແທນສີເທົາ
+  // 🟢 4. Container ແມ່ຕ້ອງເປັນສີ Teal. 
+  // ຖ້າມີ Notch, ພື້ນທີ່ຫຼັງ Notch ຈະເປັນສີນີ້
   container: { flex: 1, backgroundColor: '#008B94' },
   
-  // 🟢 5. ຍ້າຍສີເທົາ (#F5F9FA) ມາໄວ້ທີ່ mainContainer ແທນ
+  // 🟢 5. Main Content ທາງໃນຈຶ່ງເປັນສີເທົາ
   mainContainer: { flex: 1, position: 'relative', backgroundColor: '#F5F9FA' },
   
   sidebarOverlay: { position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, zIndex: 999, flexDirection: 'row' },

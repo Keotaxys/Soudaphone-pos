@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ເພື່ອຈັດການພື້ນທີ່ດ້ານເທິງ
+// ໃຊ້ SafeAreaView ຢູ່ທີ່ນີ້ເພື່ອຈັດການພື້ນທີ່ດ້ານເທິງໂດຍສະເພາະ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../types';
 
@@ -27,13 +27,12 @@ export default function Header({
   onLogout 
 }: HeaderProps) {
   
-  // 🟢 2. ປ່ຽນ Logic: ໃຫ້ສະແດງຊື່ຮ້ານ (shopName) ກ່ອນ, ຖ້າບໍ່ມີຈຶ່ງສະແດງຊື່ user
   const displayName = shopName || user?.name || "ຮ້ານ ສຸດາພອນ";
   const displayDetail = shopId || (user?.role ? `Role: ${user.role}` : "");
 
   return (
-    // 🟢 3. ໃຊ້ SafeAreaView ເປັນ Container ຫຼັກ ແລະ ໃສ່ສີພື້ນຫຼັງທີ່ນີ້ເລີຍ
-    // edges={['top']} ຈະຊ່ວຍໃຫ້ສີພື້ນຫຼັງຂະຫຍາຍຂຶ້ນໄປເຕັມ Status Bar
+    // 🟢 Container ຫຼັກຂອງ Header ເປັນ SafeAreaView
+    // edges={['top']} ຄືຄຳສັ່ງສັກສິດທີ່ບອກໃຫ້ມັນດັນສີພື້ນຫຼັງຂຶ້ນໄປກວມ Status Bar
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
       
@@ -63,7 +62,6 @@ export default function Header({
             <Image source={{ uri: shopLogo }} style={styles.shopLogo} />
           ) : (
             <View style={styles.shopLogoPlaceholder}>
-              {/* ສະແດງຕົວອັກສອນທຳອິດຂອງຊື່ຮ້ານ */}
               <Text style={styles.shopLogoText}>{displayName ? displayName.charAt(0) : 'S'}</Text>
             </View>
           )}
@@ -84,21 +82,20 @@ export default function Header({
 
 const styles = StyleSheet.create({
   container: { 
-    backgroundColor: COLORS.primary, // 🟢 ສີ Teal ຈະຂະຫຍາຍເຕັມຈໍດ້ານເທິງ
-    paddingBottom: 20,
-    // ບໍ່ຕ້ອງກຳນົດ paddingTop ເອງ ເພາະ SafeAreaView ຈະຈັດການໃຫ້
+    backgroundColor: COLORS.primary, // ສີ Teal ຈະຢືດຂຶ້ນໄປດ້ານເທິງສຸດ
+    paddingBottom: 20, 
     borderBottomLeftRadius: 20, 
     borderBottomRightRadius: 20, 
     zIndex: 1000,
-    // ເພີ່ມ padding ເລັກນ້ອຍເພື່ອຄວາມສວຍງາມຂອງເນື້ອຫາພາຍໃນ
-    paddingTop: Platform.OS === 'android' ? 10 : 0, 
+    //  paddingTop: 10 // ລຶບອອກ ໃຫ້ SafeAreaView ຈັດການເອງ
   },
   topBar: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
     paddingHorizontal: 20, 
-    marginBottom: 20 
+    marginBottom: 20,
+    marginTop: 10 // ເພີ່ມໄລຍະຫ່າງໜ້ອຍໜຶ່ງຫຼັງຈາກ Status Bar
   },
   leftContainer: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },

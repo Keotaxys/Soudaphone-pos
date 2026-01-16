@@ -83,8 +83,10 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         XLSX.utils.book_append_sheet(wb, ws, "Template");
         
         const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-        // 🟢 ແກ້ໄຂ: ໃຊ້ cacheDirectory ເພື່ອລົດບັນຫາ type ແລະໃຊ້ string 'base64'
-        const filename = FileSystem.cacheDirectory + "SpecialSale_Template.xlsx";
+        
+        // 🟢 ແກ້ໄຂ: ໃຊ້ (FileSystem as any) ເພື່ອແກ້ບັນຫາ TypeScript
+        const fileDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory;
+        const filename = fileDir + "SpecialSale_Template.xlsx";
         
         await FileSystem.writeAsStringAsync(filename, base64, { encoding: 'base64' });
         await Sharing.shareAsync(filename);
@@ -120,8 +122,10 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         XLSX.utils.book_append_sheet(wb, ws, "SalesData");
 
         const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-        // 🟢 ແກ້ໄຂ: ໃຊ້ cacheDirectory
-        const filename = FileSystem.cacheDirectory + `SpecialSales_${new Date().getTime()}.xlsx`;
+        
+        // 🟢 ແກ້ໄຂ: ໃຊ້ (FileSystem as any) ເພື່ອແກ້ບັນຫາ TypeScript
+        const fileDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory;
+        const filename = fileDir + `SpecialSales_${new Date().getTime()}.xlsx`;
 
         await FileSystem.writeAsStringAsync(filename, base64, { encoding: 'base64' });
         await Sharing.shareAsync(filename);
@@ -144,14 +148,12 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
         setLoading(true);
         const fileUri = result.assets[0].uri;
-        // 🟢 ແກ້ໄຂ: ໃຊ້ string 'base64' ແທນ Enum
         const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
         
         const wb = XLSX.read(fileContent, { type: 'base64' });
         const wsName = wb.SheetNames[0];
         const ws = wb.Sheets[wsName];
         
-        // 🟢 ແກ້ໄຂ: Cast data ເປັນ any[]
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
         if (data.length === 0) {
@@ -161,7 +163,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         }
 
         let successCount = 0;
-        // 🟢 ແກ້ໄຂ: Loop ແບບຖືກຕ້ອງຕາມຫຼັກ TypeScript
         for (const rowItem of data) {
             const row = rowItem as any;
             const name = row["ຊື່ສິນຄ້າ"];

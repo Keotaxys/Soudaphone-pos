@@ -209,14 +209,14 @@ export default function App() {
   const TABS = ['Home', 'POS', 'Products', 'Customers', 'Orders', 'Reports', 'Expenses', 'Debts', 'Shift'];
 
   return (
-    // 🟢 1. ກຳນົດສີພື້ນຫຼັງຂອງ Provider ເປັນສີ Teal ເພື່ອໃຫ້ກວມເອົາທັງໝົດ ລວມທັງ StatusBar
+    // 🟢 1. ຕັ້ງພື້ນຫຼັງຂອງ Provider ໃຫ້ເປັນສີ Teal (ສຳຄັນຫຼາຍ)
     <SafeAreaProvider style={{ backgroundColor: '#008B94' }}>
       
-      {/* 🟢 2. ກຳນົດ Container ຫຼັກເປັນສີ Teal. ນີ້ຄືຈຸດສຳຄັນທີ່ເຮັດໃຫ້ດ້ານເທິງບໍ່ເປັນສີຂາວ */}
-      <View style={styles.container}>
+      {/* 🟢 2. ຕັ້ງພື້ນຫຼັງຂອງ Container ຫຼັກໃຫ້ເປັນສີ Teal ເພື່ອບໍ່ໃຫ້ມີຂອບຂາວດ້ານເທິງ */}
+      {/* ໃຊ້ edges ແບບນີ້ເພື່ອໃຫ້ພື້ນທີ່ດ້ານເທິງສຸດສະແດງສີ Teal ຂອງ Container */}
+      <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
         <StatusBar style="light" backgroundColor="#008B94" />
         
-        {/* Header ຈະສະແດງຢູ່ເທິງສຸດ */}
         <HeaderAny 
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
             user={{ name: 'Admin', role: 'Manager' }} 
@@ -227,7 +227,7 @@ export default function App() {
             onLogout={() => setIsLoggedIn(false)}
         />
 
-        {/* 🟢 3. ສ່ວນເນື້ອຫາ (Main Container) ໃຫ້ເປັນສີເທົາ (#F5F9FA) ແທນ */}
+        {/* 🟢 3. ສ່ວນເນື້ອຫາທາງໃນ (Main Container) ໃຫ້ເປັນສີເທົາອ່ອນ */}
         <View style={styles.mainContainer}>
           {isSidebarOpen && (
             <View style={styles.sidebarOverlay}>
@@ -252,17 +252,16 @@ export default function App() {
             onSave={handleSaveShopInfo}
         />
 
-      </View>
+      </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  // 🟢 4. ແກ້ໄຂ: ປ່ຽນ Container ຫຼັກໃຫ້ເປັນສີ Teal (#008B94)
-  // ນີ້ຈະເຮັດໃຫ້ພື້ນທີ່ວ່າງທັງໝົດ (ລວມທັງ Notch ດ້ານເທິງ) ເປັນສີ Teal
+  // 🟢 4. ຈຸດສຳຄັນ: ປ່ຽນພື້ນຫຼັງແມ່ໃຫ້ເປັນສີ Teal (#008B94) ແທນສີເທົາ
   container: { flex: 1, backgroundColor: '#008B94' },
   
-  // 🟢 5. ແກ້ໄຂ: ຍ້າຍສີພື້ນຫຼັງສີເທົາ (#F5F9FA) ມາໄວ້ທີ່ mainContainer ແທນ
+  // 🟢 5. ຍ້າຍສີເທົາ (#F5F9FA) ມາໄວ້ທີ່ mainContainer ແທນ
   mainContainer: { flex: 1, position: 'relative', backgroundColor: '#F5F9FA' },
   
   sidebarOverlay: { position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, zIndex: 999, flexDirection: 'row' },

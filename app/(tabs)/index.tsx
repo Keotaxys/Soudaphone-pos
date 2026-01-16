@@ -12,6 +12,10 @@ import { CartItem, Product, SaleRecord } from '../../src/types';
 // Screens
 import CustomerScreen from '../../src/components/screens/CustomerScreen';
 import DebtScreen from '../../src/components/screens/DebtScreen';
+// 🟢 Import Screens ໃໝ່
+import DebtsReceivableScreen from '../../src/components/screens/DebtsReceivableScreen';
+import SpecialSaleScreen from '../../src/components/screens/SpecialSaleScreen';
+
 import ExpenseScreen from '../../src/components/screens/ExpenseScreen';
 import HomeScreen from '../../src/components/screens/HomeScreen';
 import LoginScreen from '../../src/components/screens/LoginScreen';
@@ -28,12 +32,11 @@ import Header from '../../src/components/ui/Header';
 import Sidebar from '../../src/components/ui/Sidebar';
 
 // Modals
+import EditShopModal from '../../src/components/modals/EditShopModal';
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
-// 🟢 Import Modal ແກ້ໄຂຮ້ານ
-import EditShopModal from '../../src/components/modals/EditShopModal';
 
-// 🔥 Force Cast Components (ເພື່ອຫຼີກລ້ຽງ TypeScript Error ເລັກນ້ອຍ)
+// 🔥 Force Cast Components
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -66,7 +69,6 @@ export default function App() {
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
   const [isScannerVisible, setScannerVisible] = useState(false);
 
-  // 🟢 State ສຳລັບຂໍ້ມູນຮ້ານ
   const [shopInfo, setShopInfo] = useState({
     name: 'ຮ້ານ ສຸດາພອນ',
     id: 'ID: 8888 9999',
@@ -74,11 +76,9 @@ export default function App() {
   });
   const [isEditShopVisible, setEditShopVisible] = useState(false);
 
-  // Fetch Data (Products, Sales, Shop Info)
   useEffect(() => {
     if (!isLoggedIn) return; 
     
-    // Fetch Products
     const productsRef = ref(db, 'products');
     const unsubProd = onValue(productsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -93,7 +93,6 @@ export default function App() {
         if(!error.message.includes("permission_denied")) console.error(error);
     });
 
-    // Fetch Sales History
     const salesRef = ref(db, 'sales');
     const unsubSales = onValue(salesRef, (snapshot) => {
         if (snapshot.exists()) {
@@ -105,7 +104,6 @@ export default function App() {
         }
     });
 
-    // 🟢 Fetch Shop Info (ຖ້າມີໃນ Firebase)
     const shopRef = ref(db, 'shopInfo');
     const unsubShop = onValue(shopRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -120,7 +118,6 @@ export default function App() {
     };
   }, [isLoggedIn]); 
 
-  // --- Handlers ---
   const addToCart = (product: Product) => {
     setCart(prev => {
         const existing = prev.find(item => item.id === product.id);
@@ -164,11 +161,9 @@ export default function App() {
     else { Alert.alert("ບໍ່ພົບສິນຄ້າ", `ລະຫັດ: ${code} ບໍ່ມີໃນລະບົບ`); }
   };
 
-  // 🟢 ບັນທຶກຂໍ້ມູນຮ້ານ
   const handleSaveShopInfo = (name: string, id: string, logo: string | null) => {
       const newInfo = { name, id, logo };
       setShopInfo(newInfo);
-      // ບັນທຶກລົງ Firebase ເພື່ອໃຫ້ຄົງຢູ່ຕະຫຼອດໄປ
       set(ref(db, 'shopInfo'), newInfo).catch(err => console.error(err));
   };
 
@@ -177,7 +172,6 @@ export default function App() {
     switch (tabName) {
       case 'home': return <HomeScreenAny salesHistory={salesHistory} products={products} onQuickAddProduct={openAddProductModal} onQuickScan={() => setScannerVisible(true)} onQuickCustomer={() => setActiveTab('Customers')} />;
       case 'pos': return (
-          // 🟢 ສົ່ງ Props ໃຫ້ POSScreen
           <POSScreenAny 
             products={products} 
             cart={cart} 
@@ -191,13 +185,17 @@ export default function App() {
             onOpenAddProduct={openAddProductModal} 
           />
       );
+      // 🟢 ເພີ່ມ Case ໃໝ່
+      case 'special_sale': return <SpecialSaleScreen products={products} />; 
+      case 'debts_receivable': return <DebtsReceivableScreen />; 
+      case 'debts_payable': return <DebtScreen />; // ໃຊ້ DebtScreen ເດີມເປັນ "ໜີ້ຕ້ອງສົ່ງ"
+
       case 'products': return <ProductsScreenAny products={products} onAddProduct={openAddProductModal} onEditProduct={openEditProductModal} onDeleteProduct={handleDeleteProduct} />;
       case 'customers': return <CustomerScreen />;
       case 'orders': return <OrderTrackingScreen />;
       case 'reports': return <ReportDashboard />; 
       case 'history': return <SalesHistoryScreen />;
       case 'expenses': return <ExpenseScreen />;
-      case 'debts': return <DebtScreen />;
       case 'shift': return <ShiftScreen />;
       default: return <HomeScreenAny salesHistory={salesHistory} products={products} />;
     }
@@ -210,14 +208,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {/* 🟢 Status Bar Background (ສີຂຽວ) */}
       <SafeAreaView style={{ flex: 0, backgroundColor: '#008B94' }} edges={['top']} />
       
-      {/* App Content */}
       <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
         <StatusBar style="light" backgroundColor="#008B94" />
         
-        {/* 🟢 Header ພ້ອມຂໍ້ມູນຮ້ານ */}
         <HeaderAny 
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
             user={{ name: 'Admin', role: 'Manager' }} 
@@ -245,7 +240,6 @@ export default function App() {
         <ProductModalAny visible={isProductModalVisible} onClose={() => setProductModalVisible(false)} product={tempProduct} setProduct={setTempProduct} onSave={onSaveProductFromModal} onPickImage={() => {}} onScan={() => {}} />
         <ScannerModalAny visible={isScannerVisible} onClose={() => setScannerVisible(false)} onScan={handleScanSuccess} />
         
-        {/* 🟢 Edit Shop Modal */}
         <EditShopModal 
             visible={isEditShopVisible}
             onClose={() => setEditShopVisible(false)}

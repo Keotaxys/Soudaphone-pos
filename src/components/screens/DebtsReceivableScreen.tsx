@@ -24,7 +24,7 @@ export default function DebtsReceivableScreen() {
   const [note, setNote] = useState('');
 
   useEffect(() => {
-    const rRef = ref(db, 'debts_receivable'); // 🟢 Node ໃໝ່ສຳລັບໜີ້ຕ້ອງຮັບ
+    const rRef = ref(db, 'debts_receivable');
     return onValue(rRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
@@ -37,7 +37,7 @@ export default function DebtsReceivableScreen() {
   }, []);
 
   const handleAddDebt = () => {
-    if (!name || !amount) return Alert.alert("Error", "ໃສ່ຂໍ້ມູນໃຫ້ຄົບ");
+    if (!name || !amount) return Alert.alert("ແຈ້ງເຕືອນ", "ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນໃຫ້ຄົບຖ້ວນ");
     push(ref(db, 'debts_receivable'), {
       customer: name,
       amount: parseFloat(amount),
@@ -50,22 +50,33 @@ export default function DebtsReceivableScreen() {
   };
 
   const handlePay = (item: any) => {
-    Alert.prompt("ຊຳລະໜີ້", `ຍອດຄົງເຫຼືອ: ${formatNumber(item.remaining)}`, [
-      { text: "ຍົກເລີກ" },
-      { text: "ຢືນຢັນ", onPress: (val) => {
-          const pay = parseFloat(val || '0');
-          if (pay > 0 && pay <= item.remaining) {
-             const newRemaining = item.remaining - pay;
-             const history = item.history || [];
-             history.push({ date: new Date().toISOString(), amount: pay });
-             update(ref(db, `debts_receivable/${item.id}`), {
-                 remaining: newRemaining,
-                 status: newRemaining === 0 ? 'PAID' : 'PENDING',
-                 history
-             });
+    Alert.prompt(
+      "ຊຳລະໜີ້", 
+      `ຍອດຄົງເຫຼືອ: ${formatNumber(item.remaining)}`, 
+      [
+        { text: "ຍົກເລີກ" },
+        { 
+          text: "ຢືນຢັນ", 
+          // 🟢 ແກ້ໄຂ: ໃສ່ type string ໃຫ້ val
+          onPress: (val: string | undefined) => {
+            const pay = parseFloat(val || '0');
+            if (pay > 0 && pay <= item.remaining) {
+               const newRemaining = item.remaining - pay;
+               const history = item.history || [];
+               history.push({ date: new Date().toISOString(), amount: pay });
+               update(ref(db, `debts_receivable/${item.id}`), {
+                   remaining: newRemaining,
+                   status: newRemaining === 0 ? 'PAID' : 'PENDING',
+                   history
+               });
+            } else {
+                if(pay > item.remaining) Alert.alert("ຜິດພາດ", "ຍອດຊຳລະເກີນໜີ້ຄົງເຫຼືອ");
+            }
           }
-      }}
-    ], 'plain-text');
+        }
+      ], 
+      'plain-text'
+    );
   };
 
   return (

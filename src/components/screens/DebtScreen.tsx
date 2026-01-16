@@ -3,39 +3,32 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber } from '../../types';
+import CurrencyInput from '../ui/CurrencyInput';
 
 const DEBT_CATEGORIES = ['ເງິນກູ້', 'ບັດເຄດິດ', 'ຢືມເພື່ອນ', 'ຜ່ອນສິນຄ້າ', 'ອື່ນໆ'];
 const ORANGE_COLOR = '#F57C00';
 
-// 🟢 Helper: ຈັດ Format ຕົວເລກ (ໃສ່ຈຸດ)
+// Currency Input Helper
 const formatInputNumber = (val: string) => {
     const numericValue = val.replace(/[^0-9]/g, '');
     if (!numericValue) return '';
     return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-};
-
-// 🟢 Helper: ແປງກັບເປັນຕົວເລກ (ເອົາຈຸດອອກ)
-const parseCurrency = (value: any) => {
-    if (!value) return 0;
-    const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
-    const num = parseFloat(strVal);
-    return isNaN(num) ? 0 : num;
 };
 
 interface DebtItem {
@@ -53,46 +46,46 @@ interface DebtItem {
 
 export default function DebtScreen() {
   const [debts, setDebts] = useState<DebtItem[]>([]);
-  
-  // Modals
-  const [modalVisible, setModalVisible] = useState(false); // Modal ເພີ່ມ/ແກ້ໄຂ
+  const [modalVisible, setModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
-  
-  // Data
   const [historyList, setHistoryList] = useState<any[]>([]);
-  const [selectedDebt, setSelectedDebt] = useState<DebtItem | null>(null);
 
-  // Form States (Add/Edit)
+  // Form States
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState(DEBT_CATEGORIES[0]);
-  const [totalAmount, setTotalAmount] = useState(''); // String (ມີຈຸດ)
+  const [totalAmount, setTotalAmount] = useState('');
   const [interestRate, setInterestRate] = useState('');
-  const [monthlyPayment, setMonthlyPayment] = useState(''); // String (ມີຈຸດ)
+  const [monthlyPayment, setMonthlyPayment] = useState('');
   const [dueDate, setDueDate] = useState(new Date());
   
-  // Payment Form
-  const [payAmount, setPayAmount] = useState('');
-  const [paymentDate, setPaymentDate] = useState(new Date());
-
-  // Date Picker Config
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateMode, setDateMode] = useState<'due' | 'payment'>('due');
 
-  // 1. ດຶງຂໍ້ມູນໜີ້ສິນ
+  const [selectedDebt, setSelectedDebt] = useState<DebtItem | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState(new Date());
+
+  const parseCurrency = (value: any) => {
+      if (value === undefined || value === null || value === '') return 0;
+      const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
+      const num = parseFloat(strVal);
+      return isNaN(num) ? 0 : num;
+  };
+
   useEffect(() => {
     const debtRef = ref(db, 'debts');
     const unsubscribe = onValue(debtRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
+        
         const list = Object.keys(data).map(key => {
             const item = data[key];
             const total = parseCurrency(item.originalAmount || item.totalAmount || item.amount);
             const remaining = parseCurrency(item.remainingBalance);
             
             let paid = parseCurrency(item.paidAmount || item.paid);
-            // ຖ້າບໍ່ມີການບັນທຶກຍອດຈ່າຍ ແຕ່ມີຍອດຄົງເຫຼືອ -> ຄຳນວນຍອດຈ່າຍເອງ
             if (paid === 0 && total > 0 && item.remainingBalance !== undefined) {
                 paid = total - remaining;
             }
@@ -117,7 +110,6 @@ export default function DebtScreen() {
     return () => unsubscribe();
   }, []);
 
-  // 2. ຈັດການປະຫວັດ (History)
   useEffect(() => {
     if (selectedDebt && historyModalVisible) {
         const currentDebt = debts.find(d => d.id === selectedDebt.id);
@@ -134,7 +126,6 @@ export default function DebtScreen() {
     }
   }, [debts, selectedDebt, historyModalVisible]);
 
-  // 🟢 ຟັງຊັນບັນທຶກ (ເພີ່ມໃໝ່ ຫຼື ແກ້ໄຂ)
   const handleSaveDebt = async () => {
     if (!title || !totalAmount) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນ');
@@ -144,10 +135,12 @@ export default function DebtScreen() {
     const amountNum = parseCurrency(totalAmount);
 
     const debtData = {
-      title,
+      name: title,
+      title: title,
       category,
+      originalAmount: amountNum,
       totalAmount: amountNum,
-      remainingBalance: amountNum, // ຖ້າແກ້ໄຂ ຈະຕ້ອງຄຳນວນໃໝ່ຂ້າງລຸ່ມ
+      remainingBalance: amountNum,
       paidAmount: 0,
       interestRate: parseCurrency(interestRate),
       monthlyPayment: parseCurrency(monthlyPayment),
@@ -157,10 +150,9 @@ export default function DebtScreen() {
 
     try {
       if (currentId) {
-          // ກໍລະນີແກ້ໄຂ
           const oldDebt = debts.find(d => d.id === currentId);
           const oldPaid = oldDebt?.paidAmount || 0;
-          const newRemaining = amountNum - oldPaid; // ຄຳນວນຍອດຄົງເຫຼືອໃໝ່ຈາກຍອດເງິນກູ້ໃໝ່
+          const newRemaining = amountNum - oldPaid;
           
           await update(ref(db, `debts/${currentId}`), {
               ...debtData,
@@ -169,7 +161,6 @@ export default function DebtScreen() {
           });
           Alert.alert('ສຳເລັດ', 'ແກ້ໄຂຂໍ້ມູນຮຽບຮ້ອຍ');
       } else {
-          // ກໍລະນີເພີ່ມໃໝ່
           await push(ref(db, 'debts'), { ...debtData, createdAt: new Date().toISOString() });
           Alert.alert('ສຳເລັດ', 'ບັນທຶກໜີ້ສິນໃໝ່ຮຽບຮ້ອຍ');
       }
@@ -184,9 +175,9 @@ export default function DebtScreen() {
       setCurrentId(item.id);
       setTitle(item.title);
       setCategory(item.category);
-      setTotalAmount(formatNumber(item.totalAmount)); // Format show
+      setTotalAmount(item.totalAmount.toString());
       setInterestRate(item.interestRate.toString());
-      setMonthlyPayment(formatNumber(item.monthlyPayment)); // Format show
+      setMonthlyPayment(item.monthlyPayment.toString());
       setDueDate(new Date(item.dueDate));
       setModalVisible(true);
   };
@@ -364,13 +355,13 @@ export default function DebtScreen() {
         }
       />
 
-      {/* 🟢 Floating Action Button (FAB) ສຳລັບເພີ່ມໜີ້ */}
+      {/* 🟢 ເພີ່ມປຸ່ມ (FAB) ບ່ອນນີ້ */}
       <TouchableOpacity style={styles.fab} onPress={() => { resetForm(); setModalVisible(true); }}>
         <Ionicons name="add" size={24} color="white" />
         <Text style={styles.fabText}>ເພີ່ມໜີ້ໃໝ່</Text>
       </TouchableOpacity>
 
-      {/* 🟢 Add/Edit Modal */}
+      {/* Add/Edit Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -393,12 +384,11 @@ export default function DebtScreen() {
                     </View>
 
                     <Text style={styles.inputLabel}>ຈຳນວນເງິນຕົ້ນ *</Text>
-                    <TextInput 
+                    <CurrencyInput 
                         style={styles.input} 
                         value={totalAmount} 
-                        onChangeText={(val) => setTotalAmount(formatInputNumber(val))} 
+                        onChangeValue={setTotalAmount} 
                         placeholder="0" 
-                        keyboardType="numeric"
                     />
 
                     <View style={{flexDirection: 'row', gap: 10}}>
@@ -408,12 +398,11 @@ export default function DebtScreen() {
                         </View>
                         <View style={{flex: 1}}>
                             <Text style={styles.inputLabel}>ຜ່ອນ/ເດືອນ</Text>
-                            <TextInput 
+                            <CurrencyInput 
                                 style={styles.input} 
                                 value={monthlyPayment} 
-                                onChangeText={(val) => setMonthlyPayment(formatInputNumber(val))} 
+                                onChangeValue={setMonthlyPayment} 
                                 placeholder="0" 
-                                keyboardType="numeric"
                             />
                         </View>
                     </View>
@@ -469,12 +458,11 @@ export default function DebtScreen() {
                     </TouchableOpacity>
 
                     <Text style={styles.inputLabel}>ຈຳນວນເງິນຊຳລະ (ເງິນຕົ້ນ) *</Text>
-                    <TextInput 
+                    <CurrencyInput 
                         style={[styles.inputLarge, { color: COLORS.primary }]} 
                         value={payAmount} 
-                        onChangeText={(val) => setPayAmount(formatInputNumber(val))} 
+                        onChangeValue={setPayAmount} 
                         placeholder="0" 
-                        keyboardType="numeric"
                     />
 
                     <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 20}}>
@@ -540,24 +528,35 @@ export default function DebtScreen() {
         </View>
       </Modal>
 
-      {/* Date Picker Modal */}
+      {/* iOS Date Picker Modal */}
       {showDatePicker && (
-        <View style={styles.datePickerOverlay}>
-            <View style={styles.datePickerContainer}>
-                <DateTimePicker 
-                    value={dateMode === 'due' ? dueDate : paymentDate} 
-                    mode="date" 
-                    display="inline" 
-                    onChange={onDateChange} 
-                    textColor="black" 
-                    themeVariant="light"
-                    style={{ backgroundColor: 'white' }}
-                />
-                <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(false)}>
-                    <Text style={styles.datePickerBtnText}>ຕົກລົງ</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
+        Platform.OS === 'ios' ? (
+            <Modal visible={true} transparent={true} animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.iosDatePickerContainer}>
+                        <DateTimePicker 
+                            value={dateMode === 'due' ? dueDate : paymentDate} 
+                            mode="date" 
+                            display="inline" 
+                            onChange={onDateChange} 
+                            style={{ height: 320, width: '100%', backgroundColor: 'white' }} 
+                            textColor="black" 
+                            themeVariant="light"
+                        />
+                        <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
+                            <Text style={styles.iosDateDoneText}>ຕົກລົງ</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        ) : (
+            <DateTimePicker 
+              value={dateMode === 'due' ? dueDate : paymentDate} 
+              mode="date" 
+              display="default" 
+              onChange={onDateChange} 
+            />
+        )
       )}
     </SafeAreaView>
   );
@@ -595,8 +594,15 @@ const styles = StyleSheet.create({
   payBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.primary, paddingVertical: 8, paddingHorizontal: 15, borderRadius: 8 },
   payBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 13 },
   
-  // Floating Action Button
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, elevation: 5 },
+  // 🟢 Floating Action Button Style
+  fab: { 
+    position: 'absolute', bottom: 20, right: 20, 
+    backgroundColor: COLORS.primary, 
+    flexDirection: 'row', alignItems: 'center', 
+    paddingVertical: 12, paddingHorizontal: 20, 
+    borderRadius: 30, elevation: 5,
+    zIndex: 999 
+  },
   fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 8 },
   
   emptyContainer: { alignItems: 'center', marginTop: 80 },
@@ -619,11 +625,10 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
   
-  // Date Picker Overlay
-  datePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
-  datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
-  datePickerBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },
-  datePickerBtnText: { fontFamily: 'Lao-Bold', color: COLORS.primary },
+  // iOS Date Picker Styles
+  iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
+  iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
+  iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 },
 
   // History Styles
   historyItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },

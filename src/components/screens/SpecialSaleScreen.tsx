@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+// 🟢 ແກ້ໄຂ 1: ປ່ຽນ import ໄປໃຊ້ legacy ຕາມທີ່ Error ແນະນຳ
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { onValue, push, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
@@ -84,10 +85,11 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         
         const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
         
+        // 🟢 ແກ້ໄຂ 2: ໃຊ້ (FileSystem as any) ເພື່ອອ້າງອີງ Path ໄດ້ທັງ iOS/Android
         const fileDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory;
         const uri = fileDir + "SpecialSale_Template.xlsx";
         
-        // 🟢 ແກ້ໄຂ: ໃຊ້ string 'base64' ແທນ Enum
+        // 🟢 ແກ້ໄຂ 3: ໃຊ້ string 'base64' ໂດຍກົງ
         await FileSystem.writeAsStringAsync(uri, base64, { encoding: 'base64' });
         
         const canShare = await Sharing.isAvailableAsync();
@@ -134,7 +136,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         const fileDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory;
         const uri = fileDir + `SpecialSales_${new Date().getTime()}.xlsx`;
 
-        // 🟢 ແກ້ໄຂ: ໃຊ້ string 'base64'
         await FileSystem.writeAsStringAsync(uri, base64, { encoding: 'base64' });
         
         const canShare = await Sharing.isAvailableAsync();
@@ -161,7 +162,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         setLoading(true);
         const fileUri = result.assets[0].uri;
         
-        // 🟢 ແກ້ໄຂ: ໃຊ້ string 'base64'
+        // 🟢 ອ່ານຟາຍດ້ວຍ legacy API
         const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
         
         const wb = XLSX.read(fileContent, { type: 'base64' });
@@ -273,7 +274,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
   return (
     <View style={styles.container}>
-      {/* Loading Overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color={COLORS.primary} />
@@ -303,7 +303,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         
         <View style={styles.formSection}>
             
-            {/* Row 1: Date & Source */}
             <View style={styles.row}>
                 <View style={{flex: 1}}>
                     <Text style={styles.label}>ວັນທີ *</Text>
@@ -338,7 +337,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                 </View>
             </View>
 
-            {/* Row 2: Currency & Payment */}
             <View style={styles.row}>
                 <View style={{flex: 1}}>
                     <Text style={styles.label}>ສະກຸນເງິນ *</Text>

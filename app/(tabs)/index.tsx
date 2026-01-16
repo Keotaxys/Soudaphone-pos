@@ -210,6 +210,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      {/* 🟢 1. SafeAreaView for Top Status Bar (Teal Background) */}
       <SafeAreaView style={{ flex: 0, backgroundColor: '#008B94' }} edges={['top']} />
       
       <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>

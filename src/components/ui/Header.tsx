@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// 🟢 1. Import SafeAreaView
+import { Image, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ເພື່ອຈັດການພື້ນທີ່ດ້ານເທິງ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../types';
 
@@ -27,12 +27,13 @@ export default function Header({
   onLogout 
 }: HeaderProps) {
   
+  // 🟢 2. ປ່ຽນ Logic: ໃຫ້ສະແດງຊື່ຮ້ານ (shopName) ກ່ອນ, ຖ້າບໍ່ມີຈຶ່ງສະແດງຊື່ user
   const displayName = shopName || user?.name || "ຮ້ານ ສຸດາພອນ";
   const displayDetail = shopId || (user?.role ? `Role: ${user.role}` : "");
 
   return (
-    // 🟢 2. ປ່ຽນ View ເປັນ SafeAreaView ແລະກຳນົດ edges=['top']
-    // ວິທີນີ້ຈະເຮັດໃຫ້ພື້ນຫຼັງສີ Teal ຂະຫຍາຍຂຶ້ນໄປເຕັມ Status Bar ດ້ານເທິງສຸດ
+    // 🟢 3. ໃຊ້ SafeAreaView ເປັນ Container ຫຼັກ ແລະ ໃສ່ສີພື້ນຫຼັງທີ່ນີ້ເລີຍ
+    // edges={['top']} ຈະຊ່ວຍໃຫ້ສີພື້ນຫຼັງຂະຫຍາຍຂຶ້ນໄປເຕັມ Status Bar
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
       
@@ -62,6 +63,7 @@ export default function Header({
             <Image source={{ uri: shopLogo }} style={styles.shopLogo} />
           ) : (
             <View style={styles.shopLogoPlaceholder}>
+              {/* ສະແດງຕົວອັກສອນທຳອິດຂອງຊື່ຮ້ານ */}
               <Text style={styles.shopLogoText}>{displayName ? displayName.charAt(0) : 'S'}</Text>
             </View>
           )}
@@ -82,15 +84,14 @@ export default function Header({
 
 const styles = StyleSheet.create({
   container: { 
-    backgroundColor: COLORS.primary, // ສີ Teal ຢູ່ນີ້ຈະຂະຫຍາຍໄປເຕັມ Status Bar
-    paddingBottom: 20, 
-    // 🟢 3. ລຶບ paddingTop ແບບ manual ອອກ ເພາະ SafeAreaView ຈັດການໃຫ້ແລ້ວ
-    // paddingTop: Platform.OS === 'android' ? 10 : 0, 
+    backgroundColor: COLORS.primary, // 🟢 ສີ Teal ຈະຂະຫຍາຍເຕັມຈໍດ້ານເທິງ
+    paddingBottom: 20,
+    // ບໍ່ຕ້ອງກຳນົດ paddingTop ເອງ ເພາະ SafeAreaView ຈະຈັດການໃຫ້
     borderBottomLeftRadius: 20, 
     borderBottomRightRadius: 20, 
     zIndex: 1000,
-    // 🟢 4. ເພີ່ມ padding ດ້ານເທິງເລັກນ້ອຍສຳລັບເນື້ອຫາພາຍໃນ ບໍ່ໃຫ້ຕິດຂອບເກີນໄປ
-    paddingTop: 10, 
+    // ເພີ່ມ padding ເລັກນ້ອຍເພື່ອຄວາມສວຍງາມຂອງເນື້ອຫາພາຍໃນ
+    paddingTop: Platform.OS === 'android' ? 10 : 0, 
   },
   topBar: { 
     flexDirection: 'row', 

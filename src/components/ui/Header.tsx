@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// 🟢 1. ປ່ຽນຈາກ SafeAreaView ມາໃຊ້ useSafeAreaInsets
+import { Image, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// ໃຊ້ useSafeAreaInsets ເພື່ອດຶງຄ່າຄວາມສູງຂອງຕິ່ງໜ້າຈໍມາໃຊ້ເອງ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../types';
 
@@ -27,16 +27,16 @@ export default function Header({
   onLogout 
 }: HeaderProps) {
   
-  // 🟢 2. ດຶງຄ່າໄລຍະຫ່າງຂອງຕິ່ງໜ້າຈໍ (Notch)
+  // 🟢 1. ດຶງຄ່າ Insets (ໄລຍະຫ່າງຂອບຈໍ)
   const insets = useSafeAreaInsets();
   
   const displayName = shopName || user?.name || "ຮ້ານ ສຸດາພອນ";
   const displayDetail = shopId || (user?.role ? `Role: ${user.role}` : "");
 
   return (
-    // 🟢 3. ກຳນົດ paddingTop ຕາມຄ່າ insets.top ເພື່ອດັນເນື້ອຫາລົງມາ ແຕ່ພື້ນຫຼັງຍັງເປັນສີ Teal
+    // 🟢 2. ກຳນົດ paddingTop ຕາມຄ່າ insets.top
+    // ວິທີນີ້ພື້ນຫຼັງສີ Teal ຈະຢືດເຕັມຈໍ (ລວມທັງ Status Bar) ແຕ່ຕົວໜັງສືຈະຖືກດັນລົງມາບໍ່ໃຫ້ບັງ
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" translucent={true} />
       
       {/* Top Bar */}
       <View style={styles.topBar}>
@@ -84,11 +84,12 @@ export default function Header({
 
 const styles = StyleSheet.create({
   container: { 
-    backgroundColor: COLORS.primary, // 🟢 ສີ Teal ຈະຢູ່ເຕັມພື້ນທີ່ດ້ານເທິງສຸດ
+    backgroundColor: COLORS.primary, // ສີ Teal (#008B94)
     paddingBottom: 20, 
     borderBottomLeftRadius: 20, 
     borderBottomRightRadius: 20, 
     zIndex: 1000, 
+    // ບໍ່ຕ້ອງກຳນົດ paddingTop ຢູ່ທີ່ນີ້ ເພາະເຮົາກຳນົດແບບ Dynamic ຢູ່ດ້ານເທິງແລ້ວ
   },
   topBar: { 
     flexDirection: 'row', 
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     paddingHorizontal: 20, 
     marginBottom: 20,
-    marginTop: 10 // ເພີ່ມໄລຍະຫ່າງໜ້ອຍໜຶ່ງ
+    marginTop: 10 
   },
   leftContainer: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   appTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: 'white' },

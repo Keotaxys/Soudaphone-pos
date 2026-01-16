@@ -1,8 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { onValue, push, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -14,12 +18,12 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import * as XLSX from 'xlsx'; // Import Library Excel
 import { db } from '../../firebase';
 import { COLORS, formatNumber, Product } from '../../types';
 
 const ORANGE_THEME = '#FF8F00';
 
-// 🟢 2. ລາຍການໝວດໝູ່ຕາມທີ່ກຳນົດ
 const STATIC_CATEGORIES = [
     'ເສື້ອ', 'ໂສ້ງ', 'ໂສ້ງຊ້ອນໃນ', 'ກະໂປງ', 'ຊຸດ', 'ກະເປົາ', 
     'ໝວກ', 'ຖົງຕີນ', 'ເກີບ', 'ເຄື່ອງສຳອາງ', 'ເຄື່ອງປະດັບ', 'ທົ່ວໄປ'
@@ -45,14 +49,13 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
   const [amountReceived, setAmountReceived] = useState(''); 
 
   const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false); // Loading State
 
-  // Derived Values
   const totalVal = (parseFloat(price) || 0) * (parseInt(qty) || 0);
   const receivedVal = parseFloat(amountReceived) || 0;
   const changeVal = receivedVal - totalVal;
 
   useEffect(() => {
-    // ດຶງຂໍ້ມູນປະຫວັດການຂາຍ
     const salesRef = ref(db, 'sales');
     const unsub = onValue(salesRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -66,6 +69,133 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     });
     return () => unsub();
   }, []);
+
+  // 🟢 1. ຟັງຊັນສ້າງ Template Excel
+  const handleDownloadTemplate = async () => {
+    setLoading(true);
+    try {
+        const data = [
+            { "ຊື່ສິນຄ້າ": "ຕົວຢ່າງ: ເສື້ອຢືດ", "ໝວດໝູ່": "ເສື້ອ", "ລາຄາ": 50000, "ຈຳນວນ": 2, "ສະກຸນເງິນ(LAK/THB)": "LAK", "ວິທີຈ່າຍ(CASH/QR)": "CASH", "ແຫຼ່ງຂາຍ(Shop/Online)": "Shop" }
+        ];
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Template");
+        
+        const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+        const filename = FileSystem.documentDirectory + "SpecialSale_Template.xlsx";
+        
+        await FileSystem.writeAsStringAsync(filename, base64, { encoding: FileSystem.EncodingType.Base64 });
+        await Sharing.shareAsync(filename);
+    } catch (e) {
+        Alert.alert("Error", "ບໍ່ສາມາດສ້າງ Template ໄດ້");
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  // 🟢 2. ຟັງຊັນ Export ຂໍ້ມູນເປັນ Excel
+  const handleExport = async () => {
+    if (history.length === 0) {
+        Alert.alert("ແຈ້ງເຕືອນ", "ບໍ່ມີຂໍ້ມູນໃຫ້ສົ່ງອອກ");
+        return;
+    }
+    setLoading(true);
+    try {
+        const exportData = history.map(item => ({
+            "ວັນທີ": new Date(item.date).toLocaleDateString('en-GB'),
+            "ຊື່ສິນຄ້າ": item.items[0]?.name || "",
+            "ໝວດໝູ່": item.items[0]?.category || "",
+            "ລາຄາ": item.items[0]?.price || 0,
+            "ຈຳນວນ": item.items[0]?.quantity || 0,
+            "ລວມເງິນ": item.total,
+            "ສະກຸນເງິນ": item.currency,
+            "ວິທີຊຳລະ": item.paymentMethod,
+            "ແຫຼ່ງຂາຍ": item.source
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        XLSX.utils.book_append_sheet(wb, ws, "SalesData");
+
+        const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+        const filename = FileSystem.documentDirectory + `SpecialSales_${new Date().getTime()}.xlsx`;
+
+        await FileSystem.writeAsStringAsync(filename, base64, { encoding: FileSystem.EncodingType.Base64 });
+        await Sharing.shareAsync(filename);
+    } catch (e) {
+        Alert.alert("Error", "ສົ່ງອອກຂໍ້ມູນບໍ່ສຳເລັດ");
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  // 🟢 3. ຟັງຊັນ Import Excel
+  const handleImport = async () => {
+    try {
+        const result = await DocumentPicker.getDocumentAsync({
+            type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/comma-separated-values'],
+            copyToCacheDirectory: true
+        });
+
+        if (result.canceled) return;
+
+        setLoading(true);
+        const fileUri = result.assets[0].uri;
+        const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+        
+        const wb = XLSX.read(fileContent, { type: 'base64' });
+        const wsName = wb.SheetNames[0];
+        const ws = wb.Sheets[wsName];
+        const data = XLSX.utils.sheet_to_json(ws);
+
+        if (data.length === 0) {
+            Alert.alert("Error", "ບໍ່ພົບຂໍ້ມູນໃນຟາຍ");
+            setLoading(false);
+            return;
+        }
+
+        // Loop ບັນທຶກລົງ Firebase
+        let successCount = 0;
+        for (const row: any of data) {
+            const name = row["ຊື່ສິນຄ້າ"];
+            const cat = row["ໝວດໝູ່"] || "ທົ່ວໄປ";
+            const price = parseFloat(row["ລາຄາ"] || 0);
+            const qty = parseInt(row["ຈຳນວນ"] || 1);
+            const curr = row["ສະກຸນເງິນ(LAK/THB)"] || "LAK";
+            const method = row["ວິທີຈ່າຍ(CASH/QR)"] || "CASH";
+            const src = row["ແຫຼ່ງຂາຍ(Shop/Online)"] || "Shop";
+
+            if (name && price > 0) {
+                const total = price * qty;
+                const newSale = {
+                    isSpecial: true,
+                    date: new Date().toISOString(),
+                    source: src === 'Shop' ? 'POS' : 'ONLINE',
+                    paymentMethod: method,
+                    currency: curr,
+                    items: [{ name, price, quantity: qty, category: cat, priceCurrency: curr }],
+                    subTotal: total,
+                    total: total,
+                    discount: 0,
+                    amountReceived: total,
+                    change: 0,
+                    status: 'COMPLETED'
+                };
+                await push(ref(db, 'sales'), newSale);
+                successCount++;
+            }
+        }
+        
+        Alert.alert("ສຳເລັດ", `ນຳເຂົ້າຂໍ້ມູນສຳເລັດ ${successCount} ລາຍການ`);
+
+    } catch (e) {
+        console.log(e);
+        Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດໃນການອ່ານຟາຍ");
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const handleSave = () => {
     if (!detail || !price || !qty) {
@@ -115,27 +245,36 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     if (selectedDate) setDate(selectedDate);
   };
 
-  // Helper function ເພື່ອເລືອກສີປຸ່ມ
   const getActiveColor = (isActive: boolean, type: 'default' | 'alert') => {
-      if (!isActive) return '#eee'; // ສີພື້ນຫຼັງຕອນບໍ່ເລືອກ
-      if (type === 'alert') return ORANGE_THEME; // 🟢 4. ສີສົ້ມສຳລັບ Online/QR
-      return COLORS.primary; // ສີ Teal ປົກກະຕິ
+      if (!isActive) return '#eee';
+      if (type === 'alert') return ORANGE_THEME;
+      return COLORS.primary;
   };
 
   return (
     <View style={styles.container}>
+      {/* Loading Overlay */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={{marginTop: 10, fontFamily: 'Lao-Bold'}}>ກຳລັງປະມວນຜົນ...</Text>
+        </View>
+      )}
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ຂາຍພິເສດ (Manual Sale)</Text>
         <View style={styles.tools}>
-            <TouchableOpacity style={styles.toolBtn} onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "Coming Soon")}>
+            <TouchableOpacity style={styles.toolBtn} onPress={handleDownloadTemplate}>
                 <Ionicons name="copy-outline" size={18} color="white" />
+                <Text style={styles.toolText}>Template</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.toolBtn} onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "Coming Soon")}>
+            <TouchableOpacity style={styles.toolBtn} onPress={handleImport}>
                 <Ionicons name="cloud-upload-outline" size={18} color="white" />
+                <Text style={styles.toolText}>Import</Text>
             </TouchableOpacity>
-            {/* 🟢 3. ປ່ຽນສີປຸ່ມ Export ເປັນສີ Teal (COLORS.primary) */}
-            <TouchableOpacity style={[styles.toolBtn, {backgroundColor: COLORS.primary}]} onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "Coming Soon")}>
+            <TouchableOpacity style={[styles.toolBtn, {backgroundColor: COLORS.primary}]} onPress={handleExport}>
                 <Ionicons name="download-outline" size={18} color="white" />
+                <Text style={styles.toolText}>Export</Text>
             </TouchableOpacity>
         </View>
       </View>
@@ -148,7 +287,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
             <View style={styles.row}>
                 <View style={{flex: 1}}>
                     <Text style={styles.label}>ວັນທີ *</Text>
-                    {/* 🟢 1. ກົດແລ້ວເປີດ Modal ປະຕິທິນ */}
                     <TouchableOpacity style={styles.inputBox} onPress={() => setShowDatePicker(true)}>
                         <Text>{date.toLocaleDateString('en-GB')}</Text>
                         <Ionicons name="calendar" size={20} color="#666" />
@@ -318,7 +456,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         </TouchableOpacity>
       </Modal>
 
-      {/* 🟢 1. Date Picker Modal (Fix Dark Mode on iOS) */}
+      {/* Date Picker Modal */}
       {showDatePicker && (
         <View style={styles.datePickerOverlay}>
             <View style={styles.datePickerContainer}>
@@ -327,8 +465,8 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                     mode="date" 
                     display="inline" 
                     onChange={onDateChange} 
-                    textColor="black" // ບັງຄັບສີດຳ
-                    themeVariant="light" // ບັງຄັບພື້ນຫຼັງຂາວ (Light Mode)
+                    textColor="black" 
+                    themeVariant="light" 
                     style={{backgroundColor: 'white'}}
                 />
                 <TouchableOpacity style={styles.closeDateBtn} onPress={() => setShowDatePicker(false)}>
@@ -344,11 +482,12 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F9FA' },
+  loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.8)', zIndex: 9999, justifyContent: 'center', alignItems: 'center' },
   header: { padding: 15, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 2 },
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333' },
-  tools: { flexDirection: 'row', gap: 10 },
-  toolBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, padding: 8, borderRadius: 8, gap: 5, alignItems: 'center' },
-  toolText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 12 },
+  tools: { flexDirection: 'row', gap: 5 },
+  toolBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, gap: 5, alignItems: 'center' },
+  toolText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 10 },
   
   content: { flex: 1, padding: 10 },
   formSection: { backgroundColor: 'white', borderRadius: 10, padding: 15, elevation: 2, marginBottom: 15 },
@@ -385,7 +524,6 @@ const styles = StyleSheet.create({
   dropdownTitle: { fontFamily: 'Lao-Bold', fontSize: 18, marginBottom: 15, textAlign: 'center' },
   dropdownItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
 
-  // Date Picker Overlay
   datePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
   datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
   closeDateBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },

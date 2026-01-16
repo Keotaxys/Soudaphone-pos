@@ -168,8 +168,8 @@ export default function App() {
         <HomeScreenAny 
             salesHistory={salesHistory} 
             products={products} 
-            onQuickAddProduct={openAddProductModal} // ຍັງເກັບໄວ້ໃຊ້ຢູ່
-            onSpecialSale={() => setActiveTab('special_sale')} // 🟢 ເພີ່ມ Prop ນີ້
+            onQuickAddProduct={openAddProductModal} 
+            onSpecialSale={() => setActiveTab('special_sale')} 
             onQuickScan={() => setScannerVisible(true)} 
             onQuickCustomer={() => setActiveTab('Customers')} 
         />
@@ -209,10 +209,11 @@ export default function App() {
   const TABS = ['Home', 'POS', 'Products', 'Customers', 'Orders', 'Reports', 'Expenses', 'Debts', 'Shift'];
 
   return (
-    <SafeAreaProvider>
-      {/* 🟢 1. SafeAreaView for Top Status Bar (Teal Background) */}
-      <SafeAreaView style={{ flex: 0, backgroundColor: '#008B94' }} edges={['top']} />
+    // 🟢 1. ຕັ້ງສີພື້ນຫຼັງຂອງ Provider ເປັນສີ Teal ເພື່ອຮອງຮັບ Status Bar ທຸກກໍລະນີ
+    <SafeAreaProvider style={{ backgroundColor: '#008B94' }}>
       
+      {/* 🟢 2. ກຳນົດສີ Container ຫຼັກເປັນສີ Teal (ບໍ່ແມ່ນສີເທົາ) */}
+      {/* ລຶບ SafeAreaView ແຍກດ້ານເທິງອອກ ແລ້ວໃຊ້ໂຕນີ້ໂຕດຽວຄຸມທັງໝົດ */}
       <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
         <StatusBar style="light" backgroundColor="#008B94" />
         
@@ -226,6 +227,7 @@ export default function App() {
             onLogout={() => setIsLoggedIn(false)}
         />
 
+        {/* 🟢 3. ຍ້າຍສີພື້ນຫຼັງສີເທົາ (#F5F9FA) ມາໄວ້ໃນສ່ວນເນື້ອຫາ (Main Container) ແທນ */}
         <View style={styles.mainContainer}>
           {isSidebarOpen && (
             <View style={styles.sidebarOverlay}>
@@ -256,8 +258,12 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F9FA' },
-  mainContainer: { flex: 1, position: 'relative' },
+  // 🟢 4. ແກ້ໄຂ: Container ແມ່ຕ້ອງເປັນສີ Teal ເພື່ອໃຫ້ດ້ານເທິງສຸດບໍ່ຂາວ
+  container: { flex: 1, backgroundColor: '#008B94' },
+  
+  // 🟢 5. ແກ້ໄຂ: Main Container ທາງໃນຈຶ່ງເປັນສີເທົາອ່ອນ
+  mainContainer: { flex: 1, position: 'relative', backgroundColor: '#F5F9FA' },
+  
   sidebarOverlay: { position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, zIndex: 999, flexDirection: 'row' },
   transparentCloseArea: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   contentWrapper: { flex: 1, backgroundColor: '#fff', marginHorizontal: 10, marginTop: 10, marginBottom: 0, borderRadius: 10, overflow: 'hidden' }

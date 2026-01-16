@@ -15,7 +15,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ເພື່ອບໍ່ໃຫ້ປຸ່ມຕົກຂອບ
+// 🟢 ໃຊ້ SafeAreaView ເພື່ອໃຫ້ UI ຢູ່ໃນຂອບເຂດທີ່ເຫັນໄດ້ຊັດເຈນ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { db } from '../../firebase';
 import { COLORS, formatNumber, Product } from '../../types';
@@ -38,13 +38,12 @@ export default function ProductsScreen({
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  // ກັ່ນຕອງສິນຄ້າ
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (p.barcode && p.barcode.includes(searchQuery))
   );
 
-  // 1. Download Template
+  // --- Logic ເດີມ 1: Template ---
   const handleDownloadTemplate = async () => {
       const csvContent = "Name,Price,Stock,Currency(LAK/THB),Barcode,Category\nເສື້ອຢືດ,50000,10,LAK,88889999,ເສື້ອຜ້າ\n";
       const fileName = `${FileSystem.documentDirectory}product_template.csv`;
@@ -56,7 +55,7 @@ export default function ProductsScreen({
       }
   };
 
-  // 2. Export
+  // --- Logic ເດີມ 2: Export ---
   const handleExport = async () => {
       let csvContent = "Name,Price,Stock,Currency,Barcode,Category\n";
       products.forEach(p => {
@@ -71,11 +70,10 @@ export default function ProductsScreen({
       }
   };
 
-  // 3. Import
+  // --- Logic ເດີມ 3: Import ---
   const handleImport = async () => {
       try {
           const result = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'application/vnd.ms-excel', '*/*'] });
-          
           if (result.canceled) return;
 
           const fileUri = result.assets[0].uri;
@@ -83,7 +81,6 @@ export default function ProductsScreen({
           const rows = fileContent.split('\n');
 
           let successCount = 0;
-
           for (let i = 1; i < rows.length; i++) {
               const row = rows[i].split(',');
               if (row.length >= 3) {
@@ -96,13 +93,7 @@ export default function ProductsScreen({
 
                   if (name && !isNaN(price) && !isNaN(stock)) {
                       await push(ref(db, 'products'), {
-                          name,
-                          price,
-                          stock,
-                          priceCurrency: currency,
-                          barcode,
-                          category,
-                          createdAt: new Date().toISOString()
+                          name, price, stock, priceCurrency: currency, barcode, category, createdAt: new Date().toISOString()
                       });
                       successCount++;
                   }
@@ -117,25 +108,16 @@ export default function ProductsScreen({
   const renderProductItem = ({ item }: { item: Product }) => (
     <View style={styles.card}>
         <View style={styles.imageWrapper}>
-            <Image 
-                source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://via.placeholder.com/150' }} 
-                style={styles.image} 
-            />
+            <Image source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://via.placeholder.com/150' }} style={styles.image} />
             <View style={[styles.tag, { backgroundColor: item.priceCurrency === 'LAK' ? COLORS.primary : ORANGE_THEME }]}>
                 <Text style={styles.tagText}>{item.priceCurrency}</Text>
             </View>
         </View>
-
         <View style={styles.details}>
             <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-            <Text style={styles.price}>
-                {formatNumber(item.price)} {item.priceCurrency === 'LAK' ? '₭' : '฿'}
-            </Text>
-            <Text style={[styles.stock, item.stock <= 5 && { color: ORANGE_THEME }]}>
-                ຄົງເຫຼືອ: {item.stock}
-            </Text>
+            <Text style={styles.price}>{formatNumber(item.price)} {item.priceCurrency === 'LAK' ? '₭' : '฿'}</Text>
+            <Text style={[styles.stock, item.stock <= 5 && { color: ORANGE_THEME }]}>ຄົງເຫຼືອ: {item.stock}</Text>
         </View>
-
         <View style={styles.actions}>
             <TouchableOpacity style={styles.editBtn} onPress={() => onEditProduct(item)}>
                 <Ionicons name="pencil" size={20} color={COLORS.primary} />
@@ -163,31 +145,23 @@ export default function ProductsScreen({
                 </TouchableOpacity>
             )}
         </View>
-        
         <View style={styles.actionIcons}>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}>
-                <Ionicons name="download-outline" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleImport}>
-                <Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleExport}>
-                <Ionicons name="share-outline" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}><Ionicons name="download-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleImport}><Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleExport}><Ionicons name="share-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
         </View>
     </View>
   );
 
   return (
-    // 🟢 2. ໃຊ້ SafeAreaView ແທນ View ປົກກະຕິ
-    <SafeAreaView style={styles.container}>
-      
+    <SafeAreaView style={styles.container} edges={['top']}>
       <FlatList
         data={filteredProducts}
         keyExtractor={(item) => item.id!}
         ListHeaderComponent={ListHeader}
         renderItem={renderProductItem}
-        contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
+        // 🟢 ເພີ່ມ Padding ດ້ານລຸ່ມໃຫ້ສູງຂຶ້ນ ເພື່ອບໍ່ໃຫ້ລາຍການສຸດທ້າຍຖືກປຸ່ມບັງ
+        contentContainerStyle={{ padding: 15, paddingBottom: 120 }}
         ListEmptyComponent={
             <View style={styles.emptyContainer}>
                 <Ionicons name="cube-outline" size={60} color="#ddd" />
@@ -196,8 +170,12 @@ export default function ProductsScreen({
         }
       />
 
-      {/* 🟢 3. ປຸ່ມເພີ່ມສິນຄ້າ (FAB) ແກ້ໄຂ zIndex ແລະ ຕຳແໜ່ງ */}
-      <TouchableOpacity style={styles.fab} onPress={onAddProduct}>
+      {/* 🟢 ປຸ່ມ FAB ທີ່ຖືກແກ້ໄຂໃຫ້ລອຍຢູ່ເໜືອສຸດ */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={onAddProduct}
+        activeOpacity={0.8}
+      >
           <Ionicons name="add" size={30} color="white" />
           <Text style={styles.fabText}>ເພີ່ມສິນຄ້າ</Text>
       </TouchableOpacity>
@@ -230,20 +208,20 @@ const styles = StyleSheet.create({
   editBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
   deleteBtn: { padding: 8, backgroundColor: '#FFF3E0', borderRadius: 8 },
 
-  // 🟢 4. Style ສຳລັບ FAB (ເພີ່ມ zIndex ແລະ Elevation)
+  // 🟢 FAB Style ແກ້ໄຂໃໝ່
   fab: { 
     position: 'absolute', 
-    bottom: 30, // ຍັບຂຶ້ນມາເລັກນ້ອຍ
+    bottom: 90, // ຍົກຂຶ້ນສູງເພື່ອໜີ Footer
     right: 20, 
-    backgroundColor: COLORS.primary, 
+    backgroundColor: ORANGE_THEME, 
     paddingVertical: 12, 
     paddingHorizontal: 20, 
     borderRadius: 30, 
     flexDirection: 'row', 
     alignItems: 'center', 
-    elevation: 10, // ສຳລັບ Android
-    zIndex: 999,   // ສຳລັບ iOS
-    shadowColor: '#000', // ເງົາ
+    elevation: 10, // ເງົາ Android
+    zIndex: 9999, // ເງົາ iOS
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4.65,

@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import * as XLSX from 'xlsx'; // Import Library Excel
+import * as XLSX from 'xlsx';
 import { db } from '../../firebase';
 import { COLORS, formatNumber, Product } from '../../types';
 
@@ -49,7 +49,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
   const [amountReceived, setAmountReceived] = useState(''); 
 
   const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false); // Loading State
+  const [loading, setLoading] = useState(false);
 
   const totalVal = (parseFloat(price) || 0) * (parseInt(qty) || 0);
   const receivedVal = parseFloat(amountReceived) || 0;
@@ -70,7 +70,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     return () => unsub();
   }, []);
 
-  // 🟢 1. ຟັງຊັນສ້າງ Template Excel
+  // 1. Template
   const handleDownloadTemplate = async () => {
     setLoading(true);
     try {
@@ -83,9 +83,10 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         XLSX.utils.book_append_sheet(wb, ws, "Template");
         
         const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-        const filename = FileSystem.documentDirectory + "SpecialSale_Template.xlsx";
+        // 🟢 ແກ້ໄຂ: ໃຊ້ cacheDirectory ເພື່ອລົດບັນຫາ type ແລະໃຊ້ string 'base64'
+        const filename = FileSystem.cacheDirectory + "SpecialSale_Template.xlsx";
         
-        await FileSystem.writeAsStringAsync(filename, base64, { encoding: FileSystem.EncodingType.Base64 });
+        await FileSystem.writeAsStringAsync(filename, base64, { encoding: 'base64' });
         await Sharing.shareAsync(filename);
     } catch (e) {
         Alert.alert("Error", "ບໍ່ສາມາດສ້າງ Template ໄດ້");
@@ -94,7 +95,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     }
   };
 
-  // 🟢 2. ຟັງຊັນ Export ຂໍ້ມູນເປັນ Excel
+  // 2. Export
   const handleExport = async () => {
     if (history.length === 0) {
         Alert.alert("ແຈ້ງເຕືອນ", "ບໍ່ມີຂໍ້ມູນໃຫ້ສົ່ງອອກ");
@@ -119,9 +120,10 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         XLSX.utils.book_append_sheet(wb, ws, "SalesData");
 
         const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-        const filename = FileSystem.documentDirectory + `SpecialSales_${new Date().getTime()}.xlsx`;
+        // 🟢 ແກ້ໄຂ: ໃຊ້ cacheDirectory
+        const filename = FileSystem.cacheDirectory + `SpecialSales_${new Date().getTime()}.xlsx`;
 
-        await FileSystem.writeAsStringAsync(filename, base64, { encoding: FileSystem.EncodingType.Base64 });
+        await FileSystem.writeAsStringAsync(filename, base64, { encoding: 'base64' });
         await Sharing.shareAsync(filename);
     } catch (e) {
         Alert.alert("Error", "ສົ່ງອອກຂໍ້ມູນບໍ່ສຳເລັດ");
@@ -130,7 +132,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     }
   };
 
-  // 🟢 3. ຟັງຊັນ Import Excel
+  // 3. Import
   const handleImport = async () => {
     try {
         const result = await DocumentPicker.getDocumentAsync({
@@ -142,12 +144,15 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
         setLoading(true);
         const fileUri = result.assets[0].uri;
-        const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+        // 🟢 ແກ້ໄຂ: ໃຊ້ string 'base64' ແທນ Enum
+        const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
         
         const wb = XLSX.read(fileContent, { type: 'base64' });
         const wsName = wb.SheetNames[0];
         const ws = wb.Sheets[wsName];
-        const data = XLSX.utils.sheet_to_json(ws);
+        
+        // 🟢 ແກ້ໄຂ: Cast data ເປັນ any[]
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
 
         if (data.length === 0) {
             Alert.alert("Error", "ບໍ່ພົບຂໍ້ມູນໃນຟາຍ");
@@ -155,9 +160,10 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
             return;
         }
 
-        // Loop ບັນທຶກລົງ Firebase
         let successCount = 0;
-        for (const row: any of data) {
+        // 🟢 ແກ້ໄຂ: Loop ແບບຖືກຕ້ອງຕາມຫຼັກ TypeScript
+        for (const rowItem of data) {
+            const row = rowItem as any;
             const name = row["ຊື່ສິນຄ້າ"];
             const cat = row["ໝວດໝູ່"] || "ທົ່ວໄປ";
             const price = parseFloat(row["ລາຄາ"] || 0);

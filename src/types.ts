@@ -50,6 +50,9 @@ export interface SaleRecord {
   date: string;
   status: string;
   createdAt: string;
+  
+  // ➕ ແນະນຳໃຫ້ເພີ່ມແຖວນີ້ (ໃສ່ ? ໝາຍຄວາມວ່າ ມີ ຫຼື ບໍ່ມີກໍໄດ້)
+  isSpecial?: boolean; 
 }
 
 // 🟢 5. ExpenseRecord Interface

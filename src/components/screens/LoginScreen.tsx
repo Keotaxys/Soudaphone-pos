@@ -26,7 +26,7 @@ interface LoginScreenProps {
 
 // 🟢 2. ຮັບ onLoginSuccess ເຂົ້າມາໃນ Component
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
-  const [email, setEmail] = useState('admin@sdp.com'); // ໃສ່ Default ເພື່ອທົດສອບ
+  const [email, setEmail] = useState(''); // ໃສ່ Default ເພື່ອທົດສອບ
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

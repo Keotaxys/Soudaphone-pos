@@ -1,24 +1,23 @@
-// path: /hooks/useExchangeRate.ts
-
-import { getDatabase, onValue, ref } from 'firebase/database';
+// path: src/hooks/useExchangeRate.ts
+import { onValue, ref } from 'firebase/database';
 import { useEffect, useState } from 'react';
-// 🟢 ອ້າງອີງໄປຫາ src/firebase.ts (ຍ້ອນ hooks ຢູ່ນອກ src ຈຶ່ງຕ້ອງຖອຍອອກມາແລ້ວເຂົ້າ src)
-import { app } from '../firebase';
+
+// ✅ ແກ້ໄຂ Path: ດຶງ db ໂດຍກົງຈາກ ../firebase (ເພາະທັງສອງຢູ່ໃນ src ຄືກັນ)
+import { db } from '../firebase';
 
 export const useExchangeRate = () => {
   const [rate, setRate] = useState<number>(0);
 
   useEffect(() => {
-    const db = getDatabase(app);
-    // ອ້າງອີງຕາມຮູບທີ 1 ທີ່ເຈົ້າສົ່ງມາ
+    // ✅ ບໍ່ຕ້ອງໃຊ້ getDatabase(app) ຊ້ຳອີກ, ໃຊ້ db ທີ່ import ມາໄດ້ເລີຍ
     const rateRef = ref(db, 'settings/exchangeRateTHB');
 
     const unsubscribe = onValue(rateRef, (snapshot) => {
       const data = snapshot.val();
       const numericRate = Number(data);
       
-      // ຖ້າດຶງມາໄດ້ ໃຫ້ອັບເດດ State
-      if (!isNaN(numericRate)) {
+      // ກວດສອບຂໍ້ມູນກ່ອນບັນທຶກ
+      if (!isNaN(numericRate) && data !== null) {
         setRate(numericRate);
       }
     });

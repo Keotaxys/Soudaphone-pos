@@ -21,7 +21,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { COLORS, formatNumber } from '../../types';
 
 const ORANGE_COLOR = '#FF8F00';
-// 🟢 1. ເພີ່ມ Type 'custom'
 type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 
 const FIXED_EXCHANGE_RATE = 680;
@@ -33,13 +32,13 @@ const formatDateLao = (date: Date) => {
 export default function SalesHistoryScreen() {
   const { hasPermission } = useAuth();
 
+  // 🟢 1. ປະກາດ Hooks (useState) ທັງໝົດໄວ້ທາງເທິງກ່ອນ (ຫ້າມມີ return ຂັ້ນ)
   const [sales, setSales] = useState<any[]>([]);
   const [filteredSales, setFilteredSales] = useState<any[]>([]);
   const [filterType, setFilterType] = useState<FilterType>('day');
   
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  // 🟢 2. ເພີ່ມ State ສຳລັບ Custom Range
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [datePickerMode, setDatePickerMode] = useState<'current' | 'start' | 'end'>('current');
@@ -47,17 +46,11 @@ export default function SalesHistoryScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Security Check
-  if (!hasPermission('accessReports')) {
-      return (
-          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
-              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້</Text>
-          </View>
-      );
-  }
-
+  // 🟢 2. ປະກາດ useEffect (ຫ້າມມີ return ກ່ອນໜ້ານີ້)
   useEffect(() => {
+    // ຖ້າບໍ່ມີສິດ ກໍບໍ່ຕ້ອງດຶງຂໍ້ມູນ (ປະຢັດຊັບພະຍາກອນ)
+    if (!hasPermission('accessReports')) return;
+
     const salesRef = ref(db, 'sales');
     const unsubscribe = onValue(salesRef, (snapshot) => {
       const data = snapshot.val();
@@ -75,12 +68,10 @@ export default function SalesHistoryScreen() {
     let start = new Date(currentDate);
     let end = new Date(currentDate);
     
-    // 🟢 3. Logic ການກັ່ນຕອງວັນທີ (ລວມທັງ Custom)
     if (filterType === 'custom') {
         start = new Date(startDate);
         end = new Date(endDate);
     } else {
-        // Logic ເດີມ
         if (filterType === 'week') {
             const day = start.getDay();
             const diff = start.getDate() - day + (day === 0 ? -6 : 1);
@@ -95,7 +86,6 @@ export default function SalesHistoryScreen() {
         }
     }
 
-    // ຕັ້ງເວລາໃຫ້ຄອບຄຸມທັງໝົດ
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
@@ -106,7 +96,7 @@ export default function SalesHistoryScreen() {
     setFilteredSales(filtered);
   }, [sales, filterType, currentDate, startDate, endDate]);
 
-  // 🟢 4. ຟັງຊັນ Export (ສ້າງເປັນ CSV)
+  // --- Functions ---
   const handleExport = async () => {
     if (filteredSales.length === 0) {
         Alert.alert('ແຈ້ງເຕືອນ', 'ບໍ່ມີຂໍ້ມູນໃນຊ່ວງເວລານີ້');
@@ -143,7 +133,7 @@ export default function SalesHistoryScreen() {
   };
 
   const handleNavigateDate = (dir: 'prev' | 'next') => {
-    if (filterType === 'custom') return; // Custom ບໍ່ໃຫ້ກົດ Next/Prev
+    if (filterType === 'custom') return; 
     const newDate = new Date(currentDate);
     const val = dir === 'next' ? 1 : -1;
     
@@ -256,12 +246,22 @@ export default function SalesHistoryScreen() {
     );
   };
 
+  // 🟢 3. ຍ້າຍການກວດສອບສິດມາໄວ້ບ່ອນນີ້ (ຫຼັງຈາກ Hooks ທັງໝົດທຳງານແລ້ວ)
+  if (!hasPermission('accessReports')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້</Text>
+          </View>
+      );
+  }
+
+  // 🟢 4. Return ໜ້າຈໍຫຼັກ
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ປະຫວັດການຂາຍ</Text>
         
-        {/* 🟢 5. ປຸ່ມ Export (ສະແດງສະເພາະວ່າມີຂໍ້ມູນ) */}
         {filteredSales.length > 0 && (
             <TouchableOpacity onPress={handleExport} style={styles.exportBtn}>
                 <Ionicons name="share-outline" size={20} color={COLORS.primary} />
@@ -270,7 +270,6 @@ export default function SalesHistoryScreen() {
         )}
       </View>
         
-      {/* 🟢 6. ປັບປຸງສ່ວນເລືອກວັນທີ ໃຫ້ຮອງຮັບ Custom Range */}
       <View style={styles.dateNavContainer}>
         {filterType !== 'custom' ? (
              <View style={styles.dateNav}>
@@ -294,7 +293,6 @@ export default function SalesHistoryScreen() {
       </View>
 
       <View style={styles.filterBar}>
-         {/* 🟢 7. ເພີ່ມປຸ່ມ Custom */}
          {['day', 'week', 'month', 'year', 'custom'].map((t) => (
             <TouchableOpacity key={t} style={[styles.filterChip, filterType === t && styles.activeFilter]} onPress={() => setFilterType(t as FilterType)}>
                 <Text style={[styles.filterText, filterType === t && {color: 'white'}]}>

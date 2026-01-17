@@ -6,18 +6,24 @@ import { shareAsync } from 'expo-sharing';
 import { push, ref } from 'firebase/database';
 import React, { useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
-// 🟢 ໃຊ້ SafeAreaView ເພື່ອໃຫ້ UI ຢູ່ໃນຂອບເຂດທີ່ເຫັນໄດ້ຊັດເຈນ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { db } from '../../firebase';
+// 🟢 1. Import Hook
+import { useCategories } from '../../hooks/useCategories';
 import { COLORS, formatNumber, Product } from '../../types';
 
 const ORANGE_THEME = '#FF8F00'; 
@@ -36,14 +42,40 @@ export default function ProductsScreen({
   onDeleteProduct 
 }: ProductsScreenProps) {
 
+  // 🟢 2. ເອີ້ນໃຊ້ Hook
+  const { categories: dbCategories, addCategory } = useCategories();
+  
+  // ສ້າງລາຍການໝວດໝູ່ສຳລັບ Filter (ລວມ All)
+  const categoryList = ['All', ...dbCategories];
+
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All'); // State ສຳລັບໝວດໝູ່ທີ່ເລືອກ
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (p.barcode && p.barcode.includes(searchQuery))
-  );
+  // State ສຳລັບການເພີ່ມໝວດໝູ່ໃໝ່
+  const [showAddCatModal, setShowAddCatModal] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
 
-  // --- Logic ເດີມ 1: Template ---
+  // 🟢 3. ປັບ Logic ການ Filter ໃຫ້ກວດທັງ Search ແລະ Category
+  const filteredProducts = products.filter(p => {
+    const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        (p.barcode && p.barcode.includes(searchQuery));
+    const matchCategory = selectedCategory === 'All' || (p.category || 'ອື່ນໆ') === selectedCategory;
+    
+    return matchSearch && matchCategory;
+  });
+
+  // 🟢 4. ຟັງຊັນບັນທຶກໝວດໝູ່ໃໝ່
+  const handleAddNewCategory = async () => {
+    const success = await addCategory(newCatName);
+    if (success) {
+        setNewCatName('');
+        setShowAddCatModal(false);
+        // ບໍ່ຕ້ອງ Alert ກໍໄດ້ ເພາະໃນ Hook ມີ Alert ແລ້ວ ຫຼື ຈະໃສ່ເພີ່ມກໍໄດ້
+        Alert.alert("ສຳເລັດ", "ເພີ່ມໝວດໝູ່ຮຽບຮ້ອຍແລ້ວ");
+    }
+  };
+
+  // --- Logic ເດີມ (Template, Export, Import) ---
   const handleDownloadTemplate = async () => {
       const csvContent = "Name,Price,Stock,Currency(LAK/THB),Barcode,Category\nເສື້ອຢືດ,50000,10,LAK,88889999,ເສື້ອຜ້າ\n";
       const fileName = `${FileSystem.documentDirectory}product_template.csv`;
@@ -55,7 +87,6 @@ export default function ProductsScreen({
       }
   };
 
-  // --- Logic ເດີມ 2: Export ---
   const handleExport = async () => {
       let csvContent = "Name,Price,Stock,Currency,Barcode,Category\n";
       products.forEach(p => {
@@ -70,7 +101,6 @@ export default function ProductsScreen({
       }
   };
 
-  // --- Logic ເດີມ 3: Import ---
   const handleImport = async () => {
       try {
           const result = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'application/vnd.ms-excel', '*/*'] });
@@ -115,6 +145,7 @@ export default function ProductsScreen({
         </View>
         <View style={styles.details}>
             <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.categoryText}>{item.category || 'ບໍ່ມີໝວດໝູ່'}</Text>
             <Text style={styles.price}>{formatNumber(item.price)} {item.priceCurrency === 'LAK' ? '₭' : '฿'}</Text>
             <Text style={[styles.stock, item.stock <= 5 && { color: ORANGE_THEME }]}>ຄົງເຫຼືອ: {item.stock}</Text>
         </View>
@@ -145,6 +176,29 @@ export default function ProductsScreen({
                 </TouchableOpacity>
             )}
         </View>
+
+        {/* 🟢 5. ເພີ່ມແຖບເລືອກໝວດໝູ່ */}
+        <View style={{flexDirection: 'row', marginBottom: 10, alignItems: 'center'}}>
+            <TouchableOpacity style={styles.addCatMiniBtn} onPress={() => setShowAddCatModal(true)}>
+                <Ionicons name="add" size={20} color="white" />
+            </TouchableOpacity>
+            <FlatList 
+                horizontal 
+                data={categoryList} 
+                keyExtractor={i => i} 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={{paddingRight: 10}}
+                renderItem={({item}) => (
+                    <TouchableOpacity 
+                        style={[styles.catChip, selectedCategory === item && styles.activeCatChip]} 
+                        onPress={() => setSelectedCategory(item)}
+                    >
+                        <Text style={[styles.catText, selectedCategory === item && styles.activeCatText]}>{item}</Text>
+                    </TouchableOpacity>
+                )} 
+            />
+        </View>
+
         <View style={styles.actionIcons}>
             <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}><Ionicons name="download-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn} onPress={handleImport}><Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
@@ -160,7 +214,6 @@ export default function ProductsScreen({
         keyExtractor={(item) => item.id!}
         ListHeaderComponent={ListHeader}
         renderItem={renderProductItem}
-        // 🟢 ເພີ່ມ Padding ດ້ານລຸ່ມໃຫ້ສູງຂຶ້ນ ເພື່ອບໍ່ໃຫ້ລາຍການສຸດທ້າຍຖືກປຸ່ມບັງ
         contentContainerStyle={{ padding: 15, paddingBottom: 120 }}
         ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -170,7 +223,6 @@ export default function ProductsScreen({
         }
       />
 
-      {/* 🟢 ປຸ່ມ FAB ທີ່ຖືກແກ້ໄຂໃຫ້ລອຍຢູ່ເໜືອສຸດ */}
       <TouchableOpacity 
         style={styles.fab} 
         onPress={onAddProduct}
@@ -179,6 +231,33 @@ export default function ProductsScreen({
           <Ionicons name="add" size={30} color="white" />
           <Text style={styles.fabText}>ເພີ່ມສິນຄ້າ</Text>
       </TouchableOpacity>
+
+      {/* 🟢 6. Modal ສຳລັບເພີ່ມໝວດໝູ່ */}
+      <Modal visible={showAddCatModal} transparent animationType="slide">
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>ເພີ່ມໝວດໝູ່ໃໝ່</Text>
+                    <TextInput 
+                        style={styles.inputBox} 
+                        placeholder="ຊື່ໝວດໝູ່..." 
+                        value={newCatName} 
+                        onChangeText={setNewCatName}
+                        autoFocus
+                    />
+                    <View style={{flexDirection: 'row', gap: 10, marginTop: 20}}>
+                        <TouchableOpacity style={[styles.modalBtn, {backgroundColor: '#ccc'}]} onPress={() => setShowAddCatModal(false)}>
+                            <Text style={styles.modalBtnText}>ຍົກເລີກ</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.modalBtn, {backgroundColor: COLORS.primary}]} onPress={handleAddNewCategory}>
+                            <Text style={styles.modalBtnText}>ບັນທຶກ</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -193,6 +272,13 @@ const styles = StyleSheet.create({
   actionIcons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginBottom: 5 },
   iconBtn: { backgroundColor: 'white', padding: 8, borderRadius: 8, elevation: 2 },
 
+  // 🟢 Styles ໃໝ່ສຳລັບ Categories
+  catChip: { paddingHorizontal: 15, paddingVertical: 6, backgroundColor: 'white', borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: '#eee' },
+  activeCatChip: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  catText: { fontFamily: 'Lao-Regular', color: '#666', fontSize: 12 },
+  activeCatText: { color: 'white', fontFamily: 'Lao-Bold' },
+  addCatMiniBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: ORANGE_THEME, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+
   card: { flexDirection: 'row', backgroundColor: 'white', marginBottom: 10, borderRadius: 12, padding: 10, alignItems: 'center', elevation: 1 },
   imageWrapper: { position: 'relative', width: 70, height: 70, borderRadius: 10, overflow: 'hidden', backgroundColor: '#f0f0f0' },
   image: { width: '100%', height: '100%' },
@@ -201,33 +287,30 @@ const styles = StyleSheet.create({
 
   details: { flex: 1, marginLeft: 15 },
   name: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text },
-  price: { fontFamily: 'Lao-Bold', fontSize: 15, color: COLORS.primary, marginTop: 4 },
+  categoryText: { fontFamily: 'Lao-Regular', fontSize: 10, color: '#999', marginBottom: 2 },
+  price: { fontFamily: 'Lao-Bold', fontSize: 15, color: COLORS.primary, marginTop: 2 },
   stock: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#888', marginTop: 2 },
 
   actions: { flexDirection: 'row', gap: 10 },
   editBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
   deleteBtn: { padding: 8, backgroundColor: '#FFF3E0', borderRadius: 8 },
 
-  // 🟢 FAB Style ແກ້ໄຂໃໝ່
   fab: { 
-    position: 'absolute', 
-    bottom: 90, // ຍົກຂຶ້ນສູງເພື່ອໜີ Footer
-    right: 20, 
-    backgroundColor: ORANGE_THEME, 
-    paddingVertical: 12, 
-    paddingHorizontal: 20, 
-    borderRadius: 30, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    elevation: 10, // ເງົາ Android
-    zIndex: 9999, // ເງົາ iOS
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    position: 'absolute', bottom: 90, right: 20, 
+    backgroundColor: ORANGE_THEME, paddingVertical: 12, paddingHorizontal: 20, 
+    borderRadius: 30, flexDirection: 'row', alignItems: 'center', 
+    elevation: 10, zIndex: 9999, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4.65,
   },
   fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 5 },
 
   emptyContainer: { alignItems: 'center', marginTop: 100 },
-  emptyText: { fontFamily: 'Lao-Regular', color: '#ccc', marginTop: 10 }
+  emptyText: { fontFamily: 'Lao-Regular', color: '#ccc', marginTop: 10 },
+
+  // Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { backgroundColor: 'white', width: '80%', padding: 20, borderRadius: 15, alignItems: 'center' },
+  modalTitle: { fontFamily: 'Lao-Bold', fontSize: 18, marginBottom: 15 },
+  inputBox: { width: '100%', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontFamily: 'Lao-Regular' },
+  modalBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
+  modalBtnText: { color: 'white', fontFamily: 'Lao-Bold' }
 });

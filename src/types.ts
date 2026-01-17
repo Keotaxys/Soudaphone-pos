@@ -151,3 +151,22 @@ export interface ShiftRecord {
   actualCashTHB?: number;
   note?: string;
 }
+// 🟢 User Permissions Interface (ລາຍການສິດທັງໝົດ)
+export interface UserPermissions {
+  canSell: boolean;           // ສິດຂາຍສິນຄ້າ
+  canEditProduct: boolean;    // ສິດແກ້ໄຂສິນຄ້າ
+  canDeleteProduct: boolean;  // ສິດລຶບສິນຄ້າ
+  canViewReports: boolean;    // ສິດເບິ່ງລາຍງານ
+  canManageUsers: boolean;    // ສິດຈັດການພະນັກງານ
+}
+
+// 🟢 User Interface (ຂໍ້ມູນຜູ້ໃຊ້)
+export interface User {
+  id?: string;
+  name: string;
+  pin: string;            // PIN 4 ຫຼັກ ສຳລັບ Login
+  role: 'admin' | 'staff';
+  isActive: boolean;      // ເປີດ/ປິດ ການໃຊ້ງານ (ຖ້າລາອອກກໍປິດເປັນ false)
+  permissions?: UserPermissions; // ຖ້າເປັນ admin ອາດຈະບໍ່ມີຄ່ານີ້ກໍໄດ້
+  createdAt: string;
+}

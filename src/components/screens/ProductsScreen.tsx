@@ -22,7 +22,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { db } from '../../firebase';
-// 🟢 1. Import Hook
 import { useCategories } from '../../hooks/useCategories';
 import { COLORS, formatNumber, Product } from '../../types';
 
@@ -42,37 +41,82 @@ export default function ProductsScreen({
   onDeleteProduct 
 }: ProductsScreenProps) {
 
-  // 🟢 2. ເອີ້ນໃຊ້ Hook
-  const { categories: dbCategories, addCategory } = useCategories();
-  
-  // ສ້າງລາຍການໝວດໝູ່ສຳລັບ Filter (ລວມ All)
+  // 🟢 ດຶງຟັງຊັນ edit ແລະ delete ມາເພີ່ມ
+  const { categories: dbCategories, categoryObjs, addCategory, editCategory, deleteCategory } = useCategories();
   const categoryList = ['All', ...dbCategories];
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All'); // State ສຳລັບໝວດໝູ່ທີ່ເລືອກ
+  const [selectedCategory, setSelectedCategory] = useState('All'); 
+  
+  // State ສຳລັບ Modal ໝວດໝູ່
+  const [showCatModal, setShowCatModal] = useState(false);
+  const [catNameInput, setCatNameInput] = useState('');
+  const [editingCatId, setEditingCatId] = useState<string | null>(null); // ຖ້າມີຄ່າ ແປວ່າກຳລັງແກ້ໄຂ
 
-  // State ສຳລັບການເພີ່ມໝວດໝູ່ໃໝ່
-  const [showAddCatModal, setShowAddCatModal] = useState(false);
-  const [newCatName, setNewCatName] = useState('');
-
-  // 🟢 3. ປັບ Logic ການ Filter ໃຫ້ກວດທັງ Search ແລະ Category
   const filteredProducts = products.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                         (p.barcode && p.barcode.includes(searchQuery));
     const matchCategory = selectedCategory === 'All' || (p.category || 'ອື່ນໆ') === selectedCategory;
-    
     return matchSearch && matchCategory;
   });
 
-  // 🟢 4. ຟັງຊັນບັນທຶກໝວດໝູ່ໃໝ່
-  const handleAddNewCategory = async () => {
-    const success = await addCategory(newCatName);
-    if (success) {
-        setNewCatName('');
-        setShowAddCatModal(false);
-        // ບໍ່ຕ້ອງ Alert ກໍໄດ້ ເພາະໃນ Hook ມີ Alert ແລ້ວ ຫຼື ຈະໃສ່ເພີ່ມກໍໄດ້
-        Alert.alert("ສຳເລັດ", "ເພີ່ມໝວດໝູ່ຮຽບຮ້ອຍແລ້ວ");
+  // 🟢 ຈັດການເປີດ Modal (ເພີ່ມ ຫຼື ແກ້ໄຂ)
+  const openCategoryModal = (mode: 'add' | 'edit', name = '', id: string | null = null) => {
+      setCatNameInput(name);
+      setEditingCatId(id);
+      setShowCatModal(true);
+  };
+
+  const handleSaveCategory = async () => {
+    if (!catNameInput.trim()) return;
+
+    let success = false;
+    if (editingCatId) {
+        // ແກ້ໄຂ
+        success = await editCategory(editingCatId, catNameInput);
+    } else {
+        // ເພີ່ມໃໝ່
+        success = await addCategory(catNameInput);
     }
+
+    if (success) {
+        setCatNameInput('');
+        setEditingCatId(null);
+        setShowCatModal(false);
+    }
+  };
+
+  // 🟢 ຈັດການກົດຄ້າງທີ່ໝວດໝູ່ (Long Press Logic)
+  const handleLongPressCategory = (catName: string) => {
+      if (catName === 'All') return;
+
+      // ຊອກຫາ ID ຂອງໝວດໝູ່ນີ້ (ເພາະໃນ UI ເຮົາໂຊແຕ່ຊື່)
+      const targetCat = categoryObjs.find(c => c.name === catName);
+      
+      // ຖ້າບໍ່ພົບ ID (ສະແດງວ່າເປັນ Default Category) -> ຫ້າມລຶບ/ແກ້ໄຂ
+      if (!targetCat) {
+          Alert.alert("ແຈ້ງເຕືອນ", "ໝວດໝູ່ນີ້ເປັນຄ່າເລີ່ມຕົ້ນ ບໍ່ສາມາດແກ້ໄຂໄດ້");
+          return;
+      }
+
+      Alert.alert(
+          "ຈັດການໝວດໝູ່",
+          `ເລືອກການທຳງານສຳລັບ "${catName}"`,
+          [
+              { text: "ຍົກເລີກ", style: "cancel" },
+              { text: "ແກ້ໄຂຊື່", onPress: () => openCategoryModal('edit', catName, targetCat.id) },
+              { 
+                  text: "ລຶບ", 
+                  style: "destructive", 
+                  onPress: () => {
+                      Alert.alert("ຢືນຢັນ", "ຕ້ອງການລຶບແທ້ບໍ?", [
+                          { text: "ຍົກເລີກ", style: "cancel" },
+                          { text: "ລຶບເລີຍ", style: 'destructive', onPress: () => deleteCategory(targetCat.id) }
+                      ]);
+                  }
+              }
+          ]
+      );
   };
 
   // --- Logic ເດີມ (Template, Export, Import) ---
@@ -177,9 +221,9 @@ export default function ProductsScreen({
             )}
         </View>
 
-        {/* 🟢 5. ເພີ່ມແຖບເລືອກໝວດໝູ່ */}
         <View style={{flexDirection: 'row', marginBottom: 10, alignItems: 'center'}}>
-            <TouchableOpacity style={styles.addCatMiniBtn} onPress={() => setShowAddCatModal(true)}>
+            {/* 🟢 ແກ້ໄຂ 1: ປ່ຽນສີເປັນ Teal (COLORS.primary) */}
+            <TouchableOpacity style={[styles.addCatMiniBtn, {backgroundColor: COLORS.primary}]} onPress={() => openCategoryModal('add')}>
                 <Ionicons name="add" size={20} color="white" />
             </TouchableOpacity>
             <FlatList 
@@ -192,6 +236,9 @@ export default function ProductsScreen({
                     <TouchableOpacity 
                         style={[styles.catChip, selectedCategory === item && styles.activeCatChip]} 
                         onPress={() => setSelectedCategory(item)}
+                        // 🟢 ເພີ່ມ: ກົດຄ້າງເພື່ອແກ້ໄຂ/ລຶບ
+                        onLongPress={() => handleLongPressCategory(item)}
+                        delayLongPress={500}
                     >
                         <Text style={[styles.catText, selectedCategory === item && styles.activeCatText]}>{item}</Text>
                     </TouchableOpacity>
@@ -223,33 +270,35 @@ export default function ProductsScreen({
         }
       />
 
+      {/* 🟢 ແກ້ໄຂ 2: ປຸ່ມ FAB ເປັນວົງມົນ, ບໍ່ມີຂໍ້ຄວາມ, ສີ Teal */}
       <TouchableOpacity 
         style={styles.fab} 
         onPress={onAddProduct}
         activeOpacity={0.8}
       >
-          <Ionicons name="add" size={30} color="white" />
-          <Text style={styles.fabText}>ເພີ່ມສິນຄ້າ</Text>
+          <Ionicons name="add" size={35} color="white" />
       </TouchableOpacity>
 
-      {/* 🟢 6. Modal ສຳລັບເພີ່ມໝວດໝູ່ */}
-      <Modal visible={showAddCatModal} transparent animationType="slide">
+      {/* Modal ສຳລັບ Add/Edit Category */}
+      <Modal visible={showCatModal} transparent animationType="slide">
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>ເພີ່ມໝວດໝູ່ໃໝ່</Text>
+                    <Text style={styles.modalTitle}>
+                        {editingCatId ? 'ແກ້ໄຂໝວດໝູ່' : 'ເພີ່ມໝວດໝູ່ໃໝ່'}
+                    </Text>
                     <TextInput 
                         style={styles.inputBox} 
                         placeholder="ຊື່ໝວດໝູ່..." 
-                        value={newCatName} 
-                        onChangeText={setNewCatName}
+                        value={catNameInput} 
+                        onChangeText={setCatNameInput}
                         autoFocus
                     />
                     <View style={{flexDirection: 'row', gap: 10, marginTop: 20}}>
-                        <TouchableOpacity style={[styles.modalBtn, {backgroundColor: '#ccc'}]} onPress={() => setShowAddCatModal(false)}>
+                        <TouchableOpacity style={[styles.modalBtn, {backgroundColor: '#ccc'}]} onPress={() => setShowCatModal(false)}>
                             <Text style={styles.modalBtnText}>ຍົກເລີກ</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.modalBtn, {backgroundColor: COLORS.primary}]} onPress={handleAddNewCategory}>
+                        <TouchableOpacity style={[styles.modalBtn, {backgroundColor: COLORS.primary}]} onPress={handleSaveCategory}>
                             <Text style={styles.modalBtnText}>ບັນທຶກ</Text>
                         </TouchableOpacity>
                     </View>
@@ -272,12 +321,11 @@ const styles = StyleSheet.create({
   actionIcons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginBottom: 5 },
   iconBtn: { backgroundColor: 'white', padding: 8, borderRadius: 8, elevation: 2 },
 
-  // 🟢 Styles ໃໝ່ສຳລັບ Categories
   catChip: { paddingHorizontal: 15, paddingVertical: 6, backgroundColor: 'white', borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: '#eee' },
   activeCatChip: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   catText: { fontFamily: 'Lao-Regular', color: '#666', fontSize: 12 },
   activeCatText: { color: 'white', fontFamily: 'Lao-Bold' },
-  addCatMiniBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: ORANGE_THEME, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  addCatMiniBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
 
   card: { flexDirection: 'row', backgroundColor: 'white', marginBottom: 10, borderRadius: 12, padding: 10, alignItems: 'center', elevation: 1 },
   imageWrapper: { position: 'relative', width: 70, height: 70, borderRadius: 10, overflow: 'hidden', backgroundColor: '#f0f0f0' },
@@ -295,18 +343,29 @@ const styles = StyleSheet.create({
   editBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
   deleteBtn: { padding: 8, backgroundColor: '#FFF3E0', borderRadius: 8 },
 
+  // 🟢 FAB Style ແກ້ໄຂໃໝ່ (ວົງມົນ, ບໍ່ມີຂໍ້ຄວາມ)
   fab: { 
-    position: 'absolute', bottom: 90, right: 20, 
-    backgroundColor: ORANGE_THEME, paddingVertical: 12, paddingHorizontal: 20, 
-    borderRadius: 30, flexDirection: 'row', alignItems: 'center', 
-    elevation: 10, zIndex: 9999, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4.65,
+    position: 'absolute', 
+    bottom: 90, 
+    right: 20, 
+    backgroundColor: COLORS.primary, // ສີ Teal
+    width: 60, // ກຳນົດຄວາມກວ້າງ
+    height: 60, // ກຳນົດຄວາມສູງເທົ່າກັນ
+    borderRadius: 30, // ເຮັດໃຫ້ເປັນວົງມົນ
+    justifyContent: 'center',
+    alignItems: 'center', 
+    elevation: 10, 
+    zIndex: 9999, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 4.65,
   },
-  fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 5 },
+  // fabText: { ... } ລຶບອອກ ເພາະບໍ່ໃຊ້ແລ້ວ
 
   emptyContainer: { alignItems: 'center', marginTop: 100 },
   emptyText: { fontFamily: 'Lao-Regular', color: '#ccc', marginTop: 10 },
 
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: 'white', width: '80%', padding: 20, borderRadius: 15, alignItems: 'center' },
   modalTitle: { fontFamily: 'Lao-Bold', fontSize: 18, marginBottom: 15 },

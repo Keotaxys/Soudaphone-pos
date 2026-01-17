@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,6 +8,9 @@ import {
   View
 } from 'react-native';
 import { COLORS } from '../../types';
+
+// ✅ ແກ້ໄຂ Path ໃຫ້ຖືກຕ້ອງ (ອອກຈາກ ui -> ເຂົ້າ modals)
+import BillSettingsModal from '../modals/BillSettingsModal';
 
 interface SidebarProps {
   activeTab: string;
@@ -39,6 +41,9 @@ const MENU_ITEMS = [
 ];
 
 export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProps) {
+  // ສ້າງ State ສຳລັບເປີດ/ປິດ Modal ຕັ້ງຄ່າໃບບິນ
+  const [showBillSettings, setShowBillSettings] = useState(false);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -51,6 +56,7 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
       <ScrollView contentContainerStyle={styles.menuContainer} showsVerticalScrollIndicator={false}>
         {MENU_ITEMS.map((item, index) => {
           const isActive = activeTab.toLowerCase() === item.id.toLowerCase();
+          // ເສັ້ນຂັ້ນລະຫວ່າງກຸ່ມ
           const isGroupDivider = index === 4 || index === 6 || index === 10;
 
           return (
@@ -75,14 +81,21 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
 
         <View style={styles.divider} />
 
+        {/* ປຸ່ມຕັ້ງຄ່າໃບບິນ (ກົດແລ້ວເປີດ Modal) */}
         <TouchableOpacity 
           style={styles.menuItem}
-          onPress={() => Alert.alert("ແຈ້ງເຕືອນ", "ຟັງຊັນນີ້ຈະເປີດໃຫ້ໃຊ້ງານໄວໆນີ້")}
+          onPress={() => setShowBillSettings(true)}
         >
           <Ionicons name="settings-outline" size={24} color="#555" />
           <Text style={styles.menuText}>ຕັ້ງຄ່າໃບບິນ</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ວາງ Modal ໄວ້ຢູ່ນີ້ */}
+      <BillSettingsModal 
+        visible={showBillSettings} 
+        onClose={() => setShowBillSettings(false)} 
+      />
     </View>
   );
 }

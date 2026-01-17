@@ -6,7 +6,10 @@ import {
   Dimensions,
   Modal,
   Platform,
-  ScrollView,
+  SafeAreaView,
+  ScrollView, // Import SafeAreaView
+  StatusBar // Import StatusBar
+  ,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -22,7 +25,7 @@ const ORANGE_BG = '#FFF3E0';
 interface HomeScreenProps {
   salesHistory: SaleRecord[];
   products: Product[];
-  onSpecialSale: () => void; // 🟢 1. ປ່ຽນຈາກ onQuickAddProduct ເປັນ onSpecialSale
+  onSpecialSale: () => void;
   onQuickScan: () => void;
   onQuickCustomer: () => void;
 }
@@ -32,7 +35,7 @@ type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 export default function HomeScreen({ 
   salesHistory, 
   products,
-  onSpecialSale, // 🟢 ຮັບ Prop ໃໝ່
+  onSpecialSale,
   onQuickScan,
   onQuickCustomer
 }: HomeScreenProps) {
@@ -60,6 +63,7 @@ export default function HomeScreen({
   }, []);
 
   const getDateRange = () => {
+    // ... (Logic ເດີມຂອງທ່ານ)
     let start = new Date(currentDate);
     let end = new Date(currentDate);
     start.setHours(0, 0, 0, 0);
@@ -94,6 +98,7 @@ export default function HomeScreen({
   };
 
   useEffect(() => {
+    // ... (Logic ເດີມຂອງທ່ານ)
     const { start, end } = getDateRange();
     
     const fSales = salesHistory.filter(sale => {
@@ -112,9 +117,9 @@ export default function HomeScreen({
 
   }, [salesHistory, expensesData, filterType, currentDate, customStartDate, customEndDate]);
 
+  // ... (Functions ເດີມຂອງທ່ານ: handleNavigateDate, getDateLabel, openDatePicker, onDateChange)
   const handleNavigateDate = (dir: 'prev' | 'next') => {
     if (filterType === 'custom') return;
-    
     const newDate = new Date(currentDate);
     const val = dir === 'next' ? 1 : -1;
     if (filterType === 'day') newDate.setDate(newDate.getDate() + val);
@@ -156,148 +161,173 @@ export default function HomeScreen({
   const profit = filteredTotal - filteredExpenses;
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      
-      {/* Filter Section */}
-      <View style={styles.filterSection}>
-        <View style={styles.filterTabs}>
-          {['day', 'week', 'month', 'year', 'custom'].map((type) => (
-            <TouchableOpacity 
-                key={type} 
-                style={[styles.filterTab, filterType === type && styles.activeTab]} 
-                onPress={() => setFilterType(type as FilterType)}
-            >
-              <Text style={[styles.filterText, filterType === type && styles.activeText]}>
-                  {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+    // 🟢 2. ແກ້ໄຂ iOS: ໃຊ້ View ຫຸ້ມນອກສຸດ ແລະ ໃສ່ສີພື້ນຫຼັງເປັນສີ Theme
+    <View style={{ flex: 1, backgroundColor: COLORS.primary }}>
+        
+        {/* 🟢 2.1 ຕັ້ງຄ່າ StatusBar ໃຫ້ເປັນສີດຽວກັນ */}
+        <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
 
-        <View style={styles.navRow}>
-            {filterType !== 'custom' ? (
-                <>
-                    <TouchableOpacity onPress={() => handleNavigateDate('prev')} style={styles.navBtn}>
-                        <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
-                    </TouchableOpacity>
-                    <Text style={styles.dateLabel}>{getDateLabel()}</Text>
-                    <TouchableOpacity onPress={() => handleNavigateDate('next')} style={styles.navBtn}>
-                        <Ionicons name="chevron-forward" size={24} color={COLORS.primary} />
-                    </TouchableOpacity>
-                </>
-            ) : (
-                <View style={styles.customDateContainer}>
-                    <TouchableOpacity style={styles.datePickBtn} onPress={() => openDatePicker('start')}>
-                        <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
-                        <Text style={styles.datePickText}>{formatDate(customStartDate)}</Text>
-                    </TouchableOpacity>
-                    <Text style={{marginHorizontal: 5}}>-</Text>
-                    <TouchableOpacity style={styles.datePickBtn} onPress={() => openDatePicker('end')}>
-                        <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
-                        <Text style={styles.datePickText}>{formatDate(customEndDate)}</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-        </View>
-      </View>
+        {/* 🟢 2.2 ໃຊ້ SafeAreaView ເພື່ອຈັດການ Notch (ຕິ່ງໜ້າຈໍ) */}
+        <SafeAreaView style={{ flex: 1 }}>
+            
+            {/* 🟢 2.3 ສ່ວນເນື້ອຫາທາງໃນ ໃຫ້ກັບມາເປັນສີເທົາອ່ອນຄືເກົ່າ */}
+            <View style={styles.contentContainer}>
+                
+                <ScrollView 
+                    style={styles.scrollView} 
+                    showsVerticalScrollIndicator={false}
+                    // 🟢 1. ແກ້ໄຂ Android: ເພີ່ມ paddingBottom ໃຫ້ຫຼາຍຂຶ້ນເພື່ອດັນເມນູດ່ວນຂຶ້ນມາ
+                    contentContainerStyle={{ paddingBottom: 150 }} 
+                >
+                
+                    {/* Filter Section */}
+                    <View style={styles.filterSection}>
+                        <View style={styles.filterTabs}>
+                        {['day', 'week', 'month', 'year', 'custom'].map((type) => (
+                            <TouchableOpacity 
+                                key={type} 
+                                style={[styles.filterTab, filterType === type && styles.activeTab]} 
+                                onPress={() => setFilterType(type as FilterType)}
+                            >
+                            <Text style={[styles.filterText, filterType === type && styles.activeText]}>
+                                {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
+                            </Text>
+                            </TouchableOpacity>
+                        ))}
+                        </View>
 
-      {/* Stats Grid */}
-      <View style={styles.statsGrid}>
-        <View style={[styles.statCard, { backgroundColor: COLORS.primary }]}>
-          <View style={styles.iconCircleWhite}><Ionicons name="cash" size={24} color={COLORS.primary} /></View>
-          <View><Text style={styles.statLabelWhite}>ຍອດຂາຍ</Text><Text style={styles.statValueWhite}>{formatNumber(filteredTotal)} ₭</Text></View>
-        </View>
+                        <View style={styles.navRow}>
+                            {filterType !== 'custom' ? (
+                                <>
+                                    <TouchableOpacity onPress={() => handleNavigateDate('prev')} style={styles.navBtn}>
+                                        <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
+                                    </TouchableOpacity>
+                                    <Text style={styles.dateLabel}>{getDateLabel()}</Text>
+                                    <TouchableOpacity onPress={() => handleNavigateDate('next')} style={styles.navBtn}>
+                                        <Ionicons name="chevron-forward" size={24} color={COLORS.primary} />
+                                    </TouchableOpacity>
+                                </>
+                            ) : (
+                                <View style={styles.customDateContainer}>
+                                    <TouchableOpacity style={styles.datePickBtn} onPress={() => openDatePicker('start')}>
+                                        <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+                                        <Text style={styles.datePickText}>{formatDate(customStartDate)}</Text>
+                                    </TouchableOpacity>
+                                    <Text style={{marginHorizontal: 5}}>-</Text>
+                                    <TouchableOpacity style={styles.datePickBtn} onPress={() => openDatePicker('end')}>
+                                        <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+                                        <Text style={styles.datePickText}>{formatDate(customEndDate)}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                    </View>
 
-        <View style={[styles.statCard, { backgroundColor: '#E0F2F1', borderWidth: 1, borderColor: COLORS.primary }]}>
-          <View style={[styles.iconCircle, { backgroundColor: 'white' }]}><Ionicons name="trending-up" size={24} color={COLORS.primary} /></View>
-          <View>
-              <Text style={[styles.statLabel, {color: COLORS.primary}]}>ກຳໄລ</Text>
-              <Text style={[styles.statValue, { color: profit >= 0 ? COLORS.primary : ORANGE_COLOR }]}>
-                  {profit >= 0 ? '+' : ''}{formatNumber(profit)}
-              </Text>
-          </View>
-        </View>
+                    {/* Stats Grid */}
+                    <View style={styles.statsGrid}>
+                        <View style={[styles.statCard, { backgroundColor: COLORS.primary }]}>
+                        <View style={styles.iconCircleWhite}><Ionicons name="cash" size={24} color={COLORS.primary} /></View>
+                        <View><Text style={styles.statLabelWhite}>ຍອດຂາຍ</Text><Text style={styles.statValueWhite}>{formatNumber(filteredTotal)} ₭</Text></View>
+                        </View>
 
-        <View style={[styles.statCard, { backgroundColor: COLORS.secondary }]}>
-          <View style={styles.iconCircleWhite}><Ionicons name="receipt" size={24} color={COLORS.secondaryDark} /></View>
-          <View><Text style={styles.statLabelWhite}>ອໍເດີ</Text><Text style={styles.statValueWhite}>{filteredOrders}</Text></View>
-        </View>
+                        <View style={[styles.statCard, { backgroundColor: '#E0F2F1', borderWidth: 1, borderColor: COLORS.primary }]}>
+                        <View style={[styles.iconCircle, { backgroundColor: 'white' }]}><Ionicons name="trending-up" size={24} color={COLORS.primary} /></View>
+                        <View>
+                            <Text style={[styles.statLabel, {color: COLORS.primary}]}>ກຳໄລ</Text>
+                            <Text style={[styles.statValue, { color: profit >= 0 ? COLORS.primary : ORANGE_COLOR }]}>
+                                {profit >= 0 ? '+' : ''}{formatNumber(profit)}
+                            </Text>
+                        </View>
+                        </View>
 
-        <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
-          <View style={[styles.iconCircle, { backgroundColor: ORANGE_BG }]}><Ionicons name="wallet-outline" size={24} color={ORANGE_COLOR} /></View>
-          <View><Text style={styles.statLabel}>ລາຍຈ່າຍ</Text><Text style={[styles.statValue, { color: ORANGE_COLOR }]}>{formatNumber(filteredExpenses)}</Text></View>
-        </View>
-      </View>
+                        <View style={[styles.statCard, { backgroundColor: COLORS.secondary }]}>
+                        <View style={styles.iconCircleWhite}><Ionicons name="receipt" size={24} color={COLORS.secondaryDark} /></View>
+                        <View><Text style={styles.statLabelWhite}>ອໍເດີ</Text><Text style={styles.statValueWhite}>{filteredOrders}</Text></View>
+                        </View>
 
-      {/* Quick Menu */}
-      <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>ເມນູດ່ວນ</Text>
-      </View>
-      
-      <View style={styles.quickMenu}>
-          {/* 🟢 2. ເຊື່ອມຕໍ່ກັບ onSpecialSale */}
-          <TouchableOpacity style={styles.quickMenuItem} onPress={onSpecialSale}>
-              <View style={styles.quickMenuIcon}>
-                <Ionicons name="flash-outline" size={28} color={COLORS.primary} />
-              </View>
-              <Text style={styles.quickMenuText}>ຂາຍພິເສດ</Text>
-          </TouchableOpacity>
+                        <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
+                        <View style={[styles.iconCircle, { backgroundColor: ORANGE_BG }]}><Ionicons name="wallet-outline" size={24} color={ORANGE_COLOR} /></View>
+                        <View><Text style={styles.statLabel}>ລາຍຈ່າຍ</Text><Text style={[styles.statValue, { color: ORANGE_COLOR }]}>{formatNumber(filteredExpenses)}</Text></View>
+                        </View>
+                    </View>
 
-          <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickScan}>
-              <View style={styles.quickMenuIcon}>
-                <Ionicons name="qr-code-outline" size={28} color={COLORS.primary} />
-              </View>
-              <Text style={styles.quickMenuText}>ສະແກນ</Text>
-          </TouchableOpacity>
+                    {/* Quick Menu */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>ເມນູດ່ວນ</Text>
+                    </View>
+                    
+                    <View style={styles.quickMenu}>
+                        <TouchableOpacity style={styles.quickMenuItem} onPress={onSpecialSale}>
+                            <View style={styles.quickMenuIcon}>
+                                <Ionicons name="flash-outline" size={28} color={COLORS.primary} />
+                            </View>
+                            <Text style={styles.quickMenuText}>ຂາຍພິເສດ</Text>
+                        </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickCustomer}>
-              <View style={styles.quickMenuIcon}>
-                <Ionicons name="people-outline" size={28} color={COLORS.primary} />
-              </View>
-              <Text style={styles.quickMenuText}>ລູກຄ້າ</Text>
-          </TouchableOpacity>
-      </View>
+                        <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickScan}>
+                            <View style={styles.quickMenuIcon}>
+                                <Ionicons name="qr-code-outline" size={28} color={COLORS.primary} />
+                            </View>
+                            <Text style={styles.quickMenuText}>ສະແກນ</Text>
+                        </TouchableOpacity>
 
-      {/* Date Picker Component */}
-      {showDatePicker && (
-        Platform.OS === 'ios' ? (
-            <Modal transparent animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.datePickerContainer}>
-                        <Text style={styles.pickerTitle}>
-                            ເລືອກວັນທີ {datePickerMode === 'start' ? 'ເລີ່ມຕົ້ນ' : 'ສິ້ນສຸດ'}
-                        </Text>
-                        <DateTimePicker
-                            value={datePickerMode === 'start' ? customStartDate : customEndDate}
-                            mode="date"
-                            display="inline"
-                            onChange={onDateChange}
-                            textColor="black"
-                            themeVariant="light"
-                            style={{backgroundColor: 'white'}}
-                        />
-                        <TouchableOpacity style={styles.closeBtn} onPress={() => setShowDatePicker(false)}>
-                            <Text style={styles.closeBtnText}>ຕົກລົງ</Text>
+                        <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickCustomer}>
+                            <View style={styles.quickMenuIcon}>
+                                <Ionicons name="people-outline" size={28} color={COLORS.primary} />
+                            </View>
+                            <Text style={styles.quickMenuText}>ລູກຄ້າ</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
-            </Modal>
-        ) : (
-            <DateTimePicker
-                value={datePickerMode === 'start' ? customStartDate : customEndDate}
-                mode="date"
-                display="default"
-                onChange={onDateChange}
-            />
-        )
-      )}
 
-    </ScrollView>
+                    {/* Date Picker Component */}
+                    {showDatePicker && (
+                        Platform.OS === 'ios' ? (
+                            <Modal transparent animationType="fade">
+                                <View style={styles.modalOverlay}>
+                                    <View style={styles.datePickerContainer}>
+                                        <Text style={styles.pickerTitle}>
+                                            ເລືອກວັນທີ {datePickerMode === 'start' ? 'ເລີ່ມຕົ້ນ' : 'ສິ້ນສຸດ'}
+                                        </Text>
+                                        <DateTimePicker
+                                            value={datePickerMode === 'start' ? customStartDate : customEndDate}
+                                            mode="date"
+                                            display="inline"
+                                            onChange={onDateChange}
+                                            textColor="black"
+                                            themeVariant="light"
+                                            style={{backgroundColor: 'white'}}
+                                        />
+                                        <TouchableOpacity style={styles.closeBtn} onPress={() => setShowDatePicker(false)}>
+                                            <Text style={styles.closeBtnText}>ຕົກລົງ</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </Modal>
+                        ) : (
+                            <DateTimePicker
+                                value={datePickerMode === 'start' ? customStartDate : customEndDate}
+                                mode="date"
+                                display="default"
+                                onChange={onDateChange}
+                            />
+                        )
+                    )}
+                </ScrollView>
+            </View>
+        </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  // 🟢 2.3 ປັບ container ໃຫ້ບໍ່ມີສີ background (ເພາະໄປໃສ່ຢູ່ View ນອກສຸດແລ້ວ)
+  contentContainer: { 
+      flex: 1, 
+      backgroundColor: COLORS.background 
+  }, 
+  scrollView: {
+      flex: 1
+  },
   
   filterSection: { backgroundColor: 'white', paddingBottom: 10, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5 },
   filterTabs: { flexDirection: 'row', justifyContent: 'center', marginTop: 10, marginBottom: 10, gap: 5, flexWrap: 'wrap' },

@@ -2,7 +2,7 @@ import { onValue, push, ref } from 'firebase/database';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 // ✅ ແກ້ໄຂ Path ໃຫ້ຖືກຕ້ອງ (ເຂົ້າໄປໃນ src ກ່ອນ)
-import { db } from '../src/firebase';
+import { db } from '../firebase';
 
 const DEFAULT_CATEGORIES = [
     'ເສື້ອ', 'ໂສ້ງ', 'ໂສ້ງຊ້ອນໃນ', 'ກະໂປງ', 'ຊຸດ', 'ກະເປົາ', 

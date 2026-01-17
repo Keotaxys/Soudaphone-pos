@@ -20,14 +20,10 @@ import {
 } from 'react-native';
 import * as XLSX from 'xlsx';
 import { db } from '../../firebase';
+import { useCategories } from '../../hooks/useCategories'; // 🟢 1. Import Hook
 import { COLORS, formatDate, formatNumber, Product } from '../../types';
 
 const ORANGE_THEME = '#FF8F00';
-
-const STATIC_CATEGORIES = [
-    'ເສື້ອ', 'ໂສ້ງ', 'ໂສ້ງຊ້ອນໃນ', 'ກະໂປງ', 'ຊຸດ', 'ກະເປົາ', 
-    'ໝວກ', 'ຖົງຕີນ', 'ເກີບ', 'ເຄື່ອງສຳອາງ', 'ເຄື່ອງປະດັບ', 'ທົ່ວໄປ'
-];
 
 type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 
@@ -36,6 +32,9 @@ interface SpecialSaleScreenProps {
 }
 
 export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) {
+  // 🟢 2. ດຶງຂໍ້ມູນ Categories ແລະ ຟັງຊັນເພີ່ມ ຈາກ Hook
+  const { categories, addCategory } = useCategories();
+
   // Form State
   const [date, setDate] = useState(new Date());
   const [showFormDatePicker, setShowFormDatePicker] = useState(false);
@@ -43,8 +42,15 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
   const [source, setSource] = useState<'Shop' | 'Online'>('Shop');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QR'>('CASH');
   const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK'); 
-  const [category, setCategory] = useState(STATIC_CATEGORIES[0]);
+  
+  // 🟢 3. ຈັດການ State ໝວດໝູ່
+  const [category, setCategory] = useState(''); // ເລີ່ມຕົ້ນຍັງບໍ່ມີຄ່າ
   const [showCatDropdown, setShowCatDropdown] = useState(false);
+  
+  // State ສຳລັບ Modal ເພີ່ມໝວດໝູ່
+  const [showAddCatModal, setShowAddCatModal] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+
   const [detail, setDetail] = useState('');
   const [price, setPrice] = useState('');
   const [qty, setQty] = useState('1');
@@ -68,7 +74,14 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
   const receivedVal = parseFloat(amountReceived) || 0;
   const changeVal = receivedVal - totalVal;
 
-  // 1. Fetch Data
+  // 🟢 4. ຕັ້ງຄ່າ Default Category ເມື່ອຂໍ້ມູນໂຫລດມາແລ້ວ
+  useEffect(() => {
+    if (categories.length > 0 && !category) {
+        setCategory(categories[0]);
+    }
+  }, [categories, category]);
+
+  // 1. Fetch Sales Data
   useEffect(() => {
     const salesRef = ref(db, 'sales');
     const unsub = onValue(salesRef, (snapshot) => {
@@ -126,7 +139,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
   }, [history, filterType, currentFilterDate, customStartDate, customEndDate]);
 
-  // ... (Date Navigation Functions remain the same) ...
   const handleNavigateDate = (dir: 'prev' | 'next') => {
     if (filterType === 'custom') return;
     const newDate = new Date(currentFilterDate);
@@ -143,32 +155,40 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     return formatDate(currentFilterDate);
   };
 
-  // --- 🟢 Helper: Convert Excel Date to JS Date ---
   const parseExcelDate = (excelDate: any) => {
-      // ຖ້າເປັນໂຕເລກ (Excel Serial Date)
       if (typeof excelDate === 'number') {
           return new Date(Math.round((excelDate - 25569) * 86400 * 1000));
       }
-      // ຖ້າເປັນ String "DD/MM/YYYY"
       if (typeof excelDate === 'string') {
           const parts = excelDate.split('/');
           if (parts.length === 3) {
               return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
           }
-          return new Date(excelDate); // Try standard parse
+          return new Date(excelDate);
       }
-      return new Date(); // Fallback
+      return new Date();
   };
 
-  // --- 🟢 Updated: Download Template with Date & Lao Headers ---
+  // 🟢 5. ຟັງຊັນບັນທຶກໝວດໝູ່ໃໝ່ (ໃຊ້ Hook)
+  const handleAddNewCategory = async () => {
+    const success = await addCategory(newCatName);
+    if (success) {
+        setCategory(newCatName.trim());
+        setNewCatName('');
+        setShowAddCatModal(false);
+        setShowCatDropdown(false);
+        Alert.alert("ສຳເລັດ", "ເພີ່ມໝວດໝູ່ຮຽບຮ້ອຍແລ້ວ");
+    }
+  };
+
+  // Excel Functions
   const handleDownloadTemplate = async () => {
     setLoading(true);
     try {
-        // ກຳນົດຫົວຂໍ້ເປັນພາສາລາວຕາມຮູບ
         const data = [{ 
-            "ວັນທີ": "17/01/2026", // ຕົວຢ່າງວັນທີ
+            "ວັນທີ": "17/01/2026",
             "ຊື່ສິນຄ້າ": "ຕົວຢ່າງ: ເສື້ອ", 
-            "ໝວດໝູ່": "ເສື້ອ", 
+            "ໝວດໝູ່": categories[0] || "ເສື້ອ", 
             "ລາຄາ": 50000, 
             "ຈຳນວນ": 2, 
             "ສະກຸນເງິນ(ກີບ/ບາດ)": "ກີບ", 
@@ -179,16 +199,9 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(data);
         
-        // ປັບຄວາມກວ້າງຂອງ Column ໃຫ້ງາມ
         ws['!cols'] = [
-            { wch: 15 }, // ວັນທີ
-            { wch: 20 }, // ຊື່ສິນຄ້າ
-            { wch: 15 }, // ໝວດໝູ່
-            { wch: 10 }, // ລາຄາ
-            { wch: 8 },  // ຈຳນວນ
-            { wch: 15 }, // ສະກຸນເງິນ
-            { wch: 15 }, // ວິທີຈ່າຍ
-            { wch: 20 }  // ແຫຼ່ງຂາຍ
+            { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 10 },
+            { wch: 8 }, { wch: 15 }, { wch: 15 }, { wch: 20 }
         ];
 
         XLSX.utils.book_append_sheet(wb, ws, "Template");
@@ -206,7 +219,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     } finally { setLoading(false); }
   };
 
-  // --- 🟢 Updated: Export with Date & Lao Headers ---
   const handleExport = async () => {
     if (filteredHistory.length === 0) {
         Alert.alert("ແຈ້ງເຕືອນ", "ບໍ່ມີຂໍ້ມູນໃນຊ່ວງເວລານີ້");
@@ -215,7 +227,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     setLoading(true);
     try {
         const exportData = filteredHistory.map(item => ({
-            "ວັນທີ": new Date(item.date).toLocaleDateString('en-GB'), // DD/MM/YYYY
+            "ວັນທີ": new Date(item.date).toLocaleDateString('en-GB'),
             "ຊື່ສິນຄ້າ": item.items[0]?.name || "",
             "ໝວດໝູ່": item.items[0]?.category || "",
             "ລາຄາ": item.items[0]?.price || 0,
@@ -243,7 +255,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     } finally { setLoading(false); }
   };
 
-  // --- 🟢 Updated: Import Logic with Mapping ---
   const handleImport = async () => {
     try {
         const result = await DocumentPicker.getDocumentAsync({ type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'], copyToCacheDirectory: true });
@@ -267,14 +278,10 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
             if (name && price > 0) {
                 const qty = parseInt(row["ຈຳນວນ"] || 1);
                 const total = price * qty;
-
-                // Map ພາສາລາວ ກັບຄືນເປັນ ລະຫັດລະບົບ
                 const sourceMap = row["ແຫຼ່ງຂາຍ(ໜ້າຮ້ານ/Online)"] === 'Online' ? 'ONLINE' : 'POS';
                 const currencyMap = row["ສະກຸນເງິນ(ກີບ/ບາດ)"] === 'ບາດ' ? 'THB' : 'LAK';
                 let paymentMap = "CASH";
                 if (row["ວິທີຈ່າຍ(ເງິນສົດ/QR)"] === 'QR') paymentMap = 'QR';
-
-                // ແປງວັນທີ
                 const saleDate = row["ວັນທີ"] ? parseExcelDate(row["ວັນທີ"]) : new Date();
                 
                 await push(ref(db, 'sales'), {
@@ -392,7 +399,8 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                     </View>
                 </View>
             </View>
-
+            
+            {/* 🟢 6. Dropdown ເລືອກໝວດໝູ່ (ໃຊ້ຂໍ້ມູນຈາກ Hook) */}
             <Text style={styles.label}>ໝວດໝູ່ *</Text>
             <TouchableOpacity style={styles.inputBox} onPress={() => setShowCatDropdown(true)}>
                 <Text>{category || 'ເລືອກໝວດໝູ່'}</Text>
@@ -507,19 +515,54 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         <View style={{height: 50}} /> 
       </ScrollView>
 
-      {/* Category Dropdown */}
+      {/* 🟢 7. Category Dropdown Modal with ADD Button */}
       <Modal visible={showCatDropdown} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowCatDropdown(false)}>
             <View style={styles.dropdownContent}>
                 <Text style={styles.dropdownTitle}>ເລືອກໝວດໝູ່</Text>
-                <FlatList data={STATIC_CATEGORIES} keyExtractor={i => i} renderItem={({item}) => (
-                    <TouchableOpacity style={styles.dropdownItem} onPress={() => { setCategory(item); setShowCatDropdown(false); }}>
-                        <Text style={{fontSize: 16}}>{item}</Text>
-                        {category === item && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
-                    </TouchableOpacity>
-                )} />
+                <FlatList 
+                    data={categories} // ໃຊ້ categories ຈາກ Hook
+                    keyExtractor={i => i} 
+                    renderItem={({item}) => (
+                        <TouchableOpacity style={styles.dropdownItem} onPress={() => { setCategory(item); setShowCatDropdown(false); }}>
+                            <Text style={{fontSize: 16}}>{item}</Text>
+                            {category === item && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                        </TouchableOpacity>
+                    )} 
+                />
+                <TouchableOpacity 
+                    style={styles.addCatBtn} 
+                    onPress={() => { setShowCatDropdown(false); setShowAddCatModal(true); }}
+                >
+                    <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />
+                    <Text style={styles.addCatText}>ເພີ່ມໝວດໝູ່ໃໝ່</Text>
+                </TouchableOpacity>
             </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* 🟢 8. Modal ສຳລັບພິມຊື່ໝວດໝູ່ໃໝ່ */}
+      <Modal visible={showAddCatModal} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+              <View style={[styles.dropdownContent, {width: '85%'}]}>
+                  <Text style={styles.dropdownTitle}>ເພີ່ມໝວດໝູ່ໃໝ່</Text>
+                  <TextInput 
+                      style={[styles.inputBox, {marginBottom: 20}]} 
+                      placeholder="ຊື່ໝວດໝູ່..." 
+                      value={newCatName} 
+                      onChangeText={setNewCatName}
+                      autoFocus
+                  />
+                  <View style={{flexDirection: 'row', gap: 10}}>
+                      <TouchableOpacity style={[styles.saveBtn, {flex: 1, backgroundColor: '#ccc'}]} onPress={() => setShowAddCatModal(false)}>
+                          <Text style={styles.saveBtnText}>ຍົກເລີກ</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.saveBtn, {flex: 1}]} onPress={handleAddNewCategory}>
+                          <Text style={styles.saveBtnText}>ບັນທຶກ</Text>
+                      </TouchableOpacity>
+                  </View>
+              </View>
+          </View>
       </Modal>
 
       {/* Form Date Picker */}
@@ -555,29 +598,24 @@ const styles = StyleSheet.create({
   loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.8)', zIndex: 9999, justifyContent: 'center', alignItems: 'center' },
   header: { padding: 15, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 2 },
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333' },
-  
   content: { flex: 1, padding: 10 },
   formSection: { backgroundColor: 'white', borderRadius: 10, padding: 15, elevation: 2, marginBottom: 15 },
   historySection: { backgroundColor: 'white', borderRadius: 10, padding: 15, elevation: 2, marginBottom: 20 },
-  
   historyHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   historyTitle: { fontFamily: 'Lao-Bold', fontSize: 16 },
   toolsRow: { flexDirection: 'row', gap: 8 },
   toolIconBtn: { width: 35, height: 35, borderRadius: 17.5, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' },
-
   filterTabs: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginBottom: 10, flexWrap: 'wrap' },
   filterTab: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 15, backgroundColor: '#f0f0f0' },
   activeFilterTab: { backgroundColor: COLORS.primary },
   filterText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
   activeFilterText: { color: 'white', fontFamily: 'Lao-Bold' },
-
   navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 10 },
   navBtn: { padding: 5 },
   dateLabel: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
   customDateContainer: { flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1, justifyContent: 'center' },
   datePickBtn: { padding: 8, backgroundColor: '#f5f5f5', borderRadius: 8 },
   datePickText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 12 },
-
   label: { fontFamily: 'Lao-Bold', marginBottom: 5, color: '#333' },
   inputBox: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Lao-Regular', height: 50 },
   row: { flexDirection: 'row', alignItems: 'center' },
@@ -605,4 +643,8 @@ const styles = StyleSheet.create({
   datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
   closeDateBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },
   closeDateText: { fontFamily: 'Lao-Bold', color: COLORS.primary },
+  
+  // 🟢 Styles ໃໝ່
+  addCatBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 15, borderTopWidth: 1, borderTopColor: '#eee', marginTop: 5 },
+  addCatText: { fontFamily: 'Lao-Bold', color: COLORS.primary, marginLeft: 10, fontSize: 16 }
 });

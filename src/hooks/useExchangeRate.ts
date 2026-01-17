@@ -3,7 +3,7 @@
 import { getDatabase, onValue, ref } from 'firebase/database';
 import { useEffect, useState } from 'react';
 // 🟢 ອ້າງອີງໄປຫາ src/firebase.ts (ຍ້ອນ hooks ຢູ່ນອກ src ຈຶ່ງຕ້ອງຖອຍອອກມາແລ້ວເຂົ້າ src)
-import { app } from '../src/firebase';
+import { app } from '../firebase';
 
 export const useExchangeRate = () => {
   const [rate, setRate] = useState<number>(0);

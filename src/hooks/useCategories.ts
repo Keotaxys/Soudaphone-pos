@@ -3,15 +3,13 @@ import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { db } from '../firebase';
 
-const DEFAULT_CATEGORIES = [
-    'ເສື້ອ', 'ໂສ້ງ', 'ໂສ້ງຊ້ອນໃນ', 'ກະໂປງ', 'ຊຸດ', 'ກະເປົາ', 
-    'ໝວກ', 'ຖົງຕີນ', 'ເກີບ', 'ເຄື່ອງສຳອາງ', 'ເຄື່ອງປະດັບ', 'ທົ່ວໄປ'
-];
+// 🟢 1. ປ່ຽນເປັນ Array ເປົ່າ (ບໍ່ມີຄ່າ Default ທີ່ລຶບບໍ່ໄດ້ແລ້ວ)
+const DEFAULT_CATEGORIES: string[] = [];
 
 export function useCategories() {
-  // ເກັບຂໍ້ມູນແບບມີ ID ({ id: 'key123', name: 'ເສື້ອ' })
+  // ເກັບຂໍ້ມູນແບບມີ ID ({ id: 'key123', name: 'ເສື້ອ' }) ເພື່ອໃຊ້ລຶບ/ແກ້ໄຂ
   const [categoryObjs, setCategoryObjs] = useState<{id: string, name: string}[]>([]);
-  // ເກັບຂໍ້ມູນແບບເກົ່າ (string[]) ເພື່ອໃຫ້ໜ້າ POS ໃຊ້ງານໄດ້ຄືເກົ່າ
+  // ເກັບຂໍ້ມູນແບບ Array string ເພື່ອໃຊ້ສະແດງຜົນໃນ Dropdown/Filter
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
 
@@ -20,6 +18,7 @@ export function useCategories() {
     const unsubscribe = onValue(catRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
+        
         // ແປງຂໍ້ມູນຈາກ Firebase object ໃຫ້ເປັນ Array ທີ່ມີ ID
         const customCatsObj = Object.keys(data).map(key => ({
             id: key,
@@ -30,6 +29,7 @@ export function useCategories() {
         
         // ອັບເດດ State
         setCategoryObjs(customCatsObj);
+        // ລວມຂໍ້ມູນ (ຕອນນີ້ DEFAULT ເປັນເປົ່າ ກໍຈະມີແຕ່ຂໍ້ມູນຈາກ DB)
         setCategories(Array.from(new Set([...DEFAULT_CATEGORIES, ...customCatNames])));
       } else {
         setCategoryObjs([]);
@@ -41,7 +41,7 @@ export function useCategories() {
     return () => unsubscribe();
   }, []);
 
-  // ເພີ່ມ
+  // 🟢 ເພີ່ມ
   const addCategory = async (newCatName: string) => {
     const trimmedName = newCatName.trim();
     if (!trimmedName) { Alert.alert("ແຈ້ງເຕືອນ", "ກະລຸນາໃສ່ຊື່ໝວດໝູ່"); return false; }

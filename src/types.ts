@@ -170,3 +170,19 @@ export interface User {
   permissions?: UserPermissions; // ຖ້າເປັນ admin ອາດຈະບໍ່ມີຄ່ານີ້ກໍໄດ້
   createdAt: string;
 }
+// ໃນຟາຍ src/types.ts
+export interface UserPermissions {
+  // ສິດເດີມ (Functional Permissions)
+  canSell: boolean;
+  canEditProduct: boolean;
+  canDeleteProduct: boolean;
+  canViewReports: boolean;
+  canManageUsers: boolean;
+
+  // 🟢 ເພີ່ມໃໝ່: ສິດການເຂົ້າເຖິງໜ້າ (Page Access Permissions)
+  accessPos: boolean;       // ເຂົ້າໜ້າຂາຍ
+  accessProducts: boolean;  // ເຂົ້າໜ້າສິນຄ້າ
+  accessCustomers: boolean; // ເຂົ້າໜ້າລູກຄ້າ
+  accessReports: boolean;   // ເຂົ້າໜ້າລາຍງານ
+  accessFinancial: boolean; // ເຂົ້າໜ້າການເງິນ (ລາຍຈ່າຍ/ໜີ້)
+}

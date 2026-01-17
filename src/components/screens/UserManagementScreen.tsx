@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { onValue, push, ref, remove, set } from 'firebase/database';
+import { onValue, push, ref, remove, set, update } from 'firebase/database'; // 🟢 ເພີ່ມ update
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -22,17 +22,30 @@ export default function UserManagementScreen() {
   const [users, setUsers] = useState<User[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   
+  // 🟢 State ສຳລັບກວດສອບວ່າກຳລັງແກ້ໄຂໃຜຢູ່ (ຖ້າ null ແປວ່າເພີ່ມໃໝ່)
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [role, setRole] = useState<'admin' | 'staff'>('staff');
   
-  const [permissions, setPermissions] = useState<UserPermissions>({
+  // 🟢 ກຳນົດຄ່າເລີ່ມຕົ້ນໃຫ້ຄົບທຸກສິດ
+  const defaultPermissions: UserPermissions = {
+    // Functional Permissions
     canSell: true,
     canEditProduct: false,
     canDeleteProduct: false,
     canViewReports: false,
     canManageUsers: false,
-  });
+    // Page Access Permissions (ໃໝ່)
+    accessPos: true,
+    accessProducts: false,
+    accessCustomers: false,
+    accessReports: false,
+    accessFinancial: false
+  };
+
+  const [permissions, setPermissions] = useState<UserPermissions>(defaultPermissions);
 
   useEffect(() => {
     const usersRef = ref(db, 'users');
@@ -51,6 +64,23 @@ export default function UserManagementScreen() {
     return () => unsub();
   }, []);
 
+  // 🟢 ຟັງຊັນກຽມຂໍ້ມູນກ່ອນແກ້ໄຂ
+  const handleEditUser = (user: User) => {
+    setEditingUserId(user.id || null);
+    setName(user.name);
+    setPin(user.pin);
+    setRole(user.role);
+    
+    // ດຶງ permission ເກົ່າມາໃສ່, ຖ້າອັນໃດບໍ່ມີໃຫ້ໃຊ້ຄ່າ default
+    if (user.permissions) {
+        setPermissions({ ...defaultPermissions, ...user.permissions });
+    } else {
+        setPermissions(defaultPermissions);
+    }
+    
+    setModalVisible(true);
+  };
+
   const handleSaveUser = async () => {
     if (!name || !pin) {
       Alert.alert('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ ແລະ PIN');
@@ -58,23 +88,33 @@ export default function UserManagementScreen() {
     }
 
     try {
-      const newUser = {
+      const userData = {
         name,
         pin,
         role,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        permissions: role === 'admin' ? null : permissions
+        isActive: true, // ບັງຄັບເປີດໃຊ້ງານ
+        // ຖ້າເປັນ Admin ບໍ່ຕ້ອງບັນທຶກ permissions (ເພາະ Admin ເຮັດໄດ້ທຸກຢ່າງ)
+        permissions: role === 'admin' ? null : permissions,
+        // ຖ້າແກ້ໄຂ ບໍ່ຕ້ອງປ່ຽນ createdAt, ຖ້າໃໝ່ໃຫ້ໃສ່ປັດຈຸບັນ
+        ...(editingUserId ? {} : { createdAt: new Date().toISOString() })
       };
 
-      const newRef = push(ref(db, 'users'));
-      await set(newRef, newUser);
+      if (editingUserId) {
+        // 🟢 ກໍລະນີແກ້ໄຂ (Update)
+        const userRef = ref(db, `users/${editingUserId}`);
+        await update(userRef, userData);
+        Alert.alert('ສຳເລັດ', 'ແກ້ໄຂຂໍ້ມູນຮຽບຮ້ອຍ');
+      } else {
+        // 🟢 ກໍລະນີເພີ່ມໃໝ່ (Create)
+        const newRef = push(ref(db, 'users'));
+        await set(newRef, userData);
+        Alert.alert('ສຳເລັດ', 'ເພີ່ມພະນັກງານຮຽບຮ້ອຍ');
+      }
       
-      Alert.alert('ສຳເລັດ', 'ເພີ່ມພະນັກງານຮຽບຮ້ອຍ');
       setModalVisible(false);
       resetForm();
     } catch (error) {
-      Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້');
+      Alert.alert('Error', 'ບັນທຶກບໍ່ໄດ້: ' + error);
     }
   };
 
@@ -95,16 +135,11 @@ export default function UserManagementScreen() {
   };
 
   const resetForm = () => {
+    setEditingUserId(null); // Reset ID
     setName('');
     setPin('');
     setRole('staff');
-    setPermissions({
-        canSell: true,
-        canEditProduct: false,
-        canDeleteProduct: false,
-        canViewReports: false,
-        canManageUsers: false,
-    });
+    setPermissions(defaultPermissions);
   };
 
   const CustomSwitch = ({ value, onValueChange, label }: { value: boolean, onValueChange: (val: boolean) => void, label: string }) => (
@@ -131,12 +166,19 @@ export default function UserManagementScreen() {
         </View>
       </View>
       
-      {item.role !== 'admin' && (
-          <TouchableOpacity onPress={() => handleDeleteUser(item)}>
-              {/* 🟢 ແກ້ໄຂ: ປ່ຽນສີຈາກ #FF5252 ເປັນ COLORS.primary */}
-              <Ionicons name="trash-outline" size={24} color={COLORS.primary} />
+      {/* ປຸ່ມຈັດການ (ສະແດງສະເພາະ Staff ຫຼື ຖ້າເຮົາເປັນ Admin ກໍແກ້ໄຂ Admin ອື່ນໄດ້) */}
+      <View style={{flexDirection: 'row', gap: 15}}>
+          {/* 🟢 ປຸ່ມແກ້ໄຂ (Edit) */}
+          <TouchableOpacity onPress={() => handleEditUser(item)}>
+              <Ionicons name="pencil-outline" size={24} color={COLORS.primary} />
           </TouchableOpacity>
-      )}
+
+          {item.role !== 'admin' && (
+             <TouchableOpacity onPress={() => handleDeleteUser(item)}>
+                 <Ionicons name="trash-outline" size={24} color={COLORS.primary} />
+             </TouchableOpacity>
+          )}
+      </View>
     </View>
   );
 
@@ -144,7 +186,7 @@ export default function UserManagementScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ຈັດການຜູ້ໃຊ້ (Users)</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
+        <TouchableOpacity style={styles.addBtn} onPress={() => { resetForm(); setModalVisible(true); }}>
             <Ionicons name="add" size={24} color="white" />
             <Text style={styles.addBtnText}>ເພີ່ມ</Text>
         </TouchableOpacity>
@@ -159,8 +201,10 @@ export default function UserManagementScreen() {
 
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>ເພີ່ມພະນັກງານໃໝ່</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
+            <Text style={styles.modalTitle}>
+                {editingUserId ? 'ແກ້ໄຂຂໍ້ມູນ' : 'ເພີ່ມພະນັກງານໃໝ່'}
+            </Text>
+            <TouchableOpacity onPress={() => { setModalVisible(false); resetForm(); }}>
                 <Text style={{ color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 16 }}>ປິດ</Text>
             </TouchableOpacity>
         </View>
@@ -189,13 +233,25 @@ export default function UserManagementScreen() {
             </View>
 
             {role === 'staff' && (
-                <View style={styles.permSection}>
-                    <Text style={styles.permHeader}>ກຳນົດສິດການໃຊ້ງານ:</Text>
-                    <CustomSwitch label="ຂາຍສິນຄ້າໄດ້" value={permissions.canSell} onValueChange={(v) => setPermissions({...permissions, canSell: v})} />
-                    <CustomSwitch label="ແກ້ໄຂສິນຄ້າໄດ້" value={permissions.canEditProduct} onValueChange={(v) => setPermissions({...permissions, canEditProduct: v})} />
-                    <CustomSwitch label="ລຶບສິນຄ້າໄດ້" value={permissions.canDeleteProduct} onValueChange={(v) => setPermissions({...permissions, canDeleteProduct: v})} />
-                    <CustomSwitch label="ເບິ່ງລາຍງານໄດ້" value={permissions.canViewReports} onValueChange={(v) => setPermissions({...permissions, canViewReports: v})} />
-                </View>
+                <>
+                    {/* 🟢 1. ສິດການເຂົ້າເຖິງເມນູ (Menu Access) */}
+                    <View style={styles.permSection}>
+                        <Text style={styles.permHeader}>ສິດການເຂົ້າເຖິງເມນູ (Menu Access):</Text>
+                        <CustomSwitch label="ເມນູຂາຍ (POS)" value={permissions.accessPos} onValueChange={(v) => setPermissions({...permissions, accessPos: v})} />
+                        <CustomSwitch label="ເມນູສິນຄ້າ (Products)" value={permissions.accessProducts} onValueChange={(v) => setPermissions({...permissions, accessProducts: v})} />
+                        <CustomSwitch label="ເມນູລູກຄ້າ (Customers)" value={permissions.accessCustomers} onValueChange={(v) => setPermissions({...permissions, accessCustomers: v})} />
+                        <CustomSwitch label="ເມນູການເງິນ (ໜີ້/ຈ່າຍ)" value={permissions.accessFinancial} onValueChange={(v) => setPermissions({...permissions, accessFinancial: v})} />
+                        <CustomSwitch label="ເມນູລາຍງານ (Reports)" value={permissions.accessReports} onValueChange={(v) => setPermissions({...permissions, accessReports: v})} />
+                    </View>
+
+                    {/* 🟢 2. ສິດການກະທຳ (Actions) */}
+                    <View style={styles.permSection}>
+                        <Text style={styles.permHeader}>ສິດການເຮັດທຸລະກຳ:</Text>
+                        <CustomSwitch label="ອະນຸຍາດໃຫ້ຂາຍໄດ້" value={permissions.canSell} onValueChange={(v) => setPermissions({...permissions, canSell: v})} />
+                        <CustomSwitch label="ແກ້ໄຂ/ເພີ່ມ ສິນຄ້າ" value={permissions.canEditProduct} onValueChange={(v) => setPermissions({...permissions, canEditProduct: v})} />
+                        <CustomSwitch label="ລຶບສິນຄ້າ" value={permissions.canDeleteProduct} onValueChange={(v) => setPermissions({...permissions, canDeleteProduct: v})} />
+                    </View>
+                </>
             )}
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleSaveUser}>

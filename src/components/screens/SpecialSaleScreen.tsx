@@ -6,19 +6,18 @@ import * as Sharing from 'expo-sharing';
 import { onValue, push, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-// 🟢 ເພີ່ມ Import XLSX ກັບຄືນມາ
 import * as XLSX from 'xlsx';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber, Product } from '../../types';
@@ -127,6 +126,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
   }, [history, filterType, currentFilterDate, customStartDate, customEndDate]);
 
+  // ... (Date Navigation Functions remain the same) ...
   const handleNavigateDate = (dir: 'prev' | 'next') => {
     if (filterType === 'custom') return;
     const newDate = new Date(currentFilterDate);
@@ -143,14 +143,54 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     return formatDate(currentFilterDate);
   };
 
-  // --- Excel Functions ---
+  // --- 🟢 Helper: Convert Excel Date to JS Date ---
+  const parseExcelDate = (excelDate: any) => {
+      // ຖ້າເປັນໂຕເລກ (Excel Serial Date)
+      if (typeof excelDate === 'number') {
+          return new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+      }
+      // ຖ້າເປັນ String "DD/MM/YYYY"
+      if (typeof excelDate === 'string') {
+          const parts = excelDate.split('/');
+          if (parts.length === 3) {
+              return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+          }
+          return new Date(excelDate); // Try standard parse
+      }
+      return new Date(); // Fallback
+  };
+
+  // --- 🟢 Updated: Download Template with Date & Lao Headers ---
   const handleDownloadTemplate = async () => {
     setLoading(true);
     try {
-        const data = [{ "ຊື່ສິນຄ້າ": "ຕົວຢ່າງ: ເສື້ອ", "ໝວດໝູ່": "ເສື້ອ", "ລາຄາ": 50000, "ຈຳນວນ": 2, "ສະກຸນເງິນ(LAK/THB)": "LAK", "ວິທີຈ່າຍ(CASH/QR)": "CASH", "ແຫຼ່ງຂາຍ(Shop/Online)": "Shop" }];
+        // ກຳນົດຫົວຂໍ້ເປັນພາສາລາວຕາມຮູບ
+        const data = [{ 
+            "ວັນທີ": "17/01/2026", // ຕົວຢ່າງວັນທີ
+            "ຊື່ສິນຄ້າ": "ຕົວຢ່າງ: ເສື້ອ", 
+            "ໝວດໝູ່": "ເສື້ອ", 
+            "ລາຄາ": 50000, 
+            "ຈຳນວນ": 2, 
+            "ສະກຸນເງິນ(ກີບ/ບາດ)": "ກີບ", 
+            "ວິທີຈ່າຍ(ເງິນສົດ/QR)": "ເງິນສົດ", 
+            "ແຫຼ່ງຂາຍ(ໜ້າຮ້ານ/Online)": "ໜ້າຮ້ານ" 
+        }];
         
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(data);
+        
+        // ປັບຄວາມກວ້າງຂອງ Column ໃຫ້ງາມ
+        ws['!cols'] = [
+            { wch: 15 }, // ວັນທີ
+            { wch: 20 }, // ຊື່ສິນຄ້າ
+            { wch: 15 }, // ໝວດໝູ່
+            { wch: 10 }, // ລາຄາ
+            { wch: 8 },  // ຈຳນວນ
+            { wch: 15 }, // ສະກຸນເງິນ
+            { wch: 15 }, // ວິທີຈ່າຍ
+            { wch: 20 }  // ແຫຼ່ງຂາຍ
+        ];
+
         XLSX.utils.book_append_sheet(wb, ws, "Template");
         
         const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
@@ -166,6 +206,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     } finally { setLoading(false); }
   };
 
+  // --- 🟢 Updated: Export with Date & Lao Headers ---
   const handleExport = async () => {
     if (filteredHistory.length === 0) {
         Alert.alert("ແຈ້ງເຕືອນ", "ບໍ່ມີຂໍ້ມູນໃນຊ່ວງເວລານີ້");
@@ -174,15 +215,15 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     setLoading(true);
     try {
         const exportData = filteredHistory.map(item => ({
-            "ວັນທີ": new Date(item.date).toLocaleDateString('en-GB'),
+            "ວັນທີ": new Date(item.date).toLocaleDateString('en-GB'), // DD/MM/YYYY
             "ຊື່ສິນຄ້າ": item.items[0]?.name || "",
             "ໝວດໝູ່": item.items[0]?.category || "",
             "ລາຄາ": item.items[0]?.price || 0,
             "ຈຳນວນ": item.items[0]?.quantity || 0,
             "ລວມເງິນ": item.total,
-            "ສະກຸນເງິນ": item.currency,
-            "ວິທີຊຳລະ": item.paymentMethod,
-            "ແຫຼ່ງຂາຍ": item.source
+            "ສະກຸນເງິນ(ກີບ/ບາດ)": item.currency === 'THB' ? 'ບາດ' : 'ກີບ',
+            "ວິທີຈ່າຍ(ເງິນສົດ/QR)": item.paymentMethod === 'CASH' ? 'ເງິນສົດ' : 'QR',
+            "ແຫຼ່ງຂາຍ(ໜ້າຮ້ານ/Online)": item.source === 'POS' ? 'ໜ້າຮ້ານ' : 'Online'
         }));
 
         const wb = XLSX.utils.book_new();
@@ -202,6 +243,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     } finally { setLoading(false); }
   };
 
+  // --- 🟢 Updated: Import Logic with Mapping ---
   const handleImport = async () => {
     try {
         const result = await DocumentPicker.getDocumentAsync({ type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'], copyToCacheDirectory: true });
@@ -225,14 +267,23 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
             if (name && price > 0) {
                 const qty = parseInt(row["ຈຳນວນ"] || 1);
                 const total = price * qty;
+
+                // Map ພາສາລາວ ກັບຄືນເປັນ ລະຫັດລະບົບ
+                const sourceMap = row["ແຫຼ່ງຂາຍ(ໜ້າຮ້ານ/Online)"] === 'Online' ? 'ONLINE' : 'POS';
+                const currencyMap = row["ສະກຸນເງິນ(ກີບ/ບາດ)"] === 'ບາດ' ? 'THB' : 'LAK';
+                let paymentMap = "CASH";
+                if (row["ວິທີຈ່າຍ(ເງິນສົດ/QR)"] === 'QR') paymentMap = 'QR';
+
+                // ແປງວັນທີ
+                const saleDate = row["ວັນທີ"] ? parseExcelDate(row["ວັນທີ"]) : new Date();
                 
                 await push(ref(db, 'sales'), {
                     isSpecial: true,
-                    date: new Date().toISOString(),
-                    source: row["ແຫຼ່ງຂາຍ(Shop/Online)"] === 'Shop' ? 'POS' : 'ONLINE',
-                    paymentMethod: row["ວິທີຈ່າຍ(CASH/QR)"] || "CASH",
-                    currency: row["ສະກຸນເງິນ(LAK/THB)"] || "LAK",
-                    items: [{ name, price, quantity: qty, category: row["ໝວດໝູ່"] || "ທົ່ວໄປ", priceCurrency: row["ສະກຸນເງິນ(LAK/THB)"] || "LAK" }],
+                    date: saleDate.toISOString(),
+                    source: sourceMap,
+                    paymentMethod: paymentMap,
+                    currency: currencyMap,
+                    items: [{ name, price, quantity: qty, category: row["ໝວດໝູ່"] || "ທົ່ວໄປ", priceCurrency: currencyMap }],
                     subTotal: total, total, discount: 0, amountReceived: total, change: 0, status: 'COMPLETED'
                 });
                 count++;

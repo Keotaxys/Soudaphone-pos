@@ -2,25 +2,29 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  FlatList,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    Alert,
+    Dimensions,
+    FlatList,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
+
+// 🟢 1. Import Hooks ທັງສອງອັນ
+import { useCategories } from '../../hooks/useCategories';
+import { useExchangeRate } from '../../hooks/useExchangeRate';
 import { CartItem, COLORS, formatNumber, Product } from '../../types';
 
 const { width } = Dimensions.get('window');
-const ORANGE_THEME = '#FF8F00'; // ສີສົ້ມ Theme ທີ່ຖືກຕ້ອງ
+const ORANGE_THEME = '#FF8F00'; 
 
 interface POSScreenProps {
   products: Product[];
@@ -58,10 +62,19 @@ export default function POSScreen({
   onOpenAddProduct
 }: POSScreenProps) {
   
+  // 🟢 2. ເອີ້ນໃຊ້ Hooks
+  const exchangeRate = useExchangeRate(); 
+  const { categories: dbCategories } = useCategories(); // ດຶງໝວດໝູ່ຈາກ DB
+
+  // 🟢 3. ສ້າງລາຍການໝວດໝູ່ສຳລັບ Filter (ເພີ່ມ 'All' ໄວ້ທາງໜ້າ)
+  const categories = ['All', ...dbCategories];
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>(['All']);
+  
+  // ❌ ລຶບ state categories ເກົ່າອອກ (ເພາະເຮົາໃຊ້ຈາກ Hook ແລ້ວ)
+  // const [categories, setCategories] = useState<string[]>(['All']);
   
   const [isCartVisible, setCartVisible] = useState(false);
   const [orderSource, setOrderSource] = useState<'shop' | 'online'>('shop');
@@ -70,7 +83,6 @@ export default function POSScreen({
   
   const [amountReceived, setAmountReceived] = useState('');
   const [editableTotal, setEditableTotal] = useState(''); 
-  const [exchangeRate] = useState(680); 
   
   const [orderDate, setOrderDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -79,9 +91,7 @@ export default function POSScreen({
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
   useEffect(() => {
-    const uniqueCats = ['All', ...new Set(products.map(p => p.category || 'ອື່ນໆ'))];
-    setCategories(uniqueCats);
-
+    // 🟢 4. ປັບ Logic ການ Filter (ບໍ່ຕ້ອງສ້າງ Categories ໃໝ່ຢູ່ນີ້ແລ້ວ)
     const filtered = products.filter(p => {
       const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (p.barcode && p.barcode.includes(searchQuery));
@@ -91,11 +101,13 @@ export default function POSScreen({
     setFilteredProducts(filtered);
   }, [searchQuery, selectedCategory, products]);
 
+  // ... (Logic ການຄິດໄລ່ເງິນ ແລະ Render ຍັງຄືເກົ່າທຸກຢ່າງ) ...
+
   const calculateBaseTotalLAK = () => {
     return cart.reduce((sum, item) => {
         let itemTotalLAK = 0;
         if (item.priceCurrency === 'THB') {
-            itemTotalLAK = item.price * exchangeRate * item.quantity;
+            itemTotalLAK = item.price * (exchangeRate || 0) * item.quantity;
         } else {
             itemTotalLAK = item.price * item.quantity;
         }
@@ -106,6 +118,7 @@ export default function POSScreen({
   const getDisplayTotal = () => {
     const baseTotalLAK = calculateBaseTotalLAK();
     if (currency === 'LAK') return baseTotalLAK;
+    if (!exchangeRate || exchangeRate === 0) return 0;
     return Math.ceil(baseTotalLAK / exchangeRate); 
   };
 
@@ -113,7 +126,7 @@ export default function POSScreen({
     const total = getDisplayTotal();
     setEditableTotal(formatNumber(total)); 
     setAmountReceived(''); 
-  }, [cart, currency]);
+  }, [cart, currency, exchangeRate]);
 
   const finalTotal = parseInputNumber(editableTotal); 
   const systemTotal = getDisplayTotal(); 
@@ -187,11 +200,20 @@ export default function POSScreen({
                     <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primary, marginRight: 10 }]} onPress={onOpenScan}><Ionicons name="qr-code-outline" size={20} color="white" /><Text style={styles.actionBtnText}>ສະແກນ</Text></TouchableOpacity>
                     <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primary }]} onPress={onOpenAddProduct}><Ionicons name="add-circle-outline" size={20} color="white" /><Text style={styles.actionBtnText}>ເພີ່ມສິນຄ້າ</Text></TouchableOpacity>
                 </View>
-                <FlatList horizontal data={categories} keyExtractor={i => i} showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal: 15, marginBottom: 10}} renderItem={({item}) => (
-                    <TouchableOpacity style={[styles.catChip, selectedCategory === item && styles.activeCatChip]} onPress={() => setSelectedCategory(item)}>
-                        <Text style={[styles.catText, selectedCategory === item && styles.activeCatText]}>{item}</Text>
-                    </TouchableOpacity>
-                )} />
+                
+                {/* Categories List */}
+                <FlatList 
+                    horizontal 
+                    data={categories} // 🟢 ໃຊ້ categories ທີ່ລວມ 'All' + DB ແລ້ວ
+                    keyExtractor={i => i} 
+                    showsHorizontalScrollIndicator={false} 
+                    contentContainerStyle={{paddingHorizontal: 15, marginBottom: 10}} 
+                    renderItem={({item}) => (
+                        <TouchableOpacity style={[styles.catChip, selectedCategory === item && styles.activeCatChip]} onPress={() => setSelectedCategory(item)}>
+                            <Text style={[styles.catText, selectedCategory === item && styles.activeCatText]}>{item}</Text>
+                        </TouchableOpacity>
+                    )} 
+                />
             </View>
         }
         data={filteredProducts} keyExtractor={item => item.id!} numColumns={2} contentContainerStyle={{ paddingBottom: 200 }} columnWrapperStyle={{ paddingHorizontal: 10 }} renderItem={renderProductItem}
@@ -366,9 +388,7 @@ export default function POSScreen({
         <View style={styles.modalOverlay}>
             <View style={styles.receiptContainer}>
                 <View style={styles.receiptHeader}>
-                    {/* 🟢 ປ່ຽນສີເຄື່ອງໝາຍຖືກເປັນ Teal */}
                     <Ionicons name="checkmark-circle" size={60} color={COLORS.primary} />
-                    {/* 🟢 ປ່ຽນສີຫົວຂໍ້ເປັນ Teal */}
                     <Text style={[styles.receiptTitle, {color: COLORS.primary}]}>ຊຳລະເງິນສຳເລັດ!</Text>
                     <Text style={styles.receiptDate}>{new Date(lastOrderDetails?.date || new Date()).toLocaleString('lo-LA')}</Text>
                 </View>
@@ -376,7 +396,6 @@ export default function POSScreen({
                 <View style={styles.receiptBody}>
                     <View style={styles.receiptRow}><Text>ຍອດລວມ:</Text><Text style={styles.receiptValue}>{formatNumber(lastOrderDetails?.originalTotal)} {lastOrderDetails?.currency === 'THB' ? '฿' : '₭'}</Text></View>
                     {lastOrderDetails?.discount > 0 && (
-                        /* 🟢 ປ່ຽນສີສ່ວນຫຼຸດເປັນສີສົ້ມ */
                         <View style={styles.receiptRow}><Text style={{color: ORANGE_THEME}}>ສ່ວນຫຼຸດ:</Text><Text style={{color: ORANGE_THEME}}>-{formatNumber(lastOrderDetails?.discount)}</Text></View>
                     )}
                     <View style={[styles.receiptRow, {borderTopWidth:1, borderColor:'#eee', paddingTop:5}]}><Text style={{fontFamily:'Lao-Bold'}}>ຍອດສຸດທິ:</Text><Text style={{fontFamily:'Lao-Bold', fontSize:18}}>{formatNumber(lastOrderDetails?.total)} {lastOrderDetails?.currency === 'THB' ? '฿' : '₭'}</Text></View>

@@ -16,16 +16,16 @@ import {
 import { db } from '../../firebase';
 import { COLORS, User, UserPermissions } from '../../types';
 
+const ORANGE_THEME = '#FF8F00'; 
+
 export default function UserManagementScreen() {
   const [users, setUsers] = useState<User[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   
-  // Form State
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [role, setRole] = useState<'admin' | 'staff'>('staff');
   
-  // Permissions State
   const [permissions, setPermissions] = useState<UserPermissions>({
     canSell: true,
     canEditProduct: false,
@@ -34,7 +34,6 @@ export default function UserManagementScreen() {
     canManageUsers: false,
   });
 
-  // 1. ດຶງຂໍ້ມູນ Users ຈາກ Firebase
   useEffect(() => {
     const usersRef = ref(db, 'users');
     const unsub = onValue(usersRef, (snapshot) => {
@@ -52,7 +51,6 @@ export default function UserManagementScreen() {
     return () => unsub();
   }, []);
 
-  // 2. ຟັງຊັນບັນທຶກ User ໃໝ່
   const handleSaveUser = async () => {
     if (!name || !pin) {
       Alert.alert('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ ແລະ PIN');
@@ -60,14 +58,13 @@ export default function UserManagementScreen() {
     }
 
     try {
-      // ສ້າງ User Object
       const newUser = {
         name,
         pin,
         role,
         isActive: true,
         createdAt: new Date().toISOString(),
-        permissions: role === 'admin' ? null : permissions // Admin ບໍ່ຕ້ອງມີ permissions (ເຮັດໄດ້ໝົດ)
+        permissions: role === 'admin' ? null : permissions
       };
 
       const newRef = push(ref(db, 'users'));
@@ -81,7 +78,6 @@ export default function UserManagementScreen() {
     }
   };
 
-  // 3. ຟັງຊັນລຶບ User
   const handleDeleteUser = (user: User) => {
     if (user.role === 'admin') {
       Alert.alert('ແຈ້ງເຕືອນ', 'ບໍ່ສາມາດລຶບ Admin ໄດ້');
@@ -111,6 +107,19 @@ export default function UserManagementScreen() {
     });
   };
 
+  const CustomSwitch = ({ value, onValueChange, label }: { value: boolean, onValueChange: (val: boolean) => void, label: string }) => (
+    <View style={styles.switchRow}>
+        {/* 🟢 ແກ້ໄຂ: ໃສ່ style ທີ່ມີ fontFamily */}
+        <Text style={styles.switchLabel}>{label}</Text>
+        <Switch 
+            value={value} 
+            onValueChange={onValueChange}
+            trackColor={{ false: "#e0e0e0", true: COLORS.primary + '80' }}
+            thumbColor={value ? COLORS.primary : "#f4f3f4"}
+        />
+    </View>
+  );
+
   const renderUserItem = ({ item }: { item: User }) => (
     <View style={styles.card}>
       <View style={styles.userInfo}>
@@ -119,6 +128,7 @@ export default function UserManagementScreen() {
         </View>
         <View>
             <Text style={styles.userName}>{item.name}</Text>
+            {/* 🟢 ແກ້ໄຂ: ໃຊ້ Lao-Regular */}
             <Text style={styles.userRole}>{item.role === 'admin' ? 'ຜູ້ຈັດການ (Admin)' : 'ພະນັກງານ (Staff)'}</Text>
         </View>
       </View>
@@ -148,20 +158,21 @@ export default function UserManagementScreen() {
         contentContainerStyle={{ padding: 15 }}
       />
 
-      {/* Modal ເພີ່ມ User */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>ເພີ່ມພະນັກງານໃໝ່</Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Text style={{ color: COLORS.primary, fontFamily: 'Lao-Bold' }}>ປິດ</Text>
+                {/* 🟢 ແກ້ໄຂ: ໃສ່ Font ໃຫ້ປຸ່ມປິດ */}
+                <Text style={{ color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 16 }}>ປິດ</Text>
             </TouchableOpacity>
         </View>
         
         <ScrollView style={styles.modalContent}>
             <Text style={styles.label}>ຊື່ພະນັກງານ</Text>
+            {/* 🟢 ແກ້ໄຂ: ໃສ່ Font ໃຫ້ TextInput */}
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="ໃສ່ຊື່..." />
 
-            <Text style={styles.label}>ລະຫັດ PIN (ສຳລັບເຂົ້າລະບົບ)</Text>
+            <Text style={styles.label}>ລະຫັດ PIN</Text>
             <TextInput style={styles.input} value={pin} onChangeText={setPin} placeholder="ຕົວຢ່າງ: 1234" keyboardType="numeric" maxLength={6} />
 
             <Text style={styles.label}>ຕຳແໜ່ງ</Text>
@@ -173,34 +184,20 @@ export default function UserManagementScreen() {
                     <Text style={[styles.roleText, role === 'staff' && {color:'white'}]}>ພະນັກງານ</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                    style={[styles.roleBtn, role === 'admin' && styles.activeRole]} 
+                    style={[styles.roleBtn, role === 'admin' && styles.activeRoleAdmin]} 
                     onPress={() => setRole('admin')}
                 >
                     <Text style={[styles.roleText, role === 'admin' && {color:'white'}]}>Admin</Text>
                 </TouchableOpacity>
             </View>
 
-            {/* ສະແດງບ່ອນຕິກສິດ ສະເພາະຕອນເລືອກເປັນ Staff */}
             {role === 'staff' && (
                 <View style={styles.permSection}>
                     <Text style={styles.permHeader}>ກຳນົດສິດການໃຊ້ງານ:</Text>
-                    
-                    <View style={styles.switchRow}>
-                        <Text>ຂາຍສິນຄ້າໄດ້</Text>
-                        <Switch value={permissions.canSell} onValueChange={(v) => setPermissions({...permissions, canSell: v})} />
-                    </View>
-                    <View style={styles.switchRow}>
-                        <Text>ແກ້ໄຂສິນຄ້າໄດ້</Text>
-                        <Switch value={permissions.canEditProduct} onValueChange={(v) => setPermissions({...permissions, canEditProduct: v})} />
-                    </View>
-                    <View style={styles.switchRow}>
-                        <Text>ລຶບສິນຄ້າໄດ້</Text>
-                        <Switch value={permissions.canDeleteProduct} onValueChange={(v) => setPermissions({...permissions, canDeleteProduct: v})} />
-                    </View>
-                    <View style={styles.switchRow}>
-                        <Text>ເບິ່ງລາຍງານໄດ້</Text>
-                        <Switch value={permissions.canViewReports} onValueChange={(v) => setPermissions({...permissions, canViewReports: v})} />
-                    </View>
+                    <CustomSwitch label="ຂາຍສິນຄ້າໄດ້" value={permissions.canSell} onValueChange={(v) => setPermissions({...permissions, canSell: v})} />
+                    <CustomSwitch label="ແກ້ໄຂສິນຄ້າໄດ້" value={permissions.canEditProduct} onValueChange={(v) => setPermissions({...permissions, canEditProduct: v})} />
+                    <CustomSwitch label="ລຶບສິນຄ້າໄດ້" value={permissions.canDeleteProduct} onValueChange={(v) => setPermissions({...permissions, canDeleteProduct: v})} />
+                    <CustomSwitch label="ເບິ່ງລາຍງານໄດ້" value={permissions.canViewReports} onValueChange={(v) => setPermissions({...permissions, canViewReports: v})} />
                 </View>
             )}
 
@@ -214,38 +211,64 @@ export default function UserManagementScreen() {
   );
 }
 
-const ORANGE_THEME = '#FF8F00';
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F9FA' },
   header: { padding: 20, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 2 },
-  headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold' },
+  
+  // 🟢 Font Header
+  headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333' },
+  
   addBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, padding: 10, borderRadius: 8, alignItems: 'center' },
+  
+  // 🟢 Font ປຸ່ມເພີ່ມ
   addBtnText: { color: 'white', fontFamily: 'Lao-Bold', marginLeft: 5 },
   
   card: { flexDirection: 'row', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, alignItems: 'center', justifyContent: 'space-between', elevation: 1 },
   userInfo: { flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  
+  // 🟢 Font Avatar
   avatarText: { color: 'white', fontSize: 20, fontFamily: 'Lao-Bold' },
-  userName: { fontSize: 16, fontFamily: 'Lao-Bold' },
-  userRole: { color: '#666', fontSize: 12 },
+  
+  // 🟢 Font ຊື່ User
+  userName: { fontSize: 16, fontFamily: 'Lao-Bold', color: '#333' },
+  
+  // 🟢 Font ຕຳແໜ່ງ
+  userRole: { color: '#666', fontSize: 12, fontFamily: 'Lao-Regular' },
 
-  // Modal Styles
   modalHeader: { padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  
+  // 🟢 Font ຫົວຂໍ້ Modal
   modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold' },
+  
   modalContent: { padding: 20 },
+  
+  // 🟢 Font Label
   label: { fontFamily: 'Lao-Bold', marginBottom: 10, color: '#333' },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 16 },
+  
+  // 🟢 Font Input (ສຳຄັນ)
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 16, fontFamily: 'Lao-Regular' },
   
   roleContainer: { flexDirection: 'row', marginBottom: 20, gap: 10 },
   roleBtn: { flex: 1, padding: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, alignItems: 'center' },
   activeRole: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  activeRoleAdmin: { backgroundColor: ORANGE_THEME, borderColor: ORANGE_THEME },
+  
+  // 🟢 Font ປຸ່ມເລືອກ Role
   roleText: { fontFamily: 'Lao-Bold', color: '#333' },
 
   permSection: { backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 20, borderWidth: 1, borderColor: '#eee' },
-  permHeader: { fontFamily: 'Lao-Bold', marginBottom: 15, color: ORANGE_THEME },
+  
+  // 🟢 Font ຫົວຂໍ້ Permission
+  permHeader: { fontFamily: 'Lao-Bold', marginBottom: 15, color: COLORS.primary },
+  
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   
+  // 🟢 Font Label ຂອງ Switch
+  switchLabel: { fontFamily: 'Lao-Regular', fontSize: 16, color: '#333' },
+  
   saveBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
+  
+  // 🟢 Font ປຸ່ມບັນທຶກ
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 }
 });

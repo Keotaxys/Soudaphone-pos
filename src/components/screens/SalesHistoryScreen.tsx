@@ -15,10 +15,8 @@ import {
   View
 } from 'react-native';
 import { db } from '../../firebase';
-import { COLORS, formatNumber } from '../../types';
-
-// 🟢 1. Import Hook
 import { useAuth } from '../../hooks/useAuth';
+import { COLORS, formatNumber } from '../../types';
 
 const ORANGE_COLOR = '#FF8F00';
 type FilterType = 'day' | 'week' | 'month' | 'year';
@@ -30,7 +28,7 @@ const formatDateLao = (date: Date) => {
 };
 
 export default function SalesHistoryScreen() {
-  // 🟢 2. ເອີ້ນໃຊ້ Hook
+  // 🟢 1. ປະກາດ Hooks ທັງໝົດໄວ້ທາງເທິງສຸດ (ຫ້າມມີ return ຂັ້ນ)
   const { hasPermission } = useAuth();
 
   const [sales, setSales] = useState<any[]>([]);
@@ -40,17 +38,11 @@ export default function SalesHistoryScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // 🟢 3. ກວດສອບສິດການເຂົ້າເຖິງໜ້ານີ້ (Security Layer)
-  // ເຖິງວ່າ Sidebar ຈະບັງແລ້ວ ແຕ່ກັນໄວ້ອີກຊັ້ນໜຶ່ງ
-  if (!hasPermission('accessReports')) {
-      return (
-          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666'}}>ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້</Text>
-          </View>
-      );
-  }
-
+  // 🟢 2. useEffect ຕ້ອງຢູ່ນີ້ (ກ່ອນ return)
   useEffect(() => {
+    // ຖ້າບໍ່ມີສິດ ບໍ່ຕ້ອງດຶງຂໍ້ມູນ (ປະຢັດເນັດ)
+    if (!hasPermission('accessReports')) return;
+
     const salesRef = ref(db, 'sales');
     const unsubscribe = onValue(salesRef, (snapshot) => {
       const data = snapshot.val();
@@ -62,7 +54,7 @@ export default function SalesHistoryScreen() {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, []); // dependencies
 
   useEffect(() => {
     const start = new Date(currentDate);
@@ -90,6 +82,7 @@ export default function SalesHistoryScreen() {
     setFilteredSales(filtered);
   }, [sales, filterType, currentDate]);
 
+  // 🟢 3. ຟັງຊັນຕ່າງໆ
   const handleDelete = (id: string) => {
     Alert.alert('ຢືນຢັນ', 'ຕ້ອງການລຶບບິນນີ້ແທ້ບໍ່?', [
       { text: 'ຍົກເລີກ', style: 'cancel' },
@@ -109,7 +102,6 @@ export default function SalesHistoryScreen() {
 
   const getCorrectTotalLAK = (item: any) => {
     let subTotalLAK = 0;
-    
     if (item.items && Array.isArray(item.items)) {
         item.items.forEach((prod: any) => {
             if (prod.priceCurrency === 'THB') {
@@ -120,20 +112,15 @@ export default function SalesHistoryScreen() {
             }
         });
     }
-
     const discount = item.discount || 0;
-    const finalTotal = subTotalLAK - discount;
-
-    return finalTotal;
+    return subTotalLAK - discount;
   };
 
   const renderItem = ({ item }: { item: any }) => {
     const correctTotalLAK = getCorrectTotalLAK(item);
-    
     const displayTotal = item.currency === 'THB' 
         ? Math.ceil(correctTotalLAK / (item.exchangeRateUsed || FIXED_EXCHANGE_RATE)) 
         : correctTotalLAK;
-
     const currencySymbol = item.currency === 'THB' ? '฿' : '₭';
 
     return (
@@ -190,7 +177,6 @@ export default function SalesHistoryScreen() {
                         <Text style={[styles.itemPrice, {color: COLORS.primary, fontSize: 16}]}>{formatNumber(item.change)}</Text>
                     </View>
 
-                    {/* 🟢 4. ກວດສອບສິດກ່ອນສະແດງປຸ່ມລຶບ (ໃຊ້ສິດ canDeleteProduct ເພື່ອລຶບບິນ) */}
                     {hasPermission('canDeleteProduct') && (
                         <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
                             <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
@@ -204,9 +190,19 @@ export default function SalesHistoryScreen() {
     );
   };
 
+  // 🟢 4. ກວດສອບສິດຢູ່ບ່ອນນີ້ (ຫຼັງຈາກ Hooks ທັງໝົດເຮັດວຽກແລ້ວ)
+  if (!hasPermission('accessReports')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້</Text>
+          </View>
+      );
+  }
+
+  // 🟢 5. Return ໜ້າຈໍປົກກະຕິ
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ປະຫວັດການຂາຍ</Text>
         <View style={styles.dateNav}>
@@ -216,7 +212,6 @@ export default function SalesHistoryScreen() {
         </View>
       </View>
 
-      {/* Filter Tabs */}
       <View style={styles.filterBar}>
          {['day', 'week', 'month', 'year'].map((t) => (
             <TouchableOpacity key={t} style={[styles.filterChip, filterType === t && styles.activeFilter]} onPress={() => setFilterType(t as FilterType)}>

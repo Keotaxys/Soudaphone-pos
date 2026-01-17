@@ -21,32 +21,33 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+// 🟢 2. ເພີ່ມ field 'permission' ໃສ່ໃນ MENU_ITEMS ເພື່ອກຳກັບວ່າໃຜເຂົ້າໄດ້ແນ່
 const MENU_ITEMS = [
   // ກຸ່ມຂາຍ
-  { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' },
-  { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart-outline' },
-  { id: 'special_sale', label: 'ຂາຍພິເສດ', icon: 'flash-outline' },
-  { id: 'history', label: 'ປະຫວັດການຂາຍ', icon: 'time-outline' },
+  { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' }, // ບໍ່ມີ permission = ເຂົ້າໄດ້ໝົດ
+  { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart-outline', permission: 'accessPos' },
+  { id: 'special_sale', label: 'ຂາຍພິເສດ', icon: 'flash-outline', permission: 'accessPos' },
+  { id: 'history', label: 'ປະຫວັດການຂາຍ', icon: 'time-outline', permission: 'accessReports' },
 
   // ກຸ່ມສິນຄ້າ
-  { id: 'products', label: 'ຈັດການສິນຄ້າ', icon: 'cube-outline' },
-  { id: 'orders', label: 'ຕິດຕາມຄຳສັ່ງຊື້', icon: 'list-outline' },
+  { id: 'products', label: 'ຈັດການສິນຄ້າ', icon: 'cube-outline', permission: 'accessProducts' },
+  { id: 'orders', label: 'ຕິດຕາມຄຳສັ່ງຊື້', icon: 'list-outline', permission: 'accessProducts' },
    
   // ກຸ່ມການເງິນ & ໜີ້ສິນ
-  { id: 'customers', label: 'ຂໍ້ມູນລູກຄ້າ', icon: 'people-outline' },
-  { id: 'debts_receivable', label: 'ໜີ້ຕ້ອງຮັບ', icon: 'download-outline' },
-  { id: 'debts_payable', label: 'ໜີ້ຕ້ອງສົ່ງ', icon: 'arrow-up-circle-outline' },
-  { id: 'expenses', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet-outline' },
+  { id: 'customers', label: 'ຂໍ້ມູນລູກຄ້າ', icon: 'people-outline', permission: 'accessCustomers' },
+  { id: 'debts_receivable', label: 'ໜີ້ຕ້ອງຮັບ', icon: 'download-outline', permission: 'accessFinancial' },
+  { id: 'debts_payable', label: 'ໜີ້ຕ້ອງສົ່ງ', icon: 'arrow-up-circle-outline', permission: 'accessFinancial' },
+  { id: 'expenses', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet-outline', permission: 'accessFinancial' },
 
   // ອື່ນໆ
-  { id: 'reports', label: 'ລາຍງານ', icon: 'bar-chart-outline' },
-  { id: 'shift', label: 'ປິດກະລາຍວັນ', icon: 'lock-closed-outline' },
+  { id: 'reports', label: 'ລາຍງານ', icon: 'bar-chart-outline', permission: 'accessReports' },
+  { id: 'shift', label: 'ປິດກະລາຍວັນ', icon: 'lock-closed-outline', permission: 'accessReports' },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProps) {
   const [showBillSettings, setShowBillSettings] = useState(false);
   
-  // 🟢 2. ດຶງສິດການໃຊ້ງານມາ
+  // 🟢 3. ດຶງສິດການໃຊ້ງານມາ
   const { hasPermission } = useAuth();
 
   return (
@@ -60,6 +61,11 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
 
       <ScrollView contentContainerStyle={styles.menuContainer} showsVerticalScrollIndicator={false}>
         {MENU_ITEMS.map((item, index) => {
+          // 🟢 4. ກວດສອບສິດ: ຖ້າມີ permission ແລ້ວ user ບໍ່ມີສິດ -> ບໍ່ຕ້ອງສະແດງ (return null)
+          if (item.permission && !hasPermission(item.permission as any)) {
+            return null;
+          }
+
           const isActive = activeTab.toLowerCase() === item.id.toLowerCase();
           const isGroupDivider = index === 4 || index === 6 || index === 10;
 
@@ -70,7 +76,7 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
                 style={[styles.menuItem, isActive && styles.activeItem]}
                 onPress={() => {
                     onTabChange(item.id);
-                    if (onClose) onClose();
+                    if (onClose) onClose(); // ປິດ Sidebar ເມື່ອກົດ
                 }}
               >
                 <Ionicons 
@@ -86,7 +92,7 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
           );
         })}
 
-        {/* 🟢 3. ແຊກເມນູ "ຈັດການຜູ້ໃຊ້" ເຂົ້າໄປໃນໂຄງສ້າງເດີມ (ບໍ່ໃຫ້ Layout ເພ້) */}
+        {/* 🟢 5. ເພີ່ມເມນູ "ຈັດການຜູ້ໃຊ້" (ສະແດງສະເພາະ Admin/Manager) */}
         {hasPermission('canManageUsers') && (
             <>
                 <View style={styles.groupDivider} />

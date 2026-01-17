@@ -25,6 +25,9 @@ import { db } from '../../firebase';
 import { useCategories } from '../../hooks/useCategories';
 import { COLORS, formatNumber, Product } from '../../types';
 
+// 🟢 1. Import Hook ກວດສອບສິດ
+import { useAuth } from '../../hooks/useAuth';
+
 const ORANGE_THEME = '#FF8F00'; 
 
 interface ProductsScreenProps {
@@ -41,14 +44,15 @@ export default function ProductsScreen({
   onDeleteProduct 
 }: ProductsScreenProps) {
 
-  // 🟢 ດຶງຂໍ້ມູນແລະຟັງຊັນຈາກ Hook
+  // 🟢 2. ເອີ້ນໃຊ້ Hook
+  const { hasPermission } = useAuth();
+
   const { categories: dbCategories, categoryObjs, addCategory, editCategory, deleteCategory } = useCategories();
   const categoryList = ['All', ...dbCategories];
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All'); 
   
-  // State ສຳລັບ Modal ໝວດໝູ່
   const [showCatModal, setShowCatModal] = useState(false);
   const [catNameInput, setCatNameInput] = useState('');
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
@@ -60,14 +64,12 @@ export default function ProductsScreen({
     return matchSearch && matchCategory;
   });
 
-  // 🟢 ເປີດ Modal (ເພີ່ມ ຫຼື ແກ້ໄຂ)
   const openCategoryModal = (mode: 'add' | 'edit', name = '', id: string | null = null) => {
       setCatNameInput(name);
       setEditingCatId(id);
       setShowCatModal(true);
   };
 
-  // 🟢 ບັນທຶກ (ແຍກກໍລະນີເພີ່ມໃໝ່ ແລະ ແກ້ໄຂ)
   const handleSaveCategory = async () => {
     if (!catNameInput.trim()) return;
 
@@ -85,14 +87,15 @@ export default function ProductsScreen({
     }
   };
 
-  // 🟢 ກົດຄ້າງເພື່ອລຶບ/ແກ້ໄຂ
   const handleLongPressCategory = (catName: string) => {
       if (catName === 'All') return;
 
       const targetCat = categoryObjs.find(c => c.name === catName);
       
-      // ຖ້າບໍ່ພົບ ID (ເຊິ່ງບໍ່ໜ້າຈະເກີດຂຶ້ນແລ້ວ ເພາະເຮົາລຶບ Default ອອກໝົດແລ້ວ)
       if (!targetCat) return;
+
+      // 🟢 ກວດສອບສິດກ່ອນໃຫ້ແກ້ໄຂໝວດໝູ່ (ໃຊ້ສິດດຽວກັບແກ້ໄຂສິນຄ້າ)
+      if (!hasPermission('canEditProduct')) return;
 
       Alert.alert(
           "ຈັດການໝວດໝູ່",
@@ -141,6 +144,12 @@ export default function ProductsScreen({
   };
 
   const handleImport = async () => {
+      // 🟢 ກວດສອບສິດກ່ອນ Import (ໃຊ້ສິດແກ້ໄຂສິນຄ້າ)
+      if (!hasPermission('canEditProduct')) {
+          Alert.alert('ແຈ້ງເຕືອນ', 'ທ່ານບໍ່ມີສິດໃນການເພີ່ມ/ແກ້ໄຂຂໍ້ມູນ');
+          return;
+      }
+
       try {
           const result = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'application/vnd.ms-excel', '*/*'] });
           if (result.canceled) return;
@@ -189,12 +198,19 @@ export default function ProductsScreen({
             <Text style={[styles.stock, item.stock <= 5 && { color: ORANGE_THEME }]}>ຄົງເຫຼືອ: {item.stock}</Text>
         </View>
         <View style={styles.actions}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => onEditProduct(item)}>
-                <Ionicons name="pencil" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.deleteBtn} onPress={() => onDeleteProduct(item.id!)}>
-                <Ionicons name="trash-outline" size={20} color={ORANGE_THEME} />
-            </TouchableOpacity>
+            {/* 🟢 3. ກວດສອບສິດປຸ່ມແກ້ໄຂ */}
+            {hasPermission('canEditProduct') && (
+                <TouchableOpacity style={styles.editBtn} onPress={() => onEditProduct(item)}>
+                    <Ionicons name="pencil" size={20} color={COLORS.primary} />
+                </TouchableOpacity>
+            )}
+
+            {/* 🟢 4. ກວດສອບສິດປຸ່ມລຶບ */}
+            {hasPermission('canDeleteProduct') && (
+                <TouchableOpacity style={styles.deleteBtn} onPress={() => onDeleteProduct(item.id!)}>
+                    <Ionicons name="trash-outline" size={20} color={ORANGE_THEME} />
+                </TouchableOpacity>
+            )}
         </View>
     </View>
   );
@@ -217,10 +233,13 @@ export default function ProductsScreen({
         </View>
 
         <View style={{flexDirection: 'row', marginBottom: 10, alignItems: 'center'}}>
-            {/* 🟢 ປ່ຽນສີປຸ່ມເປັນ Teal */}
-            <TouchableOpacity style={[styles.addCatMiniBtn, {backgroundColor: COLORS.primary}]} onPress={() => openCategoryModal('add')}>
-                <Ionicons name="add" size={20} color="white" />
-            </TouchableOpacity>
+            {/* 🟢 5. ກວດສອບສິດການເພີ່ມໝວດໝູ່ */}
+            {hasPermission('canEditProduct') && (
+                <TouchableOpacity style={[styles.addCatMiniBtn, {backgroundColor: COLORS.primary}]} onPress={() => openCategoryModal('add')}>
+                    <Ionicons name="add" size={20} color="white" />
+                </TouchableOpacity>
+            )}
+
             <FlatList 
                 horizontal 
                 data={categoryList} 
@@ -231,7 +250,6 @@ export default function ProductsScreen({
                     <TouchableOpacity 
                         style={[styles.catChip, selectedCategory === item && styles.activeCatChip]} 
                         onPress={() => setSelectedCategory(item)}
-                        // 🟢 ກົດຄ້າງເພື່ອແກ້ໄຂ/ລຶບ
                         onLongPress={() => handleLongPressCategory(item)}
                         delayLongPress={500}
                     >
@@ -243,7 +261,10 @@ export default function ProductsScreen({
 
         <View style={styles.actionIcons}>
             <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}><Ionicons name="download-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleImport}><Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
+            {/* 🟢 6. ກວດສອບສິດປຸ່ມ Import (Export ໃຫ້ເຫັນໄດ້ ແຕ່ Import ຕ້ອງມີສິດ) */}
+            {hasPermission('canEditProduct') && (
+                <TouchableOpacity style={styles.iconBtn} onPress={handleImport}><Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.iconBtn} onPress={handleExport}><Ionicons name="share-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
         </View>
     </View>
@@ -265,14 +286,16 @@ export default function ProductsScreen({
         }
       />
 
-      {/* 🟢 FAB ວົງມົນ ສີ Teal */}
-      <TouchableOpacity 
-        style={styles.fab} 
-        onPress={onAddProduct}
-        activeOpacity={0.8}
-      >
-          <Ionicons name="add" size={35} color="white" />
-      </TouchableOpacity>
+      {/* 🟢 7. ກວດສອບສິດປຸ່ມເພີ່ມສິນຄ້າ (FAB) */}
+      {hasPermission('canEditProduct') && (
+          <TouchableOpacity 
+            style={styles.fab} 
+            onPress={onAddProduct}
+            activeOpacity={0.8}
+          >
+              <Ionicons name="add" size={35} color="white" />
+          </TouchableOpacity>
+      )}
 
       {/* Modal ສຳລັບ Add/Edit Category */}
       <Modal visible={showCatModal} transparent animationType="slide">
@@ -338,12 +361,11 @@ const styles = StyleSheet.create({
   editBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
   deleteBtn: { padding: 8, backgroundColor: '#FFF3E0', borderRadius: 8 },
 
-  // 🟢 FAB Style ແກ້ໄຂໃໝ່
   fab: { 
     position: 'absolute', 
     bottom: 90, 
     right: 20, 
-    backgroundColor: COLORS.primary, // ສີ Teal
+    backgroundColor: COLORS.primary,
     width: 60, 
     height: 60,
     borderRadius: 30, 

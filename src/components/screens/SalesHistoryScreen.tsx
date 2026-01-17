@@ -17,10 +17,12 @@ import {
 import { db } from '../../firebase';
 import { COLORS, formatNumber } from '../../types';
 
+// 🟢 1. Import Hook
+import { useAuth } from '../../hooks/useAuth';
+
 const ORANGE_COLOR = '#FF8F00';
 type FilterType = 'day' | 'week' | 'month' | 'year';
 
-// ອັດຕາແລກປ່ຽນຄົງທີ່ສຳລັບຄຳນວນຍ້ອນຫຼັງ (ຖ້າໃນບິນບໍ່ໄດ້ບັນທຶກໄວ້)
 const FIXED_EXCHANGE_RATE = 680;
 
 const formatDateLao = (date: Date) => {
@@ -28,12 +30,25 @@ const formatDateLao = (date: Date) => {
 };
 
 export default function SalesHistoryScreen() {
+  // 🟢 2. ເອີ້ນໃຊ້ Hook
+  const { hasPermission } = useAuth();
+
   const [sales, setSales] = useState<any[]>([]);
   const [filteredSales, setFilteredSales] = useState<any[]>([]);
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // 🟢 3. ກວດສອບສິດການເຂົ້າເຖິງໜ້ານີ້ (Security Layer)
+  // ເຖິງວ່າ Sidebar ຈະບັງແລ້ວ ແຕ່ກັນໄວ້ອີກຊັ້ນໜຶ່ງ
+  if (!hasPermission('accessReports')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666'}}>ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້</Text>
+          </View>
+      );
+  }
 
   useEffect(() => {
     const salesRef = ref(db, 'sales');
@@ -92,25 +107,20 @@ export default function SalesHistoryScreen() {
     setCurrentDate(newDate);
   };
 
-  // 🟢 ຟັງຊັນຄຳນວນເງິນໃໝ່ (Recalculate Total)
   const getCorrectTotalLAK = (item: any) => {
-    // 1. ຄຳນວນລາຄາສິນຄ້າທັງໝົດເປັນ ກີບ
     let subTotalLAK = 0;
     
     if (item.items && Array.isArray(item.items)) {
         item.items.forEach((prod: any) => {
             if (prod.priceCurrency === 'THB') {
-                // ຖ້າເປັນບາດ ໃຫ້ຄູນ 680 (ຫຼື Rate ທີ່ບັນທຶກໄວ້)
                 const rate = item.exchangeRateUsed || FIXED_EXCHANGE_RATE;
                 subTotalLAK += (prod.price * prod.quantity * rate);
             } else {
-                // ຖ້າເປັນກີບ ບວກເລີຍ
                 subTotalLAK += (prod.price * prod.quantity);
             }
         });
     }
 
-    // 2. ລົບສ່ວນຫຼຸດ
     const discount = item.discount || 0;
     const finalTotal = subTotalLAK - discount;
 
@@ -118,11 +128,8 @@ export default function SalesHistoryScreen() {
   };
 
   const renderItem = ({ item }: { item: any }) => {
-    // ຄຳນວນຍອດເງິນທີ່ຖືກຕ້ອງ
     const correctTotalLAK = getCorrectTotalLAK(item);
     
-    // ກວດສອບວ່າບິນນີ້ຈ່າຍເປັນສະກຸນເງິນຫຍັງ
-    // ຖ້າຈ່າຍເປັນ THB ເຮົາຈະເອົາ TotalLAK ຫານ Rate
     const displayTotal = item.currency === 'THB' 
         ? Math.ceil(correctTotalLAK / (item.exchangeRateUsed || FIXED_EXCHANGE_RATE)) 
         : correctTotalLAK;
@@ -137,7 +144,6 @@ export default function SalesHistoryScreen() {
                 <Text style={styles.dateText}>{new Date(item.date).toLocaleTimeString('lo-LA')}</Text>
             </View>
             <View style={{alignItems: 'flex-end'}}>
-                {/* 🟢 ສະແດງຍອດເງິນທີ່ຄຳນວນໃໝ່ຖືກຕ້ອງ */}
                 <Text style={styles.amountText}>+{formatNumber(displayTotal)} {currencySymbol}</Text>
                 <Text style={styles.paymentText}>{item.paymentMethod || 'CASH'}</Text>
             </View>
@@ -145,7 +151,6 @@ export default function SalesHistoryScreen() {
 
         {expandedId === item.id && (
             <View style={styles.details}>
-                {/* 🟢 Header ສີເຫຼືອງໃນ Expanded View */}
                 <View style={styles.expandedHeader}>
                     <View>
                         <Text style={styles.expandedBillId}>ບິນ #{item.id ? item.id.slice(-4) : '...'}</Text>
@@ -160,7 +165,6 @@ export default function SalesHistoryScreen() {
                 <View style={{paddingHorizontal: 15, paddingBottom: 15}}>
                     <View style={styles.divider} />
                     
-                    {/* Items List */}
                     {item.items?.map((prod: any, idx: number) => (
                         <View key={idx} style={styles.itemRow}>
                             <Text style={styles.itemName}>{prod.name} x{prod.quantity}</Text>
@@ -170,7 +174,6 @@ export default function SalesHistoryScreen() {
                         </View>
                     ))}
 
-                    {/* Discount */}
                     {item.discount > 0 && (
                         <View style={styles.itemRow}>
                             <Text style={[styles.itemName, {color: 'red'}]}>ສ່ວນຫຼຸດ</Text>
@@ -187,10 +190,13 @@ export default function SalesHistoryScreen() {
                         <Text style={[styles.itemPrice, {color: COLORS.primary, fontSize: 16}]}>{formatNumber(item.change)}</Text>
                     </View>
 
-                    <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
-                        <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
-                        <Text style={[styles.deleteText, {color: ORANGE_COLOR}]}>ລຶບບິນນີ້</Text>
-                    </TouchableOpacity>
+                    {/* 🟢 4. ກວດສອບສິດກ່ອນສະແດງປຸ່ມລຶບ (ໃຊ້ສິດ canDeleteProduct ເພື່ອລຶບບິນ) */}
+                    {hasPermission('canDeleteProduct') && (
+                        <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
+                            <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
+                            <Text style={[styles.deleteText, {color: ORANGE_COLOR}]}>ລຶບບິນນີ້</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
         )}
@@ -273,7 +279,6 @@ const styles = StyleSheet.create({
   amountText: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS?.primary || '#008B94' },
   paymentText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
   
-  // Expanded Styles
   details: { backgroundColor: 'white' },
   expandedHeader: { backgroundColor: '#FFECB3', padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   expandedBillId: { fontFamily: 'Lao-Bold', fontSize: 16, color: '#333' },

@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'; // ✅ Import ແບບໃໝ່
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { equalTo, get, orderByChild, query, ref } from 'firebase/database';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
@@ -9,7 +9,6 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. ກວດສອບວ່າເຄີຍ Login ມາແລ້ວບໍ (ຕອນເປີດແອັບ)
   useEffect(() => {
     loadUser();
   }, []);
@@ -27,22 +26,29 @@ export function useAuth() {
     }
   };
 
-  // 2. ຟັງຊັນ Login ດ້ວຍ PIN
-  const login = async (pin: string) => {
-    if (!pin) return false;
+  // 🟢 ປ່ຽນໃໝ່: ຮັບທັງ Username ແລະ Password
+  const login = async (username: string, passwordInput: string) => {
+    if (!username || !passwordInput) return false;
     setLoading(true);
 
     try {
-      // ຄົ້ນຫາ User ຈາກ Firebase ທີ່ມີ pin ກົງກັນ
+      // 1. ຄົ້ນຫາ User ຈາກຊື່ (name) ໃນ Firebase
       const usersRef = ref(db, 'users');
-      const q = query(usersRef, orderByChild('pin'), equalTo(pin));
+      const q = query(usersRef, orderByChild('name'), equalTo(username));
       const snapshot = await get(q);
 
       if (snapshot.exists()) {
         const data = snapshot.val();
-        // ດຶງເອົາ User ຄົນທຳອິດທີ່ພົບ (ເພາະ PIN ຄວນຈະບໍ່ຊ້ຳກັນ)
+        // ດຶງເອົາ User ຄົນທຳອິດທີ່ພົບ
         const userId = Object.keys(data)[0];
         const userData = data[userId];
+
+        // 2. ກວດສອບລະຫັດຜ່ານ (ທຽບກັບ field 'pin' ໃນ database)
+        if (userData.pin !== passwordInput) {
+            Alert.alert("ຜິດພາດ", "ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ");
+            setLoading(false);
+            return false;
+        }
 
         if (!userData.isActive) {
             Alert.alert("ຜິດພາດ", "ບັນຊີນີຖືກປິດການໃຊ້ງານແລ້ວ");
@@ -52,12 +58,12 @@ export function useAuth() {
 
         const loggedInUser: User = { ...userData, id: userId };
 
-        // ບັນທຶກລົງເຄື່ອງ (AsyncStorage)
+        // ບັນທຶກລົງເຄື່ອງ
         await AsyncStorage.setItem('user_session', JSON.stringify(loggedInUser));
         setUser(loggedInUser);
         return true;
       } else {
-        Alert.alert("ຜິດພາດ", "ລະຫັດ PIN ບໍ່ຖືກຕ້ອງ");
+        Alert.alert("ຜິດພາດ", "ບໍ່ພົບຊື່ຜູ້ໃຊ້ນີ້");
         return false;
       }
     } catch (error) {
@@ -69,7 +75,6 @@ export function useAuth() {
     }
   };
 
-  // 3. ຟັງຊັນ Logout
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('user_session');
@@ -79,10 +84,9 @@ export function useAuth() {
     }
   };
 
-  // 4. ຟັງຊັນກວດສອບສິດ (Permission Check)
   const hasPermission = (permission: keyof UserPermissions): boolean => {
     if (!user) return false;
-    if (user.role === 'admin') return true; // Admin ຜ່ານຕະຫຼອດ
+    if (user.role === 'admin') return true; 
     return user.permissions?.[permission] ?? false;
   };
 

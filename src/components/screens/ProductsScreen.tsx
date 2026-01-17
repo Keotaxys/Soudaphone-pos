@@ -41,7 +41,7 @@ export default function ProductsScreen({
   onDeleteProduct 
 }: ProductsScreenProps) {
 
-  // 🟢 ດຶງຟັງຊັນ edit ແລະ delete ມາເພີ່ມ
+  // 🟢 ດຶງຂໍ້ມູນແລະຟັງຊັນຈາກ Hook
   const { categories: dbCategories, categoryObjs, addCategory, editCategory, deleteCategory } = useCategories();
   const categoryList = ['All', ...dbCategories];
 
@@ -51,7 +51,7 @@ export default function ProductsScreen({
   // State ສຳລັບ Modal ໝວດໝູ່
   const [showCatModal, setShowCatModal] = useState(false);
   const [catNameInput, setCatNameInput] = useState('');
-  const [editingCatId, setEditingCatId] = useState<string | null>(null); // ຖ້າມີຄ່າ ແປວ່າກຳລັງແກ້ໄຂ
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
 
   const filteredProducts = products.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -60,22 +60,21 @@ export default function ProductsScreen({
     return matchSearch && matchCategory;
   });
 
-  // 🟢 ຈັດການເປີດ Modal (ເພີ່ມ ຫຼື ແກ້ໄຂ)
+  // 🟢 ເປີດ Modal (ເພີ່ມ ຫຼື ແກ້ໄຂ)
   const openCategoryModal = (mode: 'add' | 'edit', name = '', id: string | null = null) => {
       setCatNameInput(name);
       setEditingCatId(id);
       setShowCatModal(true);
   };
 
+  // 🟢 ບັນທຶກ (ແຍກກໍລະນີເພີ່ມໃໝ່ ແລະ ແກ້ໄຂ)
   const handleSaveCategory = async () => {
     if (!catNameInput.trim()) return;
 
     let success = false;
     if (editingCatId) {
-        // ແກ້ໄຂ
         success = await editCategory(editingCatId, catNameInput);
     } else {
-        // ເພີ່ມໃໝ່
         success = await addCategory(catNameInput);
     }
 
@@ -86,18 +85,14 @@ export default function ProductsScreen({
     }
   };
 
-  // 🟢 ຈັດການກົດຄ້າງທີ່ໝວດໝູ່ (Long Press Logic)
+  // 🟢 ກົດຄ້າງເພື່ອລຶບ/ແກ້ໄຂ
   const handleLongPressCategory = (catName: string) => {
       if (catName === 'All') return;
 
-      // ຊອກຫາ ID ຂອງໝວດໝູ່ນີ້ (ເພາະໃນ UI ເຮົາໂຊແຕ່ຊື່)
       const targetCat = categoryObjs.find(c => c.name === catName);
       
-      // ຖ້າບໍ່ພົບ ID (ສະແດງວ່າເປັນ Default Category) -> ຫ້າມລຶບ/ແກ້ໄຂ
-      if (!targetCat) {
-          Alert.alert("ແຈ້ງເຕືອນ", "ໝວດໝູ່ນີ້ເປັນຄ່າເລີ່ມຕົ້ນ ບໍ່ສາມາດແກ້ໄຂໄດ້");
-          return;
-      }
+      // ຖ້າບໍ່ພົບ ID (ເຊິ່ງບໍ່ໜ້າຈະເກີດຂຶ້ນແລ້ວ ເພາະເຮົາລຶບ Default ອອກໝົດແລ້ວ)
+      if (!targetCat) return;
 
       Alert.alert(
           "ຈັດການໝວດໝູ່",
@@ -222,7 +217,7 @@ export default function ProductsScreen({
         </View>
 
         <View style={{flexDirection: 'row', marginBottom: 10, alignItems: 'center'}}>
-            {/* 🟢 ແກ້ໄຂ 1: ປ່ຽນສີເປັນ Teal (COLORS.primary) */}
+            {/* 🟢 ປ່ຽນສີປຸ່ມເປັນ Teal */}
             <TouchableOpacity style={[styles.addCatMiniBtn, {backgroundColor: COLORS.primary}]} onPress={() => openCategoryModal('add')}>
                 <Ionicons name="add" size={20} color="white" />
             </TouchableOpacity>
@@ -236,7 +231,7 @@ export default function ProductsScreen({
                     <TouchableOpacity 
                         style={[styles.catChip, selectedCategory === item && styles.activeCatChip]} 
                         onPress={() => setSelectedCategory(item)}
-                        // 🟢 ເພີ່ມ: ກົດຄ້າງເພື່ອແກ້ໄຂ/ລຶບ
+                        // 🟢 ກົດຄ້າງເພື່ອແກ້ໄຂ/ລຶບ
                         onLongPress={() => handleLongPressCategory(item)}
                         delayLongPress={500}
                     >
@@ -270,7 +265,7 @@ export default function ProductsScreen({
         }
       />
 
-      {/* 🟢 ແກ້ໄຂ 2: ປຸ່ມ FAB ເປັນວົງມົນ, ບໍ່ມີຂໍ້ຄວາມ, ສີ Teal */}
+      {/* 🟢 FAB ວົງມົນ ສີ Teal */}
       <TouchableOpacity 
         style={styles.fab} 
         onPress={onAddProduct}
@@ -343,15 +338,15 @@ const styles = StyleSheet.create({
   editBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
   deleteBtn: { padding: 8, backgroundColor: '#FFF3E0', borderRadius: 8 },
 
-  // 🟢 FAB Style ແກ້ໄຂໃໝ່ (ວົງມົນ, ບໍ່ມີຂໍ້ຄວາມ)
+  // 🟢 FAB Style ແກ້ໄຂໃໝ່
   fab: { 
     position: 'absolute', 
     bottom: 90, 
     right: 20, 
     backgroundColor: COLORS.primary, // ສີ Teal
-    width: 60, // ກຳນົດຄວາມກວ້າງ
-    height: 60, // ກຳນົດຄວາມສູງເທົ່າກັນ
-    borderRadius: 30, // ເຮັດໃຫ້ເປັນວົງມົນ
+    width: 60, 
+    height: 60,
+    borderRadius: 30, 
     justifyContent: 'center',
     alignItems: 'center', 
     elevation: 10, 
@@ -361,7 +356,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3, 
     shadowRadius: 4.65,
   },
-  // fabText: { ... } ລຶບອອກ ເພາະບໍ່ໃຊ້ແລ້ວ
 
   emptyContainer: { alignItems: 'center', marginTop: 100 },
   emptyText: { fontFamily: 'Lao-Regular', color: '#ccc', marginTop: 10 },

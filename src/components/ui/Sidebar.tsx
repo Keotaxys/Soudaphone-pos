@@ -1,114 +1,121 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// 🟢 1. Import Hook ເຂົ້າມາ
+import { useAuth } from '../../hooks/useAuth';
 import { COLORS } from '../../types';
-
-// ✅ ແກ້ໄຂ Path ໃຫ້ຖືກຕ້ອງ (ອອກຈາກ ui -> ເຂົ້າ modals)
-import BillSettingsModal from '../modals/BillSettingsModal';
 
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  onClose?: () => void;
+  onClose: () => void;
+  tabs: string[];
 }
 
-const MENU_ITEMS = [
-  // ກຸ່ມຂາຍ
-  { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' },
-  { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart-outline' },
-  { id: 'special_sale', label: 'ຂາຍພິເສດ', icon: 'flash-outline' },
-  { id: 'history', label: 'ປະຫວັດການຂາຍ', icon: 'time-outline' },
-
-  // ກຸ່ມສິນຄ້າ
-  { id: 'products', label: 'ຈັດການສິນຄ້າ', icon: 'cube-outline' },
-  { id: 'orders', label: 'ຕິດຕາມຄຳສັ່ງຊື້', icon: 'list-outline' },
+export default function Sidebar({ activeTab, onTabChange, onClose, tabs }: SidebarProps) {
+  const insets = useSafeAreaInsets();
   
-  // ກຸ່ມການເງິນ & ໜີ້ສິນ
-  { id: 'customers', label: 'ຂໍ້ມູນລູກຄ້າ', icon: 'people-outline' },
-  { id: 'debts_receivable', label: 'ໜີ້ຕ້ອງຮັບ', icon: 'download-outline' },
-  { id: 'debts_payable', label: 'ໜີ້ຕ້ອງສົ່ງ', icon: 'arrow-up-circle-outline' },
-  { id: 'expenses', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet-outline' },
-
-  // ອື່ນໆ
-  { id: 'reports', label: 'ລາຍງານ', icon: 'bar-chart-outline' },
-  { id: 'shift', label: 'ປິດກະລາຍວັນ', icon: 'lock-closed-outline' },
-];
-
-export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProps) {
-  // ສ້າງ State ສຳລັບເປີດ/ປິດ Modal ຕັ້ງຄ່າໃບບິນ
-  const [showBillSettings, setShowBillSettings] = useState(false);
+  // 🟢 2. ເອີ້ນໃຊ້ Hook
+  const { hasPermission } = useAuth();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
         <Text style={styles.title}>ເມນູຫຼັກ</Text>
         <TouchableOpacity onPress={onClose}>
-          <Ionicons name="close" size={30} color="#fff" />
+          <Ionicons name="close" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.menuContainer} showsVerticalScrollIndicator={false}>
-        {MENU_ITEMS.map((item, index) => {
-          const isActive = activeTab.toLowerCase() === item.id.toLowerCase();
-          // ເສັ້ນຂັ້ນລະຫວ່າງກຸ່ມ
-          const isGroupDivider = index === 4 || index === 6 || index === 10;
+      <ScrollView style={styles.menuList}>
+        {tabs.map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.menuItem, activeTab === tab && styles.activeItem]}
+            onPress={() => onTabChange(tab)}
+          >
+            <Ionicons 
+              name={getIconName(tab)} 
+              size={22} 
+              color={activeTab === tab ? COLORS.primary : '#666'} 
+            />
+            <Text style={[styles.menuText, activeTab === tab && styles.activeText]}>
+              {translateTab(tab)}
+            </Text>
+          </TouchableOpacity>
+        ))}
 
-          return (
-            <React.Fragment key={item.id}>
-              {isGroupDivider && <View style={styles.groupDivider} />}
-              <TouchableOpacity 
-                style={[styles.menuItem, isActive && styles.activeItem]}
-                onPress={() => onTabChange(item.id)}
+        {/* 🟢 3. ເພີ່ມປຸ່ມ "ຈັດການຜູ້ໃຊ້" (ສະເພາະ Admin) */}
+        {/* ໃຊ້ onTabChange ແທນ navigation */}
+        {hasPermission('canManageUsers') && (
+           <>
+             <View style={styles.divider} />
+             <TouchableOpacity
+                style={[styles.menuItem, activeTab === 'Users' && styles.activeItem]}
+                onPress={() => {
+                    onTabChange('Users'); // 👉 ສົ່ງຄ່າ 'Users' ໄປໃຫ້ App.tsx
+                    onClose();
+                }}
               >
-                <Ionicons 
-                  name={item.icon as any} 
-                  size={24} 
-                  color={isActive ? (COLORS?.primary || '#008B94') : '#555'} 
-                />
-                <Text style={[styles.menuText, isActive && styles.activeText]}>
-                  {item.label}
+                <Ionicons name="people-outline" size={22} color={activeTab === 'Users' ? COLORS.primary : '#666'} />
+                <Text style={[styles.menuText, activeTab === 'Users' && styles.activeText]}>
+                  ຈັດການຜູ້ໃຊ້
                 </Text>
               </TouchableOpacity>
-            </React.Fragment>
-          );
-        })}
+           </>
+        )}
 
-        <View style={styles.divider} />
-
-        {/* ປຸ່ມຕັ້ງຄ່າໃບບິນ (ກົດແລ້ວເປີດ Modal) */}
-        <TouchableOpacity 
-          style={styles.menuItem}
-          onPress={() => setShowBillSettings(true)}
-        >
-          <Ionicons name="settings-outline" size={24} color="#555" />
-          <Text style={styles.menuText}>ຕັ້ງຄ່າໃບບິນ</Text>
-        </TouchableOpacity>
       </ScrollView>
-
-      {/* ວາງ Modal ໄວ້ຢູ່ນີ້ */}
-      <BillSettingsModal 
-        visible={showBillSettings} 
-        onClose={() => setShowBillSettings(false)} 
-      />
+      
+      <View style={styles.footer}>
+        <Text style={styles.versionText}>Version 1.0.0</Text>
+      </View>
     </View>
   );
 }
 
+// Helper Functions
+const getIconName = (tab: string): any => {
+  switch (tab.toLowerCase()) {
+    case 'home': return 'home-outline';
+    case 'pos': return 'cart-outline';
+    case 'products': return 'cube-outline';
+    case 'customers': return 'people-outline';
+    case 'orders': return 'clipboard-outline';
+    case 'reports': return 'bar-chart-outline';
+    case 'expenses': return 'wallet-outline';
+    case 'debts': return 'book-outline';
+    case 'shift': return 'time-outline';
+    default: return 'list-outline';
+  }
+};
+
+const translateTab = (tab: string) => {
+    switch (tab.toLowerCase()) {
+        case 'home': return 'ໜ້າຫຼັກ';
+        case 'pos': return 'ຂາຍສິນຄ້າ';
+        case 'products': return 'ສິນຄ້າ';
+        case 'customers': return 'ລູກຄ້າ';
+        case 'orders': return 'ອໍເດີ້';
+        case 'reports': return 'ລາຍງານ';
+        case 'expenses': return 'ລາຍຈ່າຍ';
+        case 'debts': return 'ໜີ້ສິນ';
+        case 'shift': return 'ປິດກະ';
+        default: return tab;
+    }
+};
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'white', width: '100%', height: '100%' },
-  header: { height: 100, backgroundColor: COLORS?.primary || '#008B94', paddingHorizontal: 20, paddingTop: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 24, fontFamily: 'Lao-Bold', color: 'white' },
-  menuContainer: { padding: 15, paddingBottom: 50 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 15, borderRadius: 10, marginBottom: 2 },
-  activeItem: { backgroundColor: '#E0F2F1' },
-  menuText: { fontSize: 16, fontFamily: 'Lao-Regular', marginLeft: 15, color: '#333' },
-  activeText: { color: COLORS?.primary || '#008B94', fontFamily: 'Lao-Bold' },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 15 },
-  groupDivider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 5, marginHorizontal: 15 }
+  container: { flex: 1, backgroundColor: 'white', width: 280, borderRightWidth: 1, borderRightColor: '#eee' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  title: { fontSize: 20, fontFamily: 'Lao-Bold', color: '#333' },
+  menuList: { flex: 1, paddingVertical: 10 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, marginBottom: 5 },
+  activeItem: { backgroundColor: '#E0F2F1', borderRightWidth: 4, borderRightColor: COLORS.primary },
+  menuText: { marginLeft: 15, fontSize: 16, fontFamily: 'Lao-Regular', color: '#666' },
+  activeText: { color: COLORS.primary, fontFamily: 'Lao-Bold' },
+  divider: { height: 1, backgroundColor: '#eee', marginVertical: 10, marginHorizontal: 20 },
+  footer: { padding: 20, borderTopWidth: 1, borderTopColor: '#f0f0f0', alignItems: 'center' },
+  versionText: { color: '#999', fontSize: 12 }
 });

@@ -1,14 +1,19 @@
 import { useColorScheme } from 'react-native';
 
-// 🟢 1. ກຳນົດຄ່າສີຢູ່ບ່ອນນີ້ເລີຍ (ແກ້ບັນຫາຫາໄຟລ໌ບໍ່ເຫັນ)
+// 🟢 Import COLORS ຈາກ Global ມາໃຊ້ (ເພື່ອໃຫ້ສີຄືກັນທົ່ວແອັບ)
+// ຕ້ອງແນ່ໃຈວ່າ path ນີ້ຖືກຕ້ອງ (ຖ້າຢູ່ໃນ hooks ຕ້ອງຖອຍອອກ 1 ຂັ້ນ)
+
+// ຫຼື ຖ້າຂີ້ຄ້ານ import ກໍກຳນົດສີຕາຍໂຕຢູ່ນີ້ເລີຍ:
+const PRIMARY_COLOR = '#008B94'; // ສີ Teal ຂອງທ່ານ
+
 const Colors = {
   light: {
     text: '#11181C',
     background: '#fff',
-    tint: '#0a7ea4',
+    tint: PRIMARY_COLOR, // ✅ ປ່ຽນຈາກ #0a7ea4 ເປັນສີ Teal
     icon: '#687076',
     tabIconDefault: '#687076',
-    tabIconSelected: '#0a7ea4',
+    tabIconSelected: PRIMARY_COLOR, // ✅ ປ່ຽນເປັນສີ Teal
   },
   dark: {
     text: '#ECEDEE',
@@ -24,7 +29,6 @@ export function useThemeColor(
   props: { light?: string; dark?: string },
   colorName: keyof typeof Colors.light & keyof typeof Colors.dark
 ) {
-  // 🟢 2. ບັງຄັບຄ່າໃຫ້ເປັນ 'light' ຫຼື 'dark' ເທົ່ານັ້ນ
   const systemTheme = useColorScheme();
   const theme = systemTheme === 'dark' ? 'dark' : 'light';
 

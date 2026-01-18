@@ -25,7 +25,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { COLORS, formatNumber } from '../../types';
 
 const ORANGE_COLOR = '#FF8F00';
-const SPECIAL_COLOR = '#9C27B0'; // ສີມ່ວງ ສຳລັບບິນຂາຍພິເສດ
+const SPECIAL_COLOR = '#9C27B0';
 
 type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 const FIXED_EXCHANGE_RATE = 680;
@@ -37,17 +37,23 @@ const formatDateLao = (date: Date) => {
 export default function SalesHistoryScreen() {
   const { hasPermission } = useAuth();
 
-  // --- State ປະກາດໄວ້ທາງເທິງທັງໝົດ ---
-  const [sales, setSales] = useState<any[]>([]); // ຂໍ້ມູນລວມ
+  // Raw Data (ຂໍ້ມູນດິບ)
+  const [rawNormalSales, setRawNormalSales] = useState<any[]>([]);
+  const [rawSpecialSales, setRawSpecialSales] = useState<any[]>([]);
+  
+  // Display Data (ຂໍ້ມູນທີ່ໂຊ)
+  const [sales, setSales] = useState<any[]>([]); 
   const [filteredSales, setFilteredSales] = useState<any[]>([]);
   
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Custom Date Range
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
+  
   const [datePickerMode, setDatePickerMode] = useState<'current' | 'start' | 'end'>('current');
   const [showDatePicker, setShowDatePicker] = useState(false);
-  
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Edit Modal State
@@ -56,52 +62,42 @@ export default function SalesHistoryScreen() {
   const [editDescription, setEditDescription] = useState('');
   const [editAmount, setEditAmount] = useState('');
 
-  // 🟢 1. useEffect: ດຶງຂໍ້ມູນຈາກ sales ແລະ special_sales ມາລວມກັນ
+  // 1. Fetch Data
   useEffect(() => {
     if (!hasPermission('accessReports')) return;
 
-    const salesRef = ref(db, 'sales');
-    const specialSalesRef = ref(db, 'special_sales');
-
-    let normalSalesData: any[] = [];
-    let specialSalesData: any[] = [];
-
-    // ຟັງຊັນລວມ ແລະ ລຽງຂໍ້ມູນ
-    const mergeData = () => {
-        const combined = [...normalSalesData, ...specialSalesData];
-        // ລຽງຈາກ ໃໝ່ -> ເກົ່າ
-        combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setSales(combined);
-    };
-
-    // Listener 1: ຂາຍທົ່ວໄປ
-    const unsubSales = onValue(salesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        normalSalesData = Object.keys(data).map(key => ({ 
-            id: key, 
+    // Fetch Normal Sales
+    const unsubSales = onValue(ref(db, 'sales'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const list = Object.keys(data).map(key => ({
+            id: key,
             ...data[key],
-            sourceType: 'normal' // ຫມາຍວ່າເປັນບິນປົກກະຕິ
+            sourceType: 'normal'
         }));
+        console.log("✅ Normal Sales:", list.length);
+        setRawNormalSales(list);
       } else {
-        normalSalesData = [];
+        console.log("⚠️ No Normal Sales");
+        setRawNormalSales([]);
       }
-      mergeData();
     });
 
-    // Listener 2: ຂາຍພິເສດ
-    const unsubSpecial = onValue(specialSalesRef, (snapshot) => {
+    // Fetch Special Sales
+    const unsubSpecial = onValue(ref(db, 'special_sales'), (snapshot) => {
+      if (snapshot.exists()) {
         const data = snapshot.val();
-        if (data) {
-          specialSalesData = Object.keys(data).map(key => ({ 
-              id: key, 
-              ...data[key],
-              sourceType: 'special' // ຫມາຍວ່າເປັນບິນພິເສດ
-          }));
-        } else {
-          specialSalesData = [];
-        }
-        mergeData();
+        const list = Object.keys(data).map(key => ({
+            id: key,
+            ...data[key],
+            sourceType: 'special'
+        }));
+        console.log("✅ Special Sales:", list.length);
+        setRawSpecialSales(list);
+      } else {
+        console.log("⚠️ No Special Sales");
+        setRawSpecialSales([]);
+      }
     });
 
     return () => {
@@ -110,54 +106,79 @@ export default function SalesHistoryScreen() {
     };
   }, []);
 
-  // Filter Logic
+  // 2. Merge Data
   useEffect(() => {
+      const combined = [...rawNormalSales, ...rawSpecialSales];
+      // ລຽງວັນທີ ໃໝ່ -> ເກົ່າ
+      combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setSales(combined);
+  }, [rawNormalSales, rawSpecialSales]);
+
+  // 3. Filter Logic (ແກ້ໄຂໃຫ້ຊັດເຈນຂຶ້ນ)
+  useEffect(() => {
+    // ກຳນົດເວລາເລີ່ມຕົ້ນ ແລະ ສິ້ນສຸດ ໃຫ້ຄອບຄຸມ
     let start = new Date(currentDate);
     let end = new Date(currentDate);
     
-    if (filterType === 'custom') {
-        start = new Date(startDate);
-        end = new Date(endDate);
-    } else {
-        if (filterType === 'week') {
-            const day = start.getDay();
-            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-            start.setDate(diff);
-            end.setDate(start.getDate() + 6);
-        } else if (filterType === 'month') {
-            start.setDate(1);
-            end.setMonth(start.getMonth() + 1, 0);
-        } else if (filterType === 'year') {
-            start.setMonth(0, 1);
-            end.setMonth(11, 31);
-        }
-    }
-
+    // Reset ເວລາເປັນ 00:00:00
     start.setHours(0, 0, 0, 0);
+    // Reset ເວລາເປັນ 23:59:59
     end.setHours(23, 59, 59, 999);
 
+    if (filterType === 'custom') {
+        start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        
+        end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+    } else if (filterType === 'week') {
+        // ຫາວັນຈັນ ຂອງອາທິດນີ້
+        const day = start.getDay(); 
+        const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+        start.setDate(diff);
+        
+        // ຫາວັນອາທິດ
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+    } else if (filterType === 'month') {
+        start.setDate(1); // ວັນທີ 1
+        end = new Date(start);
+        end.setMonth(start.getMonth() + 1);
+        end.setDate(0); // ວັນສຸດທ້າຍຂອງເດືອນ
+        end.setHours(23, 59, 59, 999);
+    } else if (filterType === 'year') {
+        start.setMonth(0, 1); // 1 ມັງກອນ
+        end = new Date(start);
+        end.setFullYear(start.getFullYear() + 1);
+        end.setDate(0); // 31 ທັນວາ
+        end.setHours(23, 59, 59, 999);
+    }
+
+    console.log(`🔎 Filtering: ${start.toLocaleString()} - ${end.toLocaleString()}`);
+
     const filtered = sales.filter(item => {
-      const d = new Date(item.date);
-      return d >= start && d <= end;
+      if (!item.date) return false;
+      const itemDate = new Date(item.date);
+      return itemDate >= start && itemDate <= end;
     });
+    
+    console.log("📊 Filtered Count:", filtered.length);
     setFilteredSales(filtered);
+
   }, [sales, filterType, currentDate, startDate, endDate]);
 
   // --- Functions ---
-
-  // 🟢 2. Delete: ກວດສອບຊະນິດຂໍ້ມູນກ່ອນລຶບ
   const handleDelete = (item: any) => {
-    const isSpecial = item.sourceType === 'special';
-    const dbPath = isSpecial ? `special_sales/${item.id}` : `sales/${item.id}`;
-    const title = isSpecial ? 'ລຶບລາຍການພິເສດ' : 'ລຶບບິນຂາຍ';
+    const node = item.sourceType === 'special' ? 'special_sales' : 'sales';
+    const title = item.sourceType === 'special' ? 'ລຶບລາຍການພິເສດ' : 'ລຶບບິນຂາຍ';
 
     Alert.alert('ຢືນຢັນ', `ຕ້ອງການ${title}ນີ້ແທ້ບໍ່?`, [
       { text: 'ຍົກເລີກ', style: 'cancel' },
-      { text: 'ລຶບ', style: 'destructive', onPress: () => remove(ref(db, dbPath)) }
+      { text: 'ລຶບ', style: 'destructive', onPress: () => remove(ref(db, `${node}/${item.id}`)) }
     ]);
   };
 
-  // 🟢 3. Edit: ເປີດ Modal (ສະເພາະຂາຍພິເສດ)
   const openEditModal = (item: any) => {
       setEditingItem(item);
       setEditDescription(item.description || item.note || '');
@@ -167,7 +188,6 @@ export default function SalesHistoryScreen() {
 
   const handleSaveEdit = async () => {
       if (!editAmount || !editingItem) return;
-
       try {
           const updateRef = ref(db, `special_sales/${editingItem.id}`);
           await update(updateRef, {
@@ -183,7 +203,6 @@ export default function SalesHistoryScreen() {
       }
   };
 
-  // 🟢 4. Export CSV: ຮອງຮັບທັງ 2 ແບບ
   const handleExport = async () => {
     if (filteredSales.length === 0) {
         Alert.alert('ແຈ້ງເຕືອນ', 'ບໍ່ມີຂໍ້ມູນໃນຊ່ວງເວລານີ້');
@@ -208,7 +227,7 @@ export default function SalesHistoryScreen() {
             const correctTotalLAK = getCorrectTotalLAK(item);
             totalTHB = item.currency === 'THB' ? Math.ceil(correctTotalLAK / (item.exchangeRateUsed || FIXED_EXCHANGE_RATE)) : 0;
             totalLAK = item.currency === 'LAK' ? correctTotalLAK : 0;
-            desc = item.items.map((i: any) => `${i.name} (x${i.quantity})`).join('; ');
+            desc = item.items ? item.items.map((i: any) => `${i.name} (x${i.quantity})`).join('; ') : "";
         }
         
         const dateStr = new Date(item.date).toLocaleDateString('en-GB');
@@ -287,7 +306,6 @@ export default function SalesHistoryScreen() {
       <View style={[styles.card, isSpecial && { borderLeftWidth: 5, borderLeftColor: SPECIAL_COLOR }]}>
         <TouchableOpacity style={styles.cardHeader} onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}>
             <View>
-                {/* Header ຂອງ Card */}
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
                     {isSpecial && <View style={styles.specialTag}><Text style={styles.specialTagText}>ຂາຍພິເສດ</Text></View>}
                     <Text style={styles.billId}>#{item.id ? item.id.slice(-4) : '...'}</Text>
@@ -303,8 +321,6 @@ export default function SalesHistoryScreen() {
         {expandedId === item.id && (
             <View style={styles.details}>
                 <View style={[styles.expandedContent, {padding: 15}]}>
-                    
-                    {/* ລາຍລະອຽດ: ແຍກຕາມປະເພດ */}
                     {isSpecial ? (
                         <View>
                             <Text style={styles.label}>ລາຍລະອຽດ:</Text>
@@ -321,7 +337,6 @@ export default function SalesHistoryScreen() {
                         ))
                     )}
                     
-                    {/* ສ່ວນຫຼຸດ (ສະເພາະຂາຍປົກກະຕິ) */}
                     {!isSpecial && item.discount > 0 && (
                         <View style={styles.itemRow}>
                             <Text style={[styles.itemName, {color: 'red'}]}>ສ່ວນຫຼຸດ</Text>
@@ -331,9 +346,7 @@ export default function SalesHistoryScreen() {
 
                     <View style={styles.divider} />
 
-                    {/* ປຸ່ມຈັດການ */}
                     <View style={styles.actionRow}>
-                        {/* ປຸ່ມແກ້ໄຂ: ສະແດງສະເພາະຂາຍພິເສດ */}
                         {isSpecial && hasPermission('canEditProduct') && (
                             <TouchableOpacity style={styles.editBtn} onPress={() => openEditModal(item)}>
                                 <Ionicons name="pencil" size={18} color="white" />
@@ -341,7 +354,6 @@ export default function SalesHistoryScreen() {
                             </TouchableOpacity>
                         )}
 
-                        {/* ປຸ່ມລຶບ */}
                         {hasPermission('canDeleteProduct') && (
                             <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
                                 <Ionicons name="trash-outline" size={18} color="white" />
@@ -356,7 +368,7 @@ export default function SalesHistoryScreen() {
     );
   };
 
-  // 🔴 Check Permissions: ວາງໄວ້ລຸ່ມສຸດ ຫຼັງ Hooks ທັງໝົດ
+  // Check Permissions (ວາງລຸ່ມສຸດ)
   if (!hasPermission('accessReports')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -415,34 +427,24 @@ export default function SalesHistoryScreen() {
         data={filteredSales}
         keyExtractor={item => item.id}
         contentContainerStyle={{ padding: 15 }}
-        ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ພົບປະຫວັດການຂາຍ</Text>}
+        ListEmptyComponent={
+            <View style={{alignItems: 'center', marginTop: 50}}>
+                <Ionicons name="document-text-outline" size={50} color="#ddd" />
+                <Text style={styles.emptyText}>ບໍ່ພົບປະຫວັດການຂາຍໃນຊ່ວງເວລານີ້</Text>
+            </View>
+        }
         renderItem={renderItem}
       />
 
-      {/* Modal ແກ້ໄຂ */}
       <Modal visible={showEditModal} transparent animationType="slide">
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
                 <View style={styles.modalContent}>
                     <Text style={styles.modalTitle}>ແກ້ໄຂລາຍການພິເສດ</Text>
-                    
                     <Text style={styles.label}>ລາຍລະອຽດ:</Text>
-                    <TextInput 
-                        style={styles.input} 
-                        value={editDescription} 
-                        onChangeText={setEditDescription} 
-                        placeholder="ໃສ່ລາຍລະອຽດ..."
-                    />
-
+                    <TextInput style={styles.input} value={editDescription} onChangeText={setEditDescription} />
                     <Text style={styles.label}>ຈຳນວນເງິນ:</Text>
-                    <TextInput 
-                        style={styles.input} 
-                        value={editAmount} 
-                        onChangeText={setEditAmount} 
-                        placeholder="0"
-                        keyboardType="numeric"
-                    />
-
+                    <TextInput style={styles.input} value={editAmount} onChangeText={setEditAmount} keyboardType="numeric" />
                     <View style={styles.modalBtnRow}>
                         <TouchableOpacity style={[styles.modalBtn, {backgroundColor: '#ccc'}]} onPress={() => setShowEditModal(false)}>
                             <Text style={styles.btnText}>ຍົກເລີກ</Text>
@@ -456,7 +458,6 @@ export default function SalesHistoryScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Date Picker */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
             <Modal visible={true} transparent animationType="fade">
@@ -492,7 +493,6 @@ const styles = StyleSheet.create({
   header: { padding: 20, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS?.text || '#333' },
   exportBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0F2F1', padding: 8, borderRadius: 8 },
-  
   dateNavContainer: { backgroundColor: 'white', paddingBottom: 10, alignItems: 'center' },
   dateNav: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f9f9f9', padding: 8, borderRadius: 10, minWidth: 200, justifyContent: 'center' },
   customDateNav: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -500,44 +500,35 @@ const styles = StyleSheet.create({
   dateSmallLabel: { fontSize: 10, color: '#999', fontFamily: 'Lao-Regular' },
   dateValue: { fontSize: 12, fontFamily: 'Lao-Bold', color: '#333' },
   dateLabel: { fontFamily: 'Lao-Bold', fontSize: 14 },
-
   filterBar: { flexDirection: 'row', backgroundColor: 'white', padding: 10, justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
   filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0' },
   activeFilter: { backgroundColor: COLORS?.primary || '#008B94' },
   filterText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
-  
   card: { backgroundColor: 'white', borderRadius: 12, marginBottom: 10, overflow: 'hidden', elevation: 2 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 },
   billId: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#333' },
   dateText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#888' },
   amountText: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS?.primary || '#008B94' },
   paymentText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
-  
   specialTag: { backgroundColor: SPECIAL_COLOR, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   specialTagText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
-
   details: { backgroundColor: 'white' },
   expandedContent: { backgroundColor: '#f9f9f9', padding: 10 },
   divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   itemName: { fontFamily: 'Lao-Regular', fontSize: 14, color: '#333' },
   itemPrice: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#333' },
-  
   actionRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 15 },
   editBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 5 },
   deleteBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF5252', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 5 },
   btnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 12 },
-
   label: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 2 },
   value: { fontFamily: 'Lao-Regular', fontSize: 16, color: '#333', marginBottom: 10 },
-
   emptyText: { textAlign: 'center', marginTop: 10, color: '#999', fontFamily: 'Lao-Regular' },
-  
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   dateContainer: { backgroundColor: 'white', padding: 20, borderRadius: 15, width: '90%', alignItems: 'center' },
   closeBtn: { marginTop: 15, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 10, width: '100%', alignItems: 'center' },
   closeBtnText: { fontFamily: 'Lao-Bold', color: '#333' },
-
   modalContent: { backgroundColor: 'white', width: '85%', padding: 20, borderRadius: 15 },
   modalTitle: { fontFamily: 'Lao-Bold', fontSize: 18, marginBottom: 15, textAlign: 'center' },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, marginBottom: 15, fontFamily: 'Lao-Regular', fontSize: 16 },

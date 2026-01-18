@@ -3,24 +3,22 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
-// 🟢 2. Import Auth Hook
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS, formatDate, formatNumber } from '../../types';
 import CurrencyInput from '../ui/CurrencyInput';
@@ -56,7 +54,6 @@ interface DebtItem {
 }
 
 export default function DebtScreen() {
-  // 🟢 3. ເອີ້ນໃຊ້ Hook
   const { hasPermission } = useAuth();
 
   const [debts, setDebts] = useState<DebtItem[]>([]);
@@ -81,20 +78,10 @@ export default function DebtScreen() {
   const [payAmount, setPayAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date());
 
-  // 🟢 4. ກວດສອບສິດ (Security Check)
-  if (!hasPermission('accessFinancial')) {
-      return (
-          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
-              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
-                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
-              </Text>
-          </View>
-      );
-  }
-
   // 1. Fetch Data
   useEffect(() => {
+    if (!hasPermission('accessFinancial')) return;
+
     const debtRef = ref(db, 'debts');
     const unsubscribe = onValue(debtRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -119,10 +106,8 @@ export default function DebtScreen() {
                 dueDate: item.dueDate || new Date().toISOString()
             };
         });
-        console.log(`✅ Debts Loaded: ${list.length}`);
         setDebts(list.reverse() as DebtItem[]);
       } else {
-        console.log("⚠️ No Debts Found");
         setDebts([]);
       }
     }, (error) => {
@@ -315,12 +300,23 @@ export default function DebtScreen() {
     );
   };
 
+  // Security Check (Last Step)
+  if (!hasPermission('accessFinancial')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
+                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
+              </Text>
+          </View>
+      );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with Add Button */}
       <View style={styles.headerContainer}>
         <View style={{flex: 1}}>
-            <Text style={styles.headerTitle}>ຕິດຕາມໜີ້ສິນ (Loans)</Text>
+            <Text style={styles.headerTitle}>ໜີ້ຕ້ອງສົ່ງ (Payables)</Text>
             <Text style={styles.headerSub}>ຈັດການເງິນກູ້ ແລະ ການຜ່ອນຊຳລະ</Text>
         </View>
         <TouchableOpacity style={styles.headerAddBtn} onPress={() => { resetForm(); setModalVisible(true); }}>
@@ -341,6 +337,11 @@ export default function DebtScreen() {
             </View>
         }
       />
+
+      <TouchableOpacity style={styles.fab} onPress={() => { resetForm(); setModalVisible(true); }}>
+        <Ionicons name="add" size={24} color="white" />
+        <Text style={styles.fabText}>ເພີ່ມໜີ້</Text>
+      </TouchableOpacity>
 
       {/* Add/Edit Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
@@ -511,5 +512,26 @@ const styles = StyleSheet.create({
 
   historyItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   historyDate: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
-  historyAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.success }
+  historyAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.success },
+
+  // 🟢 FAB Styles (ແກ້ໄຂທີ່ຂາດໄປ)
+  fab: { 
+    position: 'absolute', 
+    bottom: 20, 
+    right: 20, 
+    backgroundColor: COLORS.primary, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 12, 
+    paddingHorizontal: 20, 
+    borderRadius: 30, 
+    elevation: 5,
+    zIndex: 999 
+  },
+  fabText: { 
+    color: 'white', 
+    fontFamily: 'Lao-Bold', 
+    fontSize: 16, 
+    marginLeft: 8 
+  },
 });

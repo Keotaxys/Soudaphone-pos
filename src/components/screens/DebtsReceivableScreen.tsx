@@ -3,21 +3,25 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { db } from '../../firebase';
+// 🟢 2. Import Auth Hook
+import { useAuth } from '../../hooks/useAuth';
 import { COLORS, formatDate, formatNumber } from '../../types';
 import CurrencyInput from '../ui/CurrencyInput';
 
@@ -45,12 +49,15 @@ interface DebtItem {
   remaining: number;
   note: string;
   date: string;
-  currency: 'LAK' | 'THB'; // 🟢 ເພີ່ມ Field currency
+  currency: 'LAK' | 'THB';
   history?: Record<string, any>;
   [key: string]: any; 
 }
 
 export default function DebtsReceivableScreen() {
+  // 🟢 3. ເອີ້ນໃຊ້ Hook
+  const { hasPermission } = useAuth();
+
   const [debts, setDebts] = useState<DebtItem[]>([]);
   
   // Modals
@@ -62,26 +69,36 @@ export default function DebtsReceivableScreen() {
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [selectedDebt, setSelectedDebt] = useState<DebtItem | null>(null);
 
-  // Form States (Add/Edit)
+  // Form States
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [customer, setCustomer] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date());
-  const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK'); // 🟢 State ສະກຸນເງິນ
+  const [currency, setCurrency] = useState<'LAK' | 'THB'>('LAK'); 
   
-  // Payment Form
   const [payAmount, setPayAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date());
 
-  // Date Picker Config
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateMode, setDateMode] = useState<'due' | 'payment'>('due');
+
+  // 🟢 4. ກວດສອບສິດ (Security Check)
+  if (!hasPermission('accessFinancial')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
+                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
+              </Text>
+          </View>
+      );
+  }
 
   // 1. Fetch Data
   useEffect(() => {
     const debtRef = ref(db, 'debts_receivable');
-    return onValue(debtRef, (snapshot) => {
+    const unsubscribe = onValue(debtRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const list = Object.keys(data).map(key => {
@@ -89,15 +106,20 @@ export default function DebtsReceivableScreen() {
             return { 
                 id: key, 
                 ...item,
-                currency: item.currency || 'LAK', // Default to LAK if missing
+                currency: item.currency || 'LAK',
                 remaining: item.remaining !== undefined ? item.remaining : (item.totalAmount - (item.paidAmount || 0))
             };
         });
+        console.log(`✅ Debts Loaded: ${list.length}`);
         setDebts(list.reverse() as DebtItem[]);
       } else {
+        console.log("⚠️ No Debts Found");
         setDebts([]);
       }
+    }, (error) => {
+        console.error("Debt Load Error:", error);
     });
+    return () => unsubscribe();
   }, []);
 
   // 2. History Logic
@@ -117,7 +139,7 @@ export default function DebtsReceivableScreen() {
     }
   }, [debts, selectedDebt, historyModalVisible]);
 
-  // 🟢 ບັນທຶກ (Save)
+  // Save Debt
   const handleSaveDebt = async () => {
     if (!customer || !amount) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ລູກຄ້າ ແລະ ຈຳນວນເງິນ');
@@ -132,7 +154,7 @@ export default function DebtsReceivableScreen() {
       paidAmount: 0,
       remaining: total,
       note,
-      currency, // 🟢 ບັນທຶກສະກຸນເງິນ
+      currency,
       date: date.toISOString(),
       status: 'PENDING',
       updatedAt: new Date().toISOString()
@@ -140,7 +162,6 @@ export default function DebtsReceivableScreen() {
 
     try {
       if (currentId) {
-          // Edit Mode
           const oldDebt = debts.find(d => d.id === currentId);
           const oldPaid = oldDebt?.paidAmount || 0;
           const newRemaining = total - oldPaid;
@@ -152,7 +173,6 @@ export default function DebtsReceivableScreen() {
           });
           Alert.alert('ສຳເລັດ', 'ແກ້ໄຂຂໍ້ມູນຮຽບຮ້ອຍ');
       } else {
-          // Add Mode
           await push(ref(db, 'debts_receivable'), { ...debtData, createdAt: new Date().toISOString(), history: [] });
           Alert.alert('ສຳເລັດ', 'ເພີ່ມລາຍການໜີ້ຕ້ອງຮັບຮຽບຮ້ອຍ');
       }
@@ -168,7 +188,7 @@ export default function DebtsReceivableScreen() {
       setCustomer(item.customer);
       setAmount(formatNumber(item.totalAmount));
       setNote(item.note);
-      setCurrency(item.currency); // 🟢 Load existing currency
+      setCurrency(item.currency);
       setDate(new Date(item.date));
       setModalVisible(true);
   };
@@ -221,7 +241,7 @@ export default function DebtsReceivableScreen() {
     setCustomer('');
     setAmount('');
     setNote('');
-    setCurrency('LAK'); // Reset to default
+    setCurrency('LAK');
     setDate(new Date());
   };
 
@@ -260,7 +280,6 @@ export default function DebtsReceivableScreen() {
       setHistoryModalVisible(true);
   };
 
-  // Helper to get Symbol
   const getSymbol = (curr: string) => curr === 'THB' ? '฿' : '₭';
 
   const renderItem = ({ item }: { item: DebtItem }) => {
@@ -565,7 +584,7 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
   
-  // 🟢 Currency Selector Styles
+  // Currency Selector Styles
   currencyRow: { flexDirection: 'row', gap: 10, marginBottom: 5 },
   currencyOption: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8, borderWidth: 1, borderColor: COLORS.primary },
   currencyActive: { backgroundColor: COLORS.primary },

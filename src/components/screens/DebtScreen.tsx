@@ -3,21 +3,25 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { db } from '../../firebase';
+// 🟢 2. Import Auth Hook
+import { useAuth } from '../../hooks/useAuth';
 import { COLORS, formatDate, formatNumber } from '../../types';
 import CurrencyInput from '../ui/CurrencyInput';
 
@@ -52,6 +56,9 @@ interface DebtItem {
 }
 
 export default function DebtScreen() {
+  // 🟢 3. ເອີ້ນໃຊ້ Hook
+  const { hasPermission } = useAuth();
+
   const [debts, setDebts] = useState<DebtItem[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -74,10 +81,22 @@ export default function DebtScreen() {
   const [payAmount, setPayAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date());
 
+  // 🟢 4. ກວດສອບສິດ (Security Check)
+  if (!hasPermission('accessFinancial')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
+                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
+              </Text>
+          </View>
+      );
+  }
+
   // 1. Fetch Data
   useEffect(() => {
     const debtRef = ref(db, 'debts');
-    return onValue(debtRef, (snapshot) => {
+    const unsubscribe = onValue(debtRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const list = Object.keys(data).map(key => {
@@ -100,11 +119,16 @@ export default function DebtScreen() {
                 dueDate: item.dueDate || new Date().toISOString()
             };
         });
+        console.log(`✅ Debts Loaded: ${list.length}`);
         setDebts(list.reverse() as DebtItem[]);
       } else {
+        console.log("⚠️ No Debts Found");
         setDebts([]);
       }
+    }, (error) => {
+        console.error("Debt Load Error:", error);
     });
+    return () => unsubscribe();
   }, []);
 
   // 2. History Logic
@@ -293,13 +317,12 @@ export default function DebtScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 🟢 Header with Add Button (ຮັບປະກັນວ່າເຫັນປຸ່ມແນ່ນອນ) */}
+      {/* Header with Add Button */}
       <View style={styles.headerContainer}>
         <View style={{flex: 1}}>
             <Text style={styles.headerTitle}>ຕິດຕາມໜີ້ສິນ (Loans)</Text>
             <Text style={styles.headerSub}>ຈັດການເງິນກູ້ ແລະ ການຜ່ອນຊຳລະ</Text>
         </View>
-        {/* 🟢 ປຸ່ມເພີ່ມລາຍການຢູ່ບ່ອນນີ້ */}
         <TouchableOpacity style={styles.headerAddBtn} onPress={() => { resetForm(); setModalVisible(true); }}>
             <Ionicons name="add-circle" size={32} color={COLORS.primary} />
             <Text style={styles.headerAddText}>ເພີ່ມ</Text>
@@ -428,11 +451,9 @@ export default function DebtScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  // 🟢 Updated Header Style with Flex Row
   headerContainer: { backgroundColor: 'white', padding: 20, paddingBottom: 15, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, elevation: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text },
   headerSub: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
-  // 🟢 Header Add Button
   headerAddBtn: { alignItems: 'center' },
   headerAddText: { fontSize: 10, fontFamily: 'Lao-Bold', color: COLORS.primary },
 
@@ -465,7 +486,6 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
   
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, elevation: 5, maxHeight: '90%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
@@ -484,13 +504,11 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
   
-  // Date Picker Overlay
   datePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
   datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
   datePickerBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },
   datePickerBtnText: { fontFamily: 'Lao-Bold', color: COLORS.primary },
 
-  // History Styles
   historyItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   historyDate: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
   historyAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.success }

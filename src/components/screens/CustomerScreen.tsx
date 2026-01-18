@@ -11,18 +11,16 @@ import {
   Linking,
   Modal,
   Platform,
-  ScrollView, // 🟢 ຍ້າຍຂຶ້ນມາໄວ້ບ່ອນນີ້
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
-// 🟢 2. Import Hook
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS } from '../../types';
 
@@ -40,9 +38,9 @@ interface Customer {
 }
 
 export default function CustomerScreen() {
-  // 🟢 3. ເອີ້ນໃຊ້ Hook
   const { hasPermission } = useAuth();
 
+  // 🟢 1. ປະກາດ State ທັງໝົດກ່ອນ (ຫ້າມມີ return ກ່ອນໜ້ານີ້)
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -56,38 +54,27 @@ export default function CustomerScreen() {
   const [address, setAddress] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
-  // 🟢 4. ກວດສອບສິດ (Security Check)
-  if (!hasPermission('accessCustomers')) {
-      return (
-          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
-              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
-                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນລູກຄ້າ
-              </Text>
-          </View>
-      );
-  }
-
-  // 1. ດຶງຂໍ້ມູນລູກຄ້າ
+  // 🟢 2. useEffect ຕ້ອງຢູ່ບ່ອນນີ້ (ຫ້າມມີ return ກ່ອນໜ້ານີ້)
   useEffect(() => {
+    // ຖ້າບໍ່ມີສິດ ບໍ່ຕ້ອງດຶງຂໍ້ມູນ (ໃສ່ check ໃນນີ້ແທນ)
+    if (!hasPermission('accessCustomers')) return;
+
     const customerRef = ref(db, 'customers');
     const unsubscribe = onValue(customerRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        console.log(`✅ Customers Loaded: ${list.length}`);
         setCustomers(list.reverse() as Customer[]);
       } else {
-        console.log("⚠️ No Customers found");
         setCustomers([]);
       }
     }, (error) => {
-        console.error("Customer Load Error:", error); 
+        console.log(error); 
     });
     return () => unsubscribe();
   }, []);
 
-  // 2. ຈັດການຮູບພາບ
+  // --- Functions ---
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -109,7 +96,6 @@ export default function CustomerScreen() {
     }
   };
 
-  // 3. ບັນທຶກຂໍ້ມູນ
   const handleSave = async () => {
     if (!name || !phone) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ເບີໂທ');
@@ -133,7 +119,6 @@ export default function CustomerScreen() {
     }
   };
 
-  // 4. ລຶບຂໍ້ມູນ
   const handleDelete = (id: string) => {
     Alert.alert('ຢືນຢັນ', 'ຕ້ອງການລຶບຂໍ້ມູນລູກຄ້ານີ້ບໍ່?', [
       { text: 'ຍົກເລີກ', style: 'cancel' },
@@ -231,6 +216,19 @@ export default function CustomerScreen() {
     </View>
   );
 
+  // 🟢 3. ຍ້າຍການກວດສອບສິດ ມາໄວ້ບ່ອນນີ້ (ຫຼັງຈາກ Hooks ທັງໝົດ)
+  if (!hasPermission('accessCustomers')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
+                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນລູກຄ້າ
+              </Text>
+          </View>
+      );
+  }
+
+  // 4. Return ໜ້າຈໍຫຼັກ
   return (
     <SafeAreaView style={styles.container}>
       

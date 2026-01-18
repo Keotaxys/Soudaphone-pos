@@ -6,7 +6,6 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,6 +13,9 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native';
+// 🟢 1. ປ່ຽນມາໃຊ້ SafeAreaView ຈາກ library ນີ້ແທນ react-native
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS } from '../../types';
 
@@ -24,7 +26,6 @@ interface LoginScreenProps {
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const { login, loading } = useAuth();
   
-  // 🟢 ມີ 2 State ຄືເກົ່າ
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -35,7 +36,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       return;
     }
 
-    // ສົ່ງທັງ 2 ຄ່າໄປກວດສອບ
     const success = await login(username, password);
     
     if (success) {
@@ -45,6 +45,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      {/* 🟢 ໃຊ້ SafeAreaView ທີ່ import ມາໃໝ່ */}
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -63,7 +64,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <View style={styles.formContainer}>
             <Text style={styles.loginText}>ເຂົ້າສູ່ລະບົບ (Login)</Text>
 
-            {/* 🟢 ຊ່ອງທີ່ 1: Username */}
+            {/* Username Input */}
             <View style={styles.inputWrapper}>
               <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
               <TextInput
@@ -75,7 +76,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               />
             </View>
 
-            {/* 🟢 ຊ່ອງທີ່ 2: Password (Full Keyboard) */}
+            {/* Password Input */}
             <View style={styles.inputWrapper}>
               <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
               <TextInput
@@ -84,7 +85,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
-                // ⚠️ ໃຊ້ default ເພື່ອໃຫ້ມີແປ້ນພິມຄົບ (ຕົວເລກ, ຕົວໜັງສື, @)
                 keyboardType="default" 
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
@@ -128,7 +128,6 @@ const styles = StyleSheet.create({
   inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: 12, paddingHorizontal: 15, marginBottom: 15, borderWidth: 1, borderColor: '#eee', height: 55 },
   inputIcon: { marginRight: 10 },
   
-  // ໃຊ້ Font ປົກກະຕິ ເພື່ອໃຫ້ພິມງ່າຍ
   input: { flex: 1, fontSize: 16, height: '100%', fontFamily: 'Lao-Regular' },
   
   loginBtn: { backgroundColor: COLORS?.primary || '#008B94', borderRadius: 12, height: 55, justifyContent: 'center', alignItems: 'center', marginTop: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },

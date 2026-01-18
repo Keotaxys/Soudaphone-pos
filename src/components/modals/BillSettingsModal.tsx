@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { onValue, ref, set } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -13,22 +14,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  ActivityIndicator
+  View
 } from 'react-native';
 
-// ⚠️ ໃຫ້ກວດເບິ່ງ path ຂອງ firebase ແລະ COLORS ໃຫ້ຖືກກັບເຄື່ອງຂອງທ່ານ
 import { db } from '../../firebase';
-// import { COLORS } from '../../types'; 
-
-// ຖ້າທ່ານຍັງບໍ່ມີຟາຍ COLORS, ໃຊ້ໂຕນີ້ແທນຊົ່ວຄາວ:
-const COLORS = {
-  primary: '#007AFF',
-  text: '#333333',
-  background: '#FFFFFF',
-  border: '#EEEEEE',
-  placeholder: '#999999'
-};
+// 🟢 1. ເປີດໃຊ້ Import ນີ້ ແລະ ລຶບ const COLORS ທາງລຸ່ມອອກ
+import { COLORS } from '../../types';
 
 interface BillSettingsModalProps {
   visible: boolean;
@@ -41,7 +32,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
   const [phone, setPhone] = useState('');
   const [footerText, setFooterText] = useState('');
   const [logo, setLogo] = useState('');
-  const [loading, setLoading] = useState(false); // ເພີ່ມສະຖານະ Loading
+  const [loading, setLoading] = useState(false);
 
   // ດຶງຂໍ້ມູນເກົາມາສະແດງ
   useEffect(() => {
@@ -59,9 +50,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
     return () => unsubscribe();
   }, []);
 
-  // ຟັງຊັນເລືອກຮູບພາບ (ພ້ອມການຂໍ Permission)
   const pickLogo = async () => {
-    // 1. ຂໍອະນຸຍາດກ່ອນ
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (status !== 'granted') {
@@ -69,29 +58,26 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
       return;
     }
 
-    // 2. ເປີດບ່ອນເລືອກຮູບ
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [1, 1], // ບັງຄັບເປັນຮູບຈັດຕຸລັດ
-      quality: 0.5,   // ຫຼຸດຄຸນນະພາບລົງເຫຼືອ 50% ເພື່ອບໍ່ໃຫ້ໜັກ Database
-      base64: true,   // ຈຳເປັນຕ້ອງໃຊ້ base64
+      aspect: [1, 1],
+      quality: 0.5, 
+      base64: true,
     });
 
     if (!result.canceled && result.assets[0].base64) {
-      // ຕ້ອງມີ prefix data:image... ຈຶ່ງຈະສະແດງຜົນໄດ້
       setLogo(`data:image/jpeg;base64,${result.assets[0].base64}`);
     }
   };
 
-  // ຟັງຊັນບັນທຶກຂໍ້ມູນ
   const handleSave = async () => {
     if (!shopName.trim()) {
       Alert.alert('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ຮ້ານ');
       return;
     }
 
-    setLoading(true); // ເລີ່ມໂຫຼດ
+    setLoading(true);
 
     try {
       await set(ref(db, 'billSettings'), {
@@ -107,7 +93,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
       console.error(error);
       Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ');
     } finally {
-      setLoading(false); // ຢຸດໂຫຼດ
+      setLoading(false);
     }
   };
 
@@ -116,7 +102,6 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
         <View style={styles.container}>
           
-          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>ຕັ້ງຄ່າໃບບິນ (Bill Settings)</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
@@ -125,7 +110,6 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Logo Section */}
             <TouchableOpacity style={styles.logoPicker} onPress={pickLogo}>
               {logo ? (
                 <Image source={{ uri: logo }} style={styles.logo} />
@@ -135,13 +119,11 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
                   <Text style={styles.placeholderText}>ເລືອກໂລໂກ້</Text>
                 </View>
               )}
-              {/* ໄອຄອນສໍນ້ອຍໆ */}
               <View style={styles.editIconContainer}>
                  <Ionicons name="pencil" size={12} color="white" />
               </View>
             </TouchableOpacity>
 
-            {/* Form Inputs */}
             <Text style={styles.label}>ຊື່ຮ້ານ (ຫົວບິນ) <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput 
               style={styles.input} 
@@ -177,7 +159,6 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
               numberOfLines={3}
             />
 
-            {/* Save Button */}
             <TouchableOpacity 
               style={[styles.saveBtn, loading && styles.disabledBtn]} 
               onPress={handleSave}
@@ -227,7 +208,7 @@ const styles = StyleSheet.create({
   },
   title: { 
     fontSize: 18, 
-    fontFamily: 'Lao-Bold', // ຖ້າບໍ່ມີ font ນີ້ ໃຫ້ລຶບແຖວນີ້ອອກ
+    fontFamily: 'Lao-Bold', 
     fontWeight: 'bold',
     color: COLORS.text 
   },
@@ -256,22 +237,22 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontSize: 12,
-    color: COLORS.placeholder,
+    color: '#999',
     marginTop: 5,
-    fontFamily: 'Lao-Regular' // ຖ້າບໍ່ມີ font ນີ້ ໃຫ້ລຶບແຖວນີ້ອອກ
+    fontFamily: 'Lao-Regular'
   },
   editIconContainer: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primary, // 🟢 ຈະໃຊ້ສີ Teal ຕາມ Theme
     padding: 6,
     borderRadius: 15,
     borderWidth: 2,
     borderColor: 'white'
   },
   label: { 
-    fontFamily: 'Lao-Bold', // ຖ້າບໍ່ມີ font ນີ້ ໃຫ້ລຶບແຖວນີ້ອອກ
+    fontFamily: 'Lao-Bold',
     fontWeight: '600',
     fontSize: 14, 
     marginBottom: 5, 
@@ -282,9 +263,9 @@ const styles = StyleSheet.create({
     padding: 12, 
     borderRadius: 10, 
     borderWidth: 1, 
-    borderColor: COLORS.border, 
+    borderColor: '#eee', 
     marginBottom: 15, 
-    fontFamily: 'Lao-Regular', // ຖ້າບໍ່ມີ font ນີ້ ໃຫ້ລຶບແຖວນີ້ອອກ
+    fontFamily: 'Lao-Regular',
     fontSize: 16
   },
   textArea: {
@@ -292,7 +273,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top'
   },
   saveBtn: { 
-    backgroundColor: COLORS.primary, 
+    backgroundColor: COLORS.primary, // 🟢 ຈະໃຊ້ສີ Teal ຕາມ Theme
     padding: 15, 
     borderRadius: 10, 
     alignItems: 'center', 
@@ -304,7 +285,7 @@ const styles = StyleSheet.create({
   },
   saveBtnText: { 
     color: 'white', 
-    fontFamily: 'Lao-Bold', // ຖ້າບໍ່ມີ font ນີ້ ໃຫ້ລຶບແຖວນີ້ອອກ
+    fontFamily: 'Lao-Bold',
     fontWeight: 'bold',
     fontSize: 16 
   }

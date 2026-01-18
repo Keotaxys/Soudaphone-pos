@@ -50,8 +50,6 @@ export interface SaleRecord {
   date: string;
   status: string;
   createdAt: string;
-  
-  // ➕ ແນະນຳໃຫ້ເພີ່ມແຖວນີ້ (ໃສ່ ? ໝາຍຄວາມວ່າ ມີ ຫຼື ບໍ່ມີກໍໄດ້)
   isSpecial?: boolean; 
 }
 
@@ -151,38 +149,31 @@ export interface ShiftRecord {
   actualCashTHB?: number;
   note?: string;
 }
-// 🟢 User Permissions Interface (ລາຍການສິດທັງໝົດ)
-export interface UserPermissions {
-  canSell: boolean;           // ສິດຂາຍສິນຄ້າ
-  canEditProduct: boolean;    // ສິດແກ້ໄຂສິນຄ້າ
-  canDeleteProduct: boolean;  // ສິດລຶບສິນຄ້າ
-  canViewReports: boolean;    // ສິດເບິ່ງລາຍງານ
-  canManageUsers: boolean;    // ສິດຈັດການພະນັກງານ
-}
 
-// 🟢 User Interface (ຂໍ້ມູນຜູ້ໃຊ້)
-export interface User {
-  id?: string;
-  name: string;
-  pin: string;            // PIN 4 ຫຼັກ ສຳລັບ Login
-  role: 'admin' | 'staff';
-  isActive: boolean;      // ເປີດ/ປິດ ການໃຊ້ງານ (ຖ້າລາອອກກໍປິດເປັນ false)
-  permissions?: UserPermissions; // ຖ້າເປັນ admin ອາດຈະບໍ່ມີຄ່ານີ້ກໍໄດ້
-  createdAt: string;
-}
-// ໃນຟາຍ src/types.ts
+// 🟢 13. User Permissions Interface (ລວມກັນແລ້ວ)
 export interface UserPermissions {
-  // ສິດເດີມ (Functional Permissions)
+  // Functional Permissions
   canSell: boolean;
   canEditProduct: boolean;
   canDeleteProduct: boolean;
   canViewReports: boolean;
   canManageUsers: boolean;
 
-  // 🟢 ເພີ່ມໃໝ່: ສິດການເຂົ້າເຖິງໜ້າ (Page Access Permissions)
-  accessPos: boolean;       // ເຂົ້າໜ້າຂາຍ
-  accessProducts: boolean;  // ເຂົ້າໜ້າສິນຄ້າ
-  accessCustomers: boolean; // ເຂົ້າໜ້າລູກຄ້າ
-  accessReports: boolean;   // ເຂົ້າໜ້າລາຍງານ
-  accessFinancial: boolean; // ເຂົ້າໜ້າການເງິນ (ລາຍຈ່າຍ/ໜີ້)
+  // Page Access Permissions (ເພີ່ມໃໝ່)
+  accessPos: boolean;
+  accessProducts: boolean;
+  accessCustomers: boolean;
+  accessReports: boolean;
+  accessFinancial: boolean;
+}
+
+// 🟢 14. User Interface
+export interface User {
+  id?: string;
+  name: string;
+  pin: string;
+  role: 'admin' | 'staff';
+  isActive: boolean;
+  permissions?: UserPermissions;
+  createdAt: string;
 }

@@ -7,21 +7,22 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Keyboard,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Keyboard,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { db } from '../../firebase';
+import { useAuth } from '../../hooks/useAuth';
 import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
-// 🟢 Import CurrencyInput
 import CurrencyInput from '../ui/CurrencyInput';
 
 const ORANGE_COLOR = '#F57C00';
@@ -35,6 +36,7 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export default function ExpenseScreen() {
+    const { hasPermission } = useAuth();
     
     const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -48,6 +50,18 @@ export default function ExpenseScreen() {
     
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+
+    // Check Permissions
+    if (!hasPermission('accessFinancial')) {
+        return (
+            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+                <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+                <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
+                    ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
+                </Text>
+            </View>
+        );
+    }
 
     useEffect(() => {
         const expenseRef = ref(db, 'expenses');
@@ -64,6 +78,9 @@ export default function ExpenseScreen() {
                 setExpenses([]);
             }
             setLoading(false);
+        }, (error) => {
+            console.error("Expense Load Error:", error);
+            setLoading(false);
         });
         return () => unsubscribe();
     }, []);
@@ -78,6 +95,10 @@ export default function ExpenseScreen() {
     };
 
     const handleExport = async () => {
+        if (expenses.length === 0) {
+            Alert.alert("ແຈ້ງເຕືອນ", "ບໍ່ມີຂໍ້ມູນໃຫ້ Export");
+            return;
+        }
         let csvContent = "Date,Category,Amount,Description\n";
         expenses.forEach(item => {
             csvContent += `${new Date(item.date).toLocaleDateString()},${item.category},${item.amount},${item.description || ''}\n`;
@@ -127,7 +148,7 @@ export default function ExpenseScreen() {
             date: selectedDate.toISOString(),
             category,
             description,
-            amount: parseFloat(amount), // CurrencyInput ສົ່ງມາເປັນ String ຕົວເລກລ້ວນແລ້ວ
+            amount: parseFloat(amount),
             createdAt: new Date().toISOString()
         };
         try {
@@ -153,7 +174,8 @@ export default function ExpenseScreen() {
     const handleEdit = (item: ExpenseRecord) => {
         setId(item.id!);
         setAmount(item.amount.toString());
-        setDescription(item.description);
+        // 🟢 ແກ້ໄຂບ່ອນນີ້: ໃສ່ || '' ເພື່ອກັນຄ່າ undefined
+        setDescription(item.description || ''); 
         setCategory(item.category);
         setSelectedDate(new Date(item.date));
     };
@@ -166,7 +188,6 @@ export default function ExpenseScreen() {
         setSelectedDate(new Date());
     };
 
-    // 🟢 ເປີດປະຕິທິນທັນທີ ແລະ ປິດ Keyboard
     const openDatePicker = () => {
         Keyboard.dismiss();
         setShowDatePicker(true);
@@ -179,10 +200,8 @@ export default function ExpenseScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* 🟢 ໃຊ້ ScrollView ແທນ FlatList ເພື່ອແກ້ບັນຫາ Keyboard ເດັ້ງ */}
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
                 
-                {/* ສ່ວນຟອມ (Header ເດີມ) */}
                 <View style={styles.formCard}>
                     <View style={styles.actionRowTop}>
                         <Text style={styles.headerTitle}>{id ? '✏️ ແກ້ໄຂ' : '➕ ເພີ່ມລາຍຈ່າຍ'}</Text>
@@ -214,7 +233,6 @@ export default function ExpenseScreen() {
 
                     <View style={styles.amountContainer}>
                         <Text style={[styles.currencyLabel, {color: ORANGE_COLOR}]}>₭</Text>
-                        {/* 🟢 ໃຊ້ CurrencyInput */}
                         <CurrencyInput 
                             style={[styles.amountInput, {color: ORANGE_COLOR}]} 
                             placeholder="0" 
@@ -240,7 +258,6 @@ export default function ExpenseScreen() {
 
                 <Text style={styles.listHeader}>📜 ປະຫວັດລາຍຈ່າຍ</Text>
 
-                {/* 🟢 Render List ດ້ວຍ Map ແທນ FlatList (ພາຍໃນ ScrollView) */}
                 {expenses.map((item) => (
                     <View key={item.id} style={styles.expenseItem}>
                         <View style={styles.dateBox}>
@@ -267,7 +284,6 @@ export default function ExpenseScreen() {
 
             </ScrollView>
 
-            {/* 🟢 Modal ວັນທີສຳລັບ iOS (ແກ້ໄຂ Dark Mode) */}
             {showDatePicker && (
                 Platform.OS === 'ios' ? (
                     <Modal visible={true} transparent={true} animationType="fade">
@@ -335,7 +351,6 @@ const styles = StyleSheet.create({
     saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
     cancelBtn: { width: 50, backgroundColor: '#eee', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     
-    // Header ຂອງ List
     listHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: '#666', marginTop: 15, marginBottom: 10, marginHorizontal: 15 },
     
     expenseItem: { flexDirection: 'row', backgroundColor: 'white', padding: 12, borderRadius: 12, marginBottom: 10, marginHorizontal: 15, alignItems: 'center', elevation: 1 },
@@ -352,7 +367,6 @@ const styles = StyleSheet.create({
     categoryItemText: { fontFamily: 'Lao-Regular', fontSize: 16, color: '#333' },
     closeModalBtn: { marginTop: 15, padding: 10, alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10 },
     
-    // iOS Date Picker Styles
     iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
     iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
     iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 }

@@ -18,9 +18,11 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ໃໝ່
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
+// 🟢 2. Import Hook
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS } from '../../types';
 
@@ -38,9 +40,10 @@ interface Customer {
 }
 
 export default function CustomerScreen() {
+  // 🟢 3. ເອີ້ນໃຊ້ Hook
   const { hasPermission } = useAuth();
 
-  // 🟢 1. ປະກາດ State ທັງໝົດກ່ອນ (ຫ້າມມີ return ກ່ອນໜ້ານີ້)
+  // --- State (ປະກາດໄວ້ເທິງສຸດ) ---
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -54,9 +57,9 @@ export default function CustomerScreen() {
   const [address, setAddress] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
-  // 🟢 2. useEffect ຕ້ອງຢູ່ບ່ອນນີ້ (ຫ້າມມີ return ກ່ອນໜ້ານີ້)
+  // 🟢 4. useEffect ດຶງຂໍ້ມູນ (ວາງໄວ້ບ່ອນນີ້)
   useEffect(() => {
-    // ຖ້າບໍ່ມີສິດ ບໍ່ຕ້ອງດຶງຂໍ້ມູນ (ໃສ່ check ໃນນີ້ແທນ)
+    // ຖ້າບໍ່ມີສິດ ກໍບໍ່ຕ້ອງດຶງ (ແຕ່ Hook ຍັງທຳງານຢູ່ ບໍ່ຜິດກົດ)
     if (!hasPermission('accessCustomers')) return;
 
     const customerRef = ref(db, 'customers');
@@ -64,12 +67,15 @@ export default function CustomerScreen() {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        
+        console.log(`✅ Customers Loaded: ${list.length} items`); // Debug Log
         setCustomers(list.reverse() as Customer[]);
       } else {
+        console.log("⚠️ No Customers Found");
         setCustomers([]);
       }
     }, (error) => {
-        console.log(error); 
+        console.error("Customer Load Error:", error); 
     });
     return () => unsubscribe();
   }, []);
@@ -216,7 +222,7 @@ export default function CustomerScreen() {
     </View>
   );
 
-  // 🟢 3. ຍ້າຍການກວດສອບສິດ ມາໄວ້ບ່ອນນີ້ (ຫຼັງຈາກ Hooks ທັງໝົດ)
+  // 🟢 5. ກວດສອບສິດ (Security Check) - ວາງໄວ້ລຸ່ມສຸດ ຫຼັງ Hooks
   if (!hasPermission('accessCustomers')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
@@ -228,7 +234,6 @@ export default function CustomerScreen() {
       );
   }
 
-  // 4. Return ໜ້າຈໍຫຼັກ
   return (
     <SafeAreaView style={styles.container}>
       

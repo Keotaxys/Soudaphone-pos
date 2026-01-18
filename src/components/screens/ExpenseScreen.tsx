@@ -18,9 +18,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
+// 🟢 2. Import Auth Hook
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
 import CurrencyInput from '../ui/CurrencyInput';
@@ -36,8 +38,10 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export default function ExpenseScreen() {
+    // 🟢 3. ເອີ້ນໃຊ້ Hook (ໄວ້ເທິງສຸດ)
     const { hasPermission } = useAuth();
     
+    // --- State Declarations (ໄວ້ບ່ອນນີ້ ຫ້າມມີ return ກ່ອນໜ້ານີ້) ---
     const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -51,19 +55,11 @@ export default function ExpenseScreen() {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
-    // Check Permissions
-    if (!hasPermission('accessFinancial')) {
-        return (
-            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
-                <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
-                <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
-                    ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
-                </Text>
-            </View>
-        );
-    }
-
+    // 🟢 4. useEffect: Fetch Data (ວາງໄວ້ບ່ອນນີ້)
     useEffect(() => {
+        // ຖ້າບໍ່ມີສິດ ໃຫ້ຢຸດການດຶງຂໍ້ມູນ (ແຕ່ Hook ຍັງຖືກປະກາດຢູ່ ບໍ່ຜິດກົດ)
+        if (!hasPermission('accessFinancial')) return;
+
         const expenseRef = ref(db, 'expenses');
         const unsubscribe = onValue(expenseRef, (snapshot) => {
             if (snapshot.exists()) {
@@ -72,9 +68,13 @@ export default function ExpenseScreen() {
                     id: key,
                     ...data[key]
                 }));
+                // ລຽງວັນທີ ໃໝ່ -> ເກົ່າ
                 list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                
+                // console.log(`✅ Expenses Loaded: ${list.length} items`);
                 setExpenses(list as ExpenseRecord[]);
             } else {
+                // console.log("⚠️ No Expenses Found");
                 setExpenses([]);
             }
             setLoading(false);
@@ -85,6 +85,7 @@ export default function ExpenseScreen() {
         return () => unsubscribe();
     }, []);
 
+    // --- Functions ---
     const handleDownloadTemplate = async () => {
         const csvContent = "Category,Amount,Description,Date(YYYY-MM-DD)\nຄ່າເຊົ່າ,500000,ຈ່າຍຄ່າເຊົ່າຮ້ານ,2024-01-01\n";
         const fileName = `${FileSystem.documentDirectory}expense_template.csv`;
@@ -174,7 +175,6 @@ export default function ExpenseScreen() {
     const handleEdit = (item: ExpenseRecord) => {
         setId(item.id!);
         setAmount(item.amount.toString());
-        // 🟢 ແກ້ໄຂບ່ອນນີ້: ໃສ່ || '' ເພື່ອກັນຄ່າ undefined
         setDescription(item.description || ''); 
         setCategory(item.category);
         setSelectedDate(new Date(item.date));
@@ -198,6 +198,19 @@ export default function ExpenseScreen() {
         if (date) setSelectedDate(date);
     };
 
+    // 🟢 5. ຍ້າຍການກວດສອບສິດມາໄວ້ບ່ອນນີ້! (ລຸ່ມສຸດ ຫຼັງ Hooks ທັງໝົດ)
+    if (!hasPermission('accessFinancial')) {
+        return (
+            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+                <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+                <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
+                    ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
+                </Text>
+            </View>
+        );
+    }
+
+    // Return ໜ້າຈໍຫຼັກ
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">

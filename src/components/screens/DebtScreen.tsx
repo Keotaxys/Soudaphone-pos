@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ (ຕາມໂຄງສ້າງໃໝ່ທີ່ຖືກຕ້ອງ)
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
@@ -78,8 +79,11 @@ export default function DebtScreen() {
   const [payAmount, setPayAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date());
 
+  // ❌ ລຶບການກວດສອບສິດບ່ອນນີ້ອອກ (ຍ້າຍໄປລຸ່ມສຸດ)
+
   // 1. Fetch Data
   useEffect(() => {
+    // 🟢 ກວດສອບສິດໃນນີ້ແທນ (ເພື່ອຢຸດການດຶງຂໍ້ມູນ)
     if (!hasPermission('accessFinancial')) return;
 
     const debtRef = ref(db, 'debts');
@@ -300,7 +304,7 @@ export default function DebtScreen() {
     );
   };
 
-  // Security Check (Last Step)
+  // 🟢 5. ຍ້າຍການກວດສອບສິດມາໄວ້ບ່ອນນີ້ (ແກ້ Error: Rendered more hooks)
   if (!hasPermission('accessFinancial')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
@@ -514,7 +518,7 @@ const styles = StyleSheet.create({
   historyDate: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
   historyAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.success },
 
-  // 🟢 FAB Styles (ແກ້ໄຂທີ່ຂາດໄປ)
+  // 🟢 ເພີ່ມ Styles FAB ທີ່ຂາດໄປ
   fab: { 
     position: 'absolute', 
     bottom: 20, 

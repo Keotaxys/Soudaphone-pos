@@ -25,7 +25,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { COLORS, formatNumber } from '../../types';
 
 const ORANGE_COLOR = '#FF8F00';
-const SPECIAL_COLOR = '#9C27B0';
+const SPECIAL_COLOR = '#9C27B0'; // ສີມ່ວງ ສຳລັບບິນຂາຍພິເສດ
 
 type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 const FIXED_EXCHANGE_RATE = 680;
@@ -37,12 +37,8 @@ const formatDateLao = (date: Date) => {
 export default function SalesHistoryScreen() {
   const { hasPermission } = useAuth();
 
-  // 🟢 1. ປ່ຽນມາໃຊ້ State ແຍກ ເພື່ອໃຫ້ React ອັບເດດທັນທີເມື່ອຂໍ້ມູນມາ
-  const [rawNormalSales, setRawNormalSales] = useState<any[]>([]);
-  const [rawSpecialSales, setRawSpecialSales] = useState<any[]>([]);
-  
-  // State ສຳລັບຂໍ້ມູນທີ່ລວມກັນແລ້ວ
-  const [sales, setSales] = useState<any[]>([]); 
+  // --- State ປະກາດໄວ້ທາງເທິງທັງໝົດ ---
+  const [sales, setSales] = useState<any[]>([]); // ຂໍ້ມູນລວມ
   const [filteredSales, setFilteredSales] = useState<any[]>([]);
   
   const [filterType, setFilterType] = useState<FilterType>('day');
@@ -54,51 +50,59 @@ export default function SalesHistoryScreen() {
   
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editDescription, setEditDescription] = useState('');
   const [editAmount, setEditAmount] = useState('');
 
-  // 🟢 2. useEffect ດຶງຂໍ້ມູນ (ແຍກກັນເພື່ອຄວາມຊັດເຈນ)
+  // 🟢 1. useEffect: ດຶງຂໍ້ມູນຈາກ sales ແລະ special_sales ມາລວມກັນ
   useEffect(() => {
     if (!hasPermission('accessReports')) return;
 
-    // ດຶງຍອດຂາຍທົ່ວໄປ
     const salesRef = ref(db, 'sales');
-    const unsubSales = onValue(salesRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const list = Object.keys(data).map(key => ({
-            id: key,
-            ...data[key],
-            sourceType: 'normal',
-            // ປ້ອງກັນກໍລະນີບໍ່ມີວັນທີ ໃຫ້ໃສ່ວັນທີປັດຈຸບັນແທນ (ເພື່ອ Debug)
-            date: data[key].date || new Date().toISOString() 
-        }));
-        console.log("Normal Sales Loaded:", list.length); // ເບິ່ງ Log
-        setRawNormalSales(list);
-      } else {
-        setRawNormalSales([]);
-      }
-    }, (error) => console.error("Sales Error:", error));
-
-    // ດຶງຍອດຂາຍພິເສດ
     const specialSalesRef = ref(db, 'special_sales');
-    const unsubSpecial = onValue(specialSalesRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const list = Object.keys(data).map(key => ({
-            id: key,
+
+    let normalSalesData: any[] = [];
+    let specialSalesData: any[] = [];
+
+    // ຟັງຊັນລວມ ແລະ ລຽງຂໍ້ມູນ
+    const mergeData = () => {
+        const combined = [...normalSalesData, ...specialSalesData];
+        // ລຽງຈາກ ໃໝ່ -> ເກົ່າ
+        combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setSales(combined);
+    };
+
+    // Listener 1: ຂາຍທົ່ວໄປ
+    const unsubSales = onValue(salesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        normalSalesData = Object.keys(data).map(key => ({ 
+            id: key, 
             ...data[key],
-            sourceType: 'special',
-            date: data[key].date || new Date().toISOString()
+            sourceType: 'normal' // ຫມາຍວ່າເປັນບິນປົກກະຕິ
         }));
-        console.log("Special Sales Loaded:", list.length); // ເບິ່ງ Log
-        setRawSpecialSales(list);
       } else {
-        setRawSpecialSales([]);
+        normalSalesData = [];
       }
-    }, (error) => console.error("Special Sales Error:", error));
+      mergeData();
+    });
+
+    // Listener 2: ຂາຍພິເສດ
+    const unsubSpecial = onValue(specialSalesRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          specialSalesData = Object.keys(data).map(key => ({ 
+              id: key, 
+              ...data[key],
+              sourceType: 'special' // ຫມາຍວ່າເປັນບິນພິເສດ
+          }));
+        } else {
+          specialSalesData = [];
+        }
+        mergeData();
+    });
 
     return () => {
         unsubSales();
@@ -106,15 +110,7 @@ export default function SalesHistoryScreen() {
     };
   }, []);
 
-  // 🟢 3. ລວມຂໍ້ມູນເມື່ອ raw data ປ່ຽນແປງ
-  useEffect(() => {
-      const combined = [...rawNormalSales, ...rawSpecialSales];
-      // ລຽງວັນທີ ໃໝ່ -> ເກົ່າ
-      combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setSales(combined);
-  }, [rawNormalSales, rawSpecialSales]);
-
-  // 🟢 4. Filter Logic (ກວດສອບວັນທີໃຫ້ລະອຽດຂຶ້ນ)
+  // Filter Logic
   useEffect(() => {
     let start = new Date(currentDate);
     let end = new Date(currentDate);
@@ -137,33 +133,31 @@ export default function SalesHistoryScreen() {
         }
     }
 
-    // ຕັ້ງເວລາໃຫ້ຄອບຄຸມທັງໝົດຂອງມື້ນັ້ນ
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
     const filtered = sales.filter(item => {
-      if (!item.date) return false; // ຖ້າບໍ່ມີວັນທີ ບໍ່ສະແດງ
       const d = new Date(item.date);
-      // ກວດສອບວ່າວັນທີ Valid ບໍ່
-      if (isNaN(d.getTime())) return false; 
-      
       return d >= start && d <= end;
     });
-    
     setFilteredSales(filtered);
   }, [sales, filterType, currentDate, startDate, endDate]);
 
   // --- Functions ---
+
+  // 🟢 2. Delete: ກວດສອບຊະນິດຂໍ້ມູນກ່ອນລຶບ
   const handleDelete = (item: any) => {
-    const node = item.sourceType === 'special' ? 'special_sales' : 'sales';
-    const title = item.sourceType === 'special' ? 'ລຶບລາຍການພິເສດ' : 'ລຶບບິນຂາຍ';
+    const isSpecial = item.sourceType === 'special';
+    const dbPath = isSpecial ? `special_sales/${item.id}` : `sales/${item.id}`;
+    const title = isSpecial ? 'ລຶບລາຍການພິເສດ' : 'ລຶບບິນຂາຍ';
 
     Alert.alert('ຢືນຢັນ', `ຕ້ອງການ${title}ນີ້ແທ້ບໍ່?`, [
       { text: 'ຍົກເລີກ', style: 'cancel' },
-      { text: 'ລຶບ', style: 'destructive', onPress: () => remove(ref(db, `${node}/${item.id}`)) }
+      { text: 'ລຶບ', style: 'destructive', onPress: () => remove(ref(db, dbPath)) }
     ]);
   };
 
+  // 🟢 3. Edit: ເປີດ Modal (ສະເພາະຂາຍພິເສດ)
   const openEditModal = (item: any) => {
       setEditingItem(item);
       setEditDescription(item.description || item.note || '');
@@ -173,6 +167,7 @@ export default function SalesHistoryScreen() {
 
   const handleSaveEdit = async () => {
       if (!editAmount || !editingItem) return;
+
       try {
           const updateRef = ref(db, `special_sales/${editingItem.id}`);
           await update(updateRef, {
@@ -188,6 +183,7 @@ export default function SalesHistoryScreen() {
       }
   };
 
+  // 🟢 4. Export CSV: ຮອງຮັບທັງ 2 ແບບ
   const handleExport = async () => {
     if (filteredSales.length === 0) {
         Alert.alert('ແຈ້ງເຕືອນ', 'ບໍ່ມີຂໍ້ມູນໃນຊ່ວງເວລານີ້');
@@ -291,6 +287,7 @@ export default function SalesHistoryScreen() {
       <View style={[styles.card, isSpecial && { borderLeftWidth: 5, borderLeftColor: SPECIAL_COLOR }]}>
         <TouchableOpacity style={styles.cardHeader} onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}>
             <View>
+                {/* Header ຂອງ Card */}
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
                     {isSpecial && <View style={styles.specialTag}><Text style={styles.specialTagText}>ຂາຍພິເສດ</Text></View>}
                     <Text style={styles.billId}>#{item.id ? item.id.slice(-4) : '...'}</Text>
@@ -307,6 +304,7 @@ export default function SalesHistoryScreen() {
             <View style={styles.details}>
                 <View style={[styles.expandedContent, {padding: 15}]}>
                     
+                    {/* ລາຍລະອຽດ: ແຍກຕາມປະເພດ */}
                     {isSpecial ? (
                         <View>
                             <Text style={styles.label}>ລາຍລະອຽດ:</Text>
@@ -323,6 +321,7 @@ export default function SalesHistoryScreen() {
                         ))
                     )}
                     
+                    {/* ສ່ວນຫຼຸດ (ສະເພາະຂາຍປົກກະຕິ) */}
                     {!isSpecial && item.discount > 0 && (
                         <View style={styles.itemRow}>
                             <Text style={[styles.itemName, {color: 'red'}]}>ສ່ວນຫຼຸດ</Text>
@@ -332,7 +331,9 @@ export default function SalesHistoryScreen() {
 
                     <View style={styles.divider} />
 
+                    {/* ປຸ່ມຈັດການ */}
                     <View style={styles.actionRow}>
+                        {/* ປຸ່ມແກ້ໄຂ: ສະແດງສະເພາະຂາຍພິເສດ */}
                         {isSpecial && hasPermission('canEditProduct') && (
                             <TouchableOpacity style={styles.editBtn} onPress={() => openEditModal(item)}>
                                 <Ionicons name="pencil" size={18} color="white" />
@@ -340,6 +341,7 @@ export default function SalesHistoryScreen() {
                             </TouchableOpacity>
                         )}
 
+                        {/* ປຸ່ມລຶບ */}
                         {hasPermission('canDeleteProduct') && (
                             <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
                                 <Ionicons name="trash-outline" size={18} color="white" />
@@ -354,6 +356,7 @@ export default function SalesHistoryScreen() {
     );
   };
 
+  // 🔴 Check Permissions: ວາງໄວ້ລຸ່ມສຸດ ຫຼັງ Hooks ທັງໝົດ
   if (!hasPermission('accessReports')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -375,6 +378,7 @@ export default function SalesHistoryScreen() {
         )}
       </View>
         
+      {/* Date Filter Bar */}
       <View style={styles.dateNavContainer}>
         {filterType !== 'custom' ? (
              <View style={styles.dateNav}>
@@ -411,15 +415,11 @@ export default function SalesHistoryScreen() {
         data={filteredSales}
         keyExtractor={item => item.id}
         contentContainerStyle={{ padding: 15 }}
-        ListEmptyComponent={
-            <View style={{alignItems: 'center', marginTop: 50}}>
-                <Ionicons name="document-text-outline" size={50} color="#ddd" />
-                <Text style={styles.emptyText}>ບໍ່ພົບປະຫວັດການຂາຍໃນຊ່ວງເວລານີ້</Text>
-            </View>
-        }
+        ListEmptyComponent={<Text style={styles.emptyText}>ບໍ່ພົບປະຫວັດການຂາຍ</Text>}
         renderItem={renderItem}
       />
 
+      {/* Modal ແກ້ໄຂ */}
       <Modal visible={showEditModal} transparent animationType="slide">
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
@@ -456,6 +456,7 @@ export default function SalesHistoryScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* Date Picker */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
             <Modal visible={true} transparent animationType="fade">

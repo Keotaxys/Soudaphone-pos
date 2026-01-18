@@ -20,7 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
-// 🟢 2. Import Auth Hook
+// 🟢 2. Import Hook
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS, formatDate, formatNumber } from '../../types';
 import CurrencyInput from '../ui/CurrencyInput';
@@ -55,9 +55,10 @@ interface DebtItem {
 }
 
 export default function DebtsReceivableScreen() {
-  // 🟢 3. ເອີ້ນໃຊ້ Hook
+  // 🟢 3. ເອີ້ນໃຊ້ Hook (ໄວ້ເທິງສຸດ)
   const { hasPermission } = useAuth();
 
+  // --- State Declarations (ໄວ້ບ່ອນນີ້ ຫ້າມມີ return ກ່ອນໜ້ານີ້) ---
   const [debts, setDebts] = useState<DebtItem[]>([]);
   
   // Modals
@@ -83,20 +84,11 @@ export default function DebtsReceivableScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateMode, setDateMode] = useState<'due' | 'payment'>('due');
 
-  // 🟢 4. ກວດສອບສິດ (Security Check)
-  if (!hasPermission('accessFinancial')) {
-      return (
-          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
-              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
-                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
-              </Text>
-          </View>
-      );
-  }
-
-  // 1. Fetch Data
+  // 🟢 4. useEffect: Fetch Data (ວາງໄວ້ບ່ອນນີ້)
   useEffect(() => {
+    // ຖ້າບໍ່ມີສິດ ໃຫ້ຢຸດການດຶງຂໍ້ມູນ (ແຕ່ Hook ຍັງຖືກປະກາດຢູ່)
+    if (!hasPermission('accessFinancial')) return;
+
     const debtRef = ref(db, 'debts_receivable');
     const unsubscribe = onValue(debtRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -110,10 +102,10 @@ export default function DebtsReceivableScreen() {
                 remaining: item.remaining !== undefined ? item.remaining : (item.totalAmount - (item.paidAmount || 0))
             };
         });
-        console.log(`✅ Debts Loaded: ${list.length}`);
+        // console.log(`✅ Debts Receivable Loaded: ${list.length}`);
         setDebts(list.reverse() as DebtItem[]);
       } else {
-        console.log("⚠️ No Debts Found");
+        // console.log("⚠️ No Debts Receivable Found");
         setDebts([]);
       }
     }, (error) => {
@@ -122,7 +114,7 @@ export default function DebtsReceivableScreen() {
     return () => unsubscribe();
   }, []);
 
-  // 2. History Logic
+  // 🟢 5. useEffect: History Logic
   useEffect(() => {
     if (selectedDebt && historyModalVisible) {
         const currentDebt = debts.find(d => d.id === selectedDebt.id);
@@ -139,7 +131,7 @@ export default function DebtsReceivableScreen() {
     }
   }, [debts, selectedDebt, historyModalVisible]);
 
-  // Save Debt
+  // --- Functions ---
   const handleSaveDebt = async () => {
     if (!customer || !amount) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ລູກຄ້າ ແລະ ຈຳນວນເງິນ');
@@ -346,6 +338,19 @@ export default function DebtsReceivableScreen() {
     );
   };
 
+  // 🟢 6. ຍ້າຍການກວດສອບສິດມາໄວ້ບ່ອນນີ້! (ລຸ່ມສຸດ ຫຼັງ Hooks ທັງໝົດ)
+  if (!hasPermission('accessFinancial')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
+                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
+              </Text>
+          </View>
+      );
+  }
+
+  // Return ໜ້າຈໍຫຼັກ
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerContainer}>

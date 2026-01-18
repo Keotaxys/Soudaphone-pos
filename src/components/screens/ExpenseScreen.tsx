@@ -1,9 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as DocumentPicker from 'expo-document-picker';
 // @ts-ignore
-import * as FileSystem from 'expo-file-system/legacy';
-import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
@@ -18,11 +15,9 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
-// 🟢 2. Import Auth Hook
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS, ExpenseRecord, formatDate, formatNumber } from '../../types';
 import CurrencyInput from '../ui/CurrencyInput';
@@ -37,27 +32,38 @@ const EXPENSE_CATEGORIES = [
     'ບໍລິການອອນລາຍ', 'ສັ່ງສິນຄ້າ'
 ];
 
+type FilterType = 'day' | 'week' | 'month' | 'custom';
+
 export default function ExpenseScreen() {
-    // 🟢 3. ເອີ້ນໃຊ້ Hook (ໄວ້ເທິງສຸດ)
     const { hasPermission } = useAuth();
     
-    // --- State Declarations (ໄວ້ບ່ອນນີ້ ຫ້າມມີ return ກ່ອນໜ້ານີ້) ---
-    const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
+    // Data States
+    const [allExpenses, setAllExpenses] = useState<ExpenseRecord[]>([]); // ຂໍ້ມູນທັງໝົດ
+    const [filteredExpenses, setFilteredExpenses] = useState<ExpenseRecord[]>([]); // ຂໍ້ມູນທີ່ກັ່ນຕອງແລ້ວ
     const [loading, setLoading] = useState(true);
 
-    // Form States
+    // Filter States
+    const [filterType, setFilterType] = useState<FilterType>('day');
+    const [filterDate, setFilterDate] = useState(new Date()); // ສຳລັບ Day/Month
+    const [startDate, setStartDate] = useState(new Date()); // ສຳລັບ Custom
+    const [endDate, setEndDate] = useState(new Date());   // ສຳລັບ Custom
+
+    // Form States (Add/Edit)
     const [id, setId] = useState<string | null>(null);
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('ສັ່ງສິນຄ້າ'); 
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [formDate, setFormDate] = useState(new Date()); // ວັນທີຂອງການບັນທຶກ
     
-    const [showDatePicker, setShowDatePicker] = useState(false);
+    // UI States
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+    
+    // Date Picker States
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [datePickerTarget, setDatePickerTarget] = useState<'form' | 'filter' | 'start' | 'end'>('form');
 
-    // 🟢 4. useEffect: Fetch Data (ວາງໄວ້ບ່ອນນີ້)
+    // 🟢 1. ດຶງຂໍ້ມູນ (Fetch Data)
     useEffect(() => {
-        // ຖ້າບໍ່ມີສິດ ໃຫ້ຢຸດການດຶງຂໍ້ມູນ (ແຕ່ Hook ຍັງຖືກປະກາດຢູ່ ບໍ່ຜິດກົດ)
         if (!hasPermission('accessFinancial')) return;
 
         const expenseRef = ref(db, 'expenses');
@@ -70,83 +76,63 @@ export default function ExpenseScreen() {
                 }));
                 // ລຽງວັນທີ ໃໝ່ -> ເກົ່າ
                 list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                
-                // console.log(`✅ Expenses Loaded: ${list.length} items`);
-                setExpenses(list as ExpenseRecord[]);
+                setAllExpenses(list as ExpenseRecord[]);
             } else {
-                // console.log("⚠️ No Expenses Found");
-                setExpenses([]);
+                setAllExpenses([]);
             }
-            setLoading(false);
-        }, (error) => {
-            console.error("Expense Load Error:", error);
             setLoading(false);
         });
         return () => unsubscribe();
     }, []);
 
-    // --- Functions ---
-    const handleDownloadTemplate = async () => {
-        const csvContent = "Category,Amount,Description,Date(YYYY-MM-DD)\nຄ່າເຊົ່າ,500000,ຈ່າຍຄ່າເຊົ່າຮ້ານ,2024-01-01\n";
-        const fileName = `${FileSystem.documentDirectory}expense_template.csv`;
-        try {
-            await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
-            await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
-        } catch (error) { Alert.alert("Error", "ບໍ່ສາມາດດາວໂຫລດ Template ໄດ້"); }
-    };
+    // 🟢 2. Logic ກັ່ນຕອງຂໍ້ມູນ (Filter Logic)
+    useEffect(() => {
+        let start = new Date(filterDate);
+        let end = new Date(filterDate);
 
-    const handleExport = async () => {
-        if (expenses.length === 0) {
-            Alert.alert("ແຈ້ງເຕືອນ", "ບໍ່ມີຂໍ້ມູນໃຫ້ Export");
-            return;
+        // Reset Time
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+
+        if (filterType === 'day') {
+            // ໃຊ້ມື້ດຽວກັນ (Default)
+        } else if (filterType === 'week') {
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+            start.setDate(diff);
+            end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+        } else if (filterType === 'month') {
+            start.setDate(1);
+            end = new Date(start);
+            end.setMonth(start.getMonth() + 1);
+            end.setDate(0);
+            end.setHours(23, 59, 59, 999);
+        } else if (filterType === 'custom') {
+            start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
         }
-        let csvContent = "Date,Category,Amount,Description\n";
-        expenses.forEach(item => {
-            csvContent += `${new Date(item.date).toLocaleDateString()},${item.category},${item.amount},${item.description || ''}\n`;
+
+        const filtered = allExpenses.filter(item => {
+            const itemDate = new Date(item.date);
+            return itemDate >= start && itemDate <= end;
         });
-        const fileName = `${FileSystem.documentDirectory}expenses_export_${new Date().getTime()}.csv`;
-        try {
-            await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
-            await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
-        } catch (error) { Alert.alert("Error", "ບໍ່ສາມາດ Export ໄດ້"); }
-    };
 
-    const handleImport = async () => {
-        try {
-            const result = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'application/vnd.ms-excel', '*/*'] });
-            if (result.canceled) return;
-            const fileUri = result.assets[0].uri;
-            const fileContent = await FileSystem.readAsStringAsync(fileUri);
-            const rows = fileContent.split('\n');
-            let successCount = 0;
-            for (let i = 1; i < rows.length; i++) {
-                const row = rows[i].split(',');
-                if (row.length >= 2) {
-                    const cat = row[0]?.trim() || 'ອື່ນໆ';
-                    const amt = parseFloat(row[1]?.trim());
-                    const desc = row[2]?.trim() || '';
-                    const dateText = row[3]?.trim();
-                    if (!isNaN(amt) && amt > 0) {
-                        await push(ref(db, 'expenses'), {
-                            category: cat, amount: amt, description: desc,
-                            date: dateText ? new Date(dateText).toISOString() : new Date().toISOString(),
-                            createdAt: new Date().toISOString()
-                        });
-                        successCount++;
-                    }
-                }
-            }
-            Alert.alert("ສຳເລັດ", `ນຳເຂົ້າຂໍ້ມູນສຳເລັດ ${successCount} ລາຍການ`);
-        } catch (error) { Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດໃນການນຳເຂົ້າຟາຍ"); }
-    };
+        setFilteredExpenses(filtered);
 
+    }, [allExpenses, filterType, filterDate, startDate, endDate]);
+
+    // --- Helper Functions ---
     const handleSave = async () => {
         if (!amount || !description) {
             Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຈຳນວນເງິນ ແລະ ລາຍລະອຽດ');
             return;
         }
         const expenseData = {
-            date: selectedDate.toISOString(),
+            date: formDate.toISOString(),
             category,
             description,
             amount: parseFloat(amount),
@@ -177,7 +163,7 @@ export default function ExpenseScreen() {
         setAmount(item.amount.toString());
         setDescription(item.description || ''); 
         setCategory(item.category);
-        setSelectedDate(new Date(item.date));
+        setFormDate(new Date(item.date));
     };
 
     const resetForm = () => {
@@ -185,20 +171,27 @@ export default function ExpenseScreen() {
         setAmount('');
         setDescription('');
         setCategory('ສັ່ງສິນຄ້າ');
-        setSelectedDate(new Date());
+        setFormDate(new Date());
     };
 
-    const openDatePicker = () => {
-        Keyboard.dismiss();
+    // 🟢 Date Picker Handler
+    const openDatePicker = (target: 'form' | 'filter' | 'start' | 'end') => {
+        setDatePickerTarget(target);
         setShowDatePicker(true);
     };
 
     const onDateChange = (event: any, date?: Date) => {
         if (Platform.OS === 'android') setShowDatePicker(false);
-        if (date) setSelectedDate(date);
+        
+        if (date) {
+            if (datePickerTarget === 'form') setFormDate(date);
+            else if (datePickerTarget === 'filter') setFilterDate(date);
+            else if (datePickerTarget === 'start') setStartDate(date);
+            else if (datePickerTarget === 'end') setEndDate(date);
+        }
     };
 
-    // 🟢 5. ຍ້າຍການກວດສອບສິດມາໄວ້ບ່ອນນີ້! (ລຸ່ມສຸດ ຫຼັງ Hooks ທັງໝົດ)
+    // 🟢 3. ກວດສອບສິດ (ວາງໄວ້ລຸ່ມສຸດ)
     if (!hasPermission('accessFinancial')) {
         return (
             <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
@@ -210,31 +203,64 @@ export default function ExpenseScreen() {
         );
     }
 
-    // Return ໜ້າຈໍຫຼັກ
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
                 
+                {/* 🟢 Filter Bar */}
+                <View style={styles.filterContainer}>
+                    <View style={styles.filterRow}>
+                        {['day', 'week', 'month', 'custom'].map((type) => (
+                            <TouchableOpacity 
+                                key={type} 
+                                style={[styles.filterChip, filterType === type && styles.activeFilterChip]} 
+                                onPress={() => setFilterType(type as FilterType)}
+                            >
+                                <Text style={[styles.filterText, filterType === type && {color: 'white'}]}>
+                                    {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : 'ກຳນົດເອງ'}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    {/* Date Display based on Filter */}
+                    <View style={styles.dateSelectorRow}>
+                        {filterType === 'custom' ? (
+                            <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
+                                <TouchableOpacity onPress={() => openDatePicker('start')} style={styles.dateDisplayBtn}>
+                                    <Text style={styles.dateDisplayText}>{formatDate(startDate)}</Text>
+                                </TouchableOpacity>
+                                <Ionicons name="arrow-forward" size={16} color="#666" />
+                                <TouchableOpacity onPress={() => openDatePicker('end')} style={styles.dateDisplayBtn}>
+                                    <Text style={styles.dateDisplayText}>{formatDate(endDate)}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity onPress={() => openDatePicker('filter')} style={styles.dateDisplayBtn}>
+                                <Ionicons name="calendar" size={16} color={COLORS.primary} />
+                                <Text style={styles.dateDisplayText}>
+                                    {filterType === 'day' ? formatDate(filterDate) : 
+                                     filterType === 'month' ? `${filterDate.getMonth() + 1}/${filterDate.getFullYear()}` : 
+                                     'ເລືອກວັນທີ'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+
+                {/* Form Input */}
                 <View style={styles.formCard}>
                     <View style={styles.actionRowTop}>
                         <Text style={styles.headerTitle}>{id ? '✏️ ແກ້ໄຂ' : '➕ ເພີ່ມລາຍຈ່າຍ'}</Text>
                         <View style={{flexDirection: 'row', gap: 5}}>
-                            <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}>
-                                <Ionicons name="download-outline" size={18} color={COLORS.primary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.iconBtn} onPress={handleImport}>
-                                <Ionicons name="cloud-upload-outline" size={18} color={COLORS.primary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.iconBtn} onPress={handleExport}>
-                                <Ionicons name="share-outline" size={18} color={COLORS.primary} />
-                            </TouchableOpacity>
+                            {/* Export/Import Buttons here if needed */}
                         </View>
                     </View>
                     
                     <View style={styles.row}>
-                        <TouchableOpacity style={styles.dateBtn} onPress={openDatePicker}>
+                        <TouchableOpacity style={styles.dateBtn} onPress={() => openDatePicker('form')}>
                             <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
-                            <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
+                            <Text style={styles.dateText}>{formatDate(formDate)}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.categoryBtn} onPress={() => setShowCategoryPicker(true)}>
                             <Text style={styles.categoryText} numberOfLines={1}>{category}</Text>
@@ -269,9 +295,11 @@ export default function ExpenseScreen() {
                     </View>
                 </View>
 
-                <Text style={styles.listHeader}>📜 ປະຫວັດລາຍຈ່າຍ</Text>
+                <Text style={styles.listHeader}>
+                    📜 ປະຫວັດລາຍຈ່າຍ ({filteredExpenses.length} ລາຍການ)
+                </Text>
 
-                {expenses.map((item) => (
+                {filteredExpenses.map((item) => (
                     <View key={item.id} style={styles.expenseItem}>
                         <View style={styles.dateBox}>
                             <Text style={styles.dayText}>{new Date(item.date).getDate()}</Text>
@@ -297,19 +325,25 @@ export default function ExpenseScreen() {
 
             </ScrollView>
 
+            {/* 🟢 Date Picker with iOS Dark Mode Fix */}
             {showDatePicker && (
                 Platform.OS === 'ios' ? (
                     <Modal visible={true} transparent={true} animationType="fade">
                         <View style={styles.modalOverlay}>
                             <View style={styles.iosDatePickerContainer}>
                                 <DateTimePicker 
-                                    value={selectedDate} 
+                                    value={
+                                        datePickerTarget === 'form' ? formDate :
+                                        datePickerTarget === 'start' ? startDate :
+                                        datePickerTarget === 'end' ? endDate :
+                                        filterDate
+                                    } 
                                     mode="date" 
                                     display="inline" 
                                     onChange={onDateChange} 
                                     style={{ height: 320, width: '100%', backgroundColor: 'white' }} 
                                     textColor="black" 
-                                    themeVariant="light"
+                                    themeVariant="light" // 🟢 Fix Dark Mode
                                 />
                                 <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
                                     <Text style={styles.iosDateDoneText}>ຕົກລົງ</Text>
@@ -318,10 +352,21 @@ export default function ExpenseScreen() {
                         </View>
                     </Modal>
                 ) : (
-                    <DateTimePicker value={selectedDate} mode="date" display="default" onChange={onDateChange} />
+                    <DateTimePicker 
+                        value={
+                            datePickerTarget === 'form' ? formDate :
+                            datePickerTarget === 'start' ? startDate :
+                            datePickerTarget === 'end' ? endDate :
+                            filterDate
+                        } 
+                        mode="date" 
+                        display="default" 
+                        onChange={onDateChange} 
+                    />
                 )
             )}
 
+            {/* Category Picker */}
             <Modal visible={showCategoryPicker} transparent={true} animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
@@ -346,6 +391,17 @@ export default function ExpenseScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
+    
+    // Filter Styles
+    filterContainer: { backgroundColor: 'white', padding: 10, marginHorizontal: 15, marginTop: 15, borderRadius: 12, elevation: 2 },
+    filterRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+    filterChip: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#f0f0f0' },
+    activeFilterChip: { backgroundColor: COLORS.primary },
+    filterText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
+    dateSelectorRow: { alignItems: 'center', marginTop: 5 },
+    dateDisplayBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#f9f9f9', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
+    dateDisplayText: { fontFamily: 'Lao-Bold', color: '#333' },
+
     formCard: { backgroundColor: 'white', margin: 15, marginBottom: 5, padding: 15, borderRadius: 15, elevation: 3, shadowColor: COLORS.primary, shadowOpacity: 0.1 },
     actionRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     headerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primaryDark },

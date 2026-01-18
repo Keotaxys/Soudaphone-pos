@@ -15,6 +15,7 @@ export function useAuth() {
 
   const loadUser = async () => {
     try {
+      // 🟢 ໃຊ້ key ດຽວກັນກັບຕອນ Login ('user_session')
       const storedUser = await AsyncStorage.getItem('user_session');
       if (storedUser) {
         setUser(JSON.parse(storedUser));
@@ -26,24 +27,21 @@ export function useAuth() {
     }
   };
 
-  // 🟢 ປ່ຽນໃໝ່: ຮັບທັງ Username ແລະ Password
   const login = async (username: string, passwordInput: string) => {
     if (!username || !passwordInput) return false;
     setLoading(true);
 
     try {
-      // 1. ຄົ້ນຫາ User ຈາກຊື່ (name) ໃນ Firebase
       const usersRef = ref(db, 'users');
       const q = query(usersRef, orderByChild('name'), equalTo(username));
       const snapshot = await get(q);
 
       if (snapshot.exists()) {
         const data = snapshot.val();
-        // ດຶງເອົາ User ຄົນທຳອິດທີ່ພົບ
         const userId = Object.keys(data)[0];
         const userData = data[userId];
 
-        // 2. ກວດສອບລະຫັດຜ່ານ (ທຽບກັບ field 'pin' ໃນ database)
+        // ກວດສອບ PIN
         if (userData.pin !== passwordInput) {
             Alert.alert("ຜິດພາດ", "ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ");
             setLoading(false);
@@ -58,7 +56,7 @@ export function useAuth() {
 
         const loggedInUser: User = { ...userData, id: userId };
 
-        // ບັນທຶກລົງເຄື່ອງ
+        // 🟢 ບັນທຶກ Session
         await AsyncStorage.setItem('user_session', JSON.stringify(loggedInUser));
         setUser(loggedInUser);
         return true;
@@ -84,9 +82,16 @@ export function useAuth() {
     }
   };
 
+  // 🟢 ຈຸດສຳຄັນ: ແກ້ໄຂ Logic ການກວດສິດ (Admin Bypass)
   const hasPermission = (permission: keyof UserPermissions): boolean => {
     if (!user) return false;
-    if (user.role === 'admin') return true; 
+
+    // ✨ ຖ້າເປັນ Admin ໃຫ້ຜ່ານໄດ້ໝົດທຸກຢ່າງ! (ແກ້ບັນຫາ Access Denied)
+    if (user.role === 'admin') {
+        return true; 
+    }
+
+    // ຖ້າເປັນ Staff ທຳມະດາ ຄ່ອຍກວດສອບສິດລາຍໂຕ
     return user.permissions?.[permission] ?? false;
   };
 

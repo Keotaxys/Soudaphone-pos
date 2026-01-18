@@ -3,22 +3,22 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 // @ts-ignore
 import * as FileSystem from 'expo-file-system/legacy';
 import { shareAsync } from 'expo-sharing';
-import { onValue, ref, remove, update } from 'firebase/database'; // 🟢 ເພີ່ມ update
+import { onValue, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    Alert,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -58,18 +58,13 @@ export default function SalesHistoryScreen() {
   const [editDescription, setEditDescription] = useState('');
   const [editAmount, setEditAmount] = useState('');
 
-  // Security Check
-  if (!hasPermission('accessReports')) {
-      return (
-          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
-              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້</Text>
-          </View>
-      );
-  }
+  // ❌ ລຶບສ່ວນກວດສອບສິດບ່ອນນີ້ອອກ (ຍ້າຍໄປລຸ່ມສຸດ)
 
   // 🟢 1. ດຶງຂໍ້ມູນຈາກທັງ 2 ແຫຼ່ງ (sales ແລະ special_sales)
   useEffect(() => {
+    // 🟢 ເພີ່ມການກວດສອບສິດໃນນີ້ແທນ (ເພື່ອບໍ່ໃຫ້ດຶງຂໍ້ມູນຖ້າບໍ່ມີສິດ)
+    if (!hasPermission('accessReports')) return;
+
     const salesRef = ref(db, 'sales');
     const specialSalesRef = ref(db, 'special_sales');
 
@@ -361,6 +356,17 @@ export default function SalesHistoryScreen() {
     );
   };
 
+  // ✅ 5. ຍ້າຍການກວດສອບສິດມາໄວ້ບ່ອນນີ້ (ຫຼັງຈາກ Hooks ທັງໝົດປະກາດແລ້ວ)
+  if (!hasPermission('accessReports')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້</Text>
+          </View>
+      );
+  }
+
+  // 6. Return ຫຼັກ
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>

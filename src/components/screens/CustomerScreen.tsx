@@ -11,14 +11,19 @@ import {
   Linking,
   Modal,
   Platform,
-  SafeAreaView,
+  ScrollView, // 🟢 ຍ້າຍຂຶ້ນມາໄວ້ບ່ອນນີ້
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { db } from '../../firebase';
+// 🟢 2. Import Hook
+import { useAuth } from '../../hooks/useAuth';
 import { COLORS } from '../../types';
 
 const { width } = Dimensions.get('window');
@@ -35,6 +40,9 @@ interface Customer {
 }
 
 export default function CustomerScreen() {
+  // 🟢 3. ເອີ້ນໃຊ້ Hook
+  const { hasPermission } = useAuth();
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -48,6 +56,18 @@ export default function CustomerScreen() {
   const [address, setAddress] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
+  // 🟢 4. ກວດສອບສິດ (Security Check)
+  if (!hasPermission('accessCustomers')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
+                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນລູກຄ້າ
+              </Text>
+          </View>
+      );
+  }
+
   // 1. ດຶງຂໍ້ມູນລູກຄ້າ
   useEffect(() => {
     const customerRef = ref(db, 'customers');
@@ -55,12 +75,14 @@ export default function CustomerScreen() {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        console.log(`✅ Customers Loaded: ${list.length}`);
         setCustomers(list.reverse() as Customer[]);
       } else {
+        console.log("⚠️ No Customers found");
         setCustomers([]);
       }
     }, (error) => {
-        console.log(error); 
+        console.error("Customer Load Error:", error); 
     });
     return () => unsubscribe();
   }, []);
@@ -228,7 +250,6 @@ export default function CustomerScreen() {
         }
       />
 
-      {/* 🟢 2. ປ່ຽນປຸ່ມ FAB ກັບມາເປັນສີ Teal (COLORS.primary) */}
       <TouchableOpacity 
         style={styles.fab} 
         onPress={() => { resetForm(); setModalVisible(true); }}
@@ -260,8 +281,6 @@ export default function CustomerScreen() {
                         )}
                     </TouchableOpacity>
 
-                    {/* 🟢 1. ເພີ່ມ Label ແລະ ປັບ Placeholder ໃຫ້ເຫັນຊັດເຈນ */}
-                    
                     <Text style={styles.inputLabel}>ຊື່ລູກຄ້າ <Text style={{color:'red'}}>*</Text></Text>
                     <TextInput 
                         style={styles.input} 
@@ -313,9 +332,6 @@ export default function CustomerScreen() {
   );
 }
 
-// 🟢 ຕ້ອງການ import ScrollView ເພີ່ມໃນບັນທັດເທິງສຸດ
-import { ScrollView } from 'react-native';
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   headerContainer: { paddingBottom: 15, backgroundColor: COLORS.background }, 
@@ -337,7 +353,6 @@ const styles = StyleSheet.create({
   fbButton: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: '#E3F2FD', padding: 5, borderRadius: 6, justifyContent: 'center' },
   fbText: { fontFamily: 'Lao-Bold', color: '#1877F2', fontSize: 11 },
   
-  // 🟢 2. ສີ FAB ກັບມາເປັນ Teal
   fab: { 
     position: 'absolute', 
     bottom: 90, 
@@ -364,7 +379,6 @@ const styles = StyleSheet.create({
   previewImage: { width: 100, height: 100, borderRadius: 10 },
   uploadText: { fontSize: 12, color: '#999', marginTop: 5, fontFamily: 'Lao-Regular' },
   
-  // 🟢 Style ສຳລັບຫົວຂໍ້
   inputLabel: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text, marginBottom: 5, marginTop: 5 },
   input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, marginBottom: 5, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Regular', color: '#333' },
   

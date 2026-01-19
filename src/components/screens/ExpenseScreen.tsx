@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 
-// 🟢 1. ແກ້ໄຂ Import: ໃຊ້ legacy ອັນດຽວຈົບ
+// 🟢 1. Import ແບບ Legacy ອັນດຽວຈົບ (ເພື່ອແກ້ Warning Deprecated)
 import * as FileSystem from 'expo-file-system/legacy'; 
 
 import * as Print from 'expo-print';
@@ -142,7 +142,7 @@ export default function ExpenseScreen() {
     setFilterDate(newDate);
   };
 
-  // 🟢 4. Download Template (ແກ້ໄຂ Error ບໍ່ພົບ documentDirectory)
+  // 🟢 4. Download Template (ແກ້ໄຂ Error ໂດຍໃຊ້ as any)
   const handleDownloadTemplate = async () => {
     try {
       const csvContent = 
@@ -150,7 +150,8 @@ export default function ExpenseScreen() {
         "2026-01-20,ສັ່ງສິນຄ້າ,ຊື້ເຄື່ອງເຂົ້າຮ້ານ,500000\n" +
         "2026-01-21,ຄ່າເຊົ່າ,ຈ່າຍຄ່າເຊົ່າເດືອນ 1,2000000";
 
-      // ✨ Trick: ໃຊ້ (as any) ເພື່ອ Bypass TypeScript
+      // 🟢 ໃຊ້ (FileSystem as any) ເພື່ອ Bypass TypeScript Error
+      // ແຕ່ຍັງໃຊ້ 'expo-file-system/legacy' ເພື່ອບໍ່ໃຫ້ເກີດ Warning
       const docDir = (FileSystem as any).documentDirectory;
       
       if (!docDir) {
@@ -181,6 +182,7 @@ export default function ExpenseScreen() {
       setImporting(true);
       const fileUri = result.assets[0].uri;
       
+      // 🟢 ໃຊ້ FileSystem ຈາກ legacy
       const fileContent = await FileSystem.readAsStringAsync(fileUri);
       
       const rows = fileContent.split('\n');
@@ -236,7 +238,7 @@ export default function ExpenseScreen() {
         const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
         csvContent += `\n,,Total,${total}`;
 
-        // ✨ Trick: ໃຊ້ (as any) ເຊັ່ນກັນ
+        // 🟢 ໃຊ້ (as any) ເຊັ່ນກັນ
         const docDir = (FileSystem as any).documentDirectory;
         if (!docDir) throw new Error("Storage Unavailable");
 
@@ -381,7 +383,7 @@ export default function ExpenseScreen() {
         {/* Header with Export */}
         <View style={styles.headerRow}>
             <Text style={styles.screenTitle}>ລາຍຈ່າຍ (Expenses)</Text>
-            {/* 🟢 ປຸ່ມເມນູ Export/Import */}
+            {/* ປຸ່ມເມນູ Export/Import */}
             <TouchableOpacity style={styles.exportIconBtn} onPress={() => setShowExportOptions(true)}>
                 <Ionicons name="ellipsis-vertical" size={22} color={COLORS.primary} />
             </TouchableOpacity>

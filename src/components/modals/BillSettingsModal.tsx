@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 
 import { db } from '../../firebase';
-// 🟢 1. ເປີດໃຊ້ Import ນີ້ ແລະ ລຶບ const COLORS ທາງລຸ່ມອອກ
+// 🟢 1. Import COLORS ຈາກ types ຢ່າງຖືກຕ້ອງ
 import { COLORS } from '../../types';
 
 interface BillSettingsModalProps {
@@ -34,7 +34,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
   const [logo, setLogo] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ດຶງຂໍ້ມູນເກົາມາສະແດງ
+  // 🟢 2. ດຶງຂໍ້ມູນ (Fetch Data)
   useEffect(() => {
     const settingsRef = ref(db, 'billSettings');
     const unsubscribe = onValue(settingsRef, (snapshot) => {
@@ -50,6 +50,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
     return () => unsubscribe();
   }, []);
 
+  // ຟັງຊັນເລືອກຮູບພາບ
   const pickLogo = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
@@ -61,9 +62,9 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5, 
-      base64: true,
+      aspect: [1, 1], // ຮູບຈັດຕຸລັດ
+      quality: 0.5,   // ຫຼຸດຂະໜາດໄຟລ໌
+      base64: true,   
     });
 
     if (!result.canceled && result.assets[0].base64) {
@@ -71,6 +72,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
     }
   };
 
+  // ຟັງຊັນບັນທຶກ
   const handleSave = async () => {
     if (!shopName.trim()) {
       Alert.alert('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ຮ້ານ');
@@ -102,6 +104,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
         <View style={styles.container}>
           
+          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>ຕັ້ງຄ່າໃບບິນ (Bill Settings)</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
@@ -110,6 +113,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Logo Section */}
             <TouchableOpacity style={styles.logoPicker} onPress={pickLogo}>
               {logo ? (
                 <Image source={{ uri: logo }} style={styles.logo} />
@@ -124,6 +128,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
               </View>
             </TouchableOpacity>
 
+            {/* Form Inputs */}
             <Text style={styles.label}>ຊື່ຮ້ານ (ຫົວບິນ) <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput 
               style={styles.input} 
@@ -159,6 +164,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
               numberOfLines={3}
             />
 
+            {/* Save Button */}
             <TouchableOpacity 
               style={[styles.saveBtn, loading && styles.disabledBtn]} 
               onPress={handleSave}
@@ -245,7 +251,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: COLORS.primary, // 🟢 ຈະໃຊ້ສີ Teal ຕາມ Theme
+    backgroundColor: COLORS.primary, // 🟢 ໃຊ້ສີຈາກ Theme
     padding: 6,
     borderRadius: 15,
     borderWidth: 2,
@@ -273,7 +279,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top'
   },
   saveBtn: { 
-    backgroundColor: COLORS.primary, // 🟢 ຈະໃຊ້ສີ Teal ຕາມ Theme
+    backgroundColor: COLORS.primary, // 🟢 ໃຊ້ສີຈາກ Theme
     padding: 15, 
     borderRadius: 10, 
     alignItems: 'center', 

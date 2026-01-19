@@ -2,8 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 
-// 🟢 1. ໃຊ້ Legacy Import ອັນດຽວຈົບ (ມີທັງ documentDirectory ແລະ writeAsStringAsync)
-import * as FileSystem from 'expo-file-system/legacy';
+// 🟢 1. Import Main (ສຳລັບ documentDirectory, cacheDirectory)
+import * as FileSystem from 'expo-file-system';
+
+// 🟢 2. Import Legacy (ສຳລັບ writeAsStringAsync, readAsStringAsync)
+import * as FileSystemLegacy from 'expo-file-system/legacy';
 
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
@@ -145,7 +148,7 @@ export default function ExpenseScreen() {
     setFilterDate(newDate);
   };
 
-  // 🟢 Helper Function: ຫາ Directory ໂດຍໃຊ້ FileSystem (Legacy)
+  // 🟢 Helper Function: ຫາ Directory (ໃຊ້ FileSystem ໂຕຫຼັກ)
   const getSaveDirectory = () => {
     const docDir = FileSystem.documentDirectory;
     const cacheDir = FileSystem.cacheDirectory;
@@ -179,12 +182,13 @@ export default function ExpenseScreen() {
       XLSX.utils.book_append_sheet(wb, ws, "Template");
       const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
+      // 🟢 1. ຫາ Path ຈາກ Main Package
       const docDir = getSaveDirectory();
       if (!docDir) throw new Error("Storage Unavailable");
       const fileName = `${docDir}expense_template.xlsx`;
 
-      // 🟢 ໃຊ້ FileSystem (Legacy) ໂດຍໃຊ້ string 'base64'
-      await FileSystem.writeAsStringAsync(fileName, wbout, { encoding: 'base64' });
+      // 🟢 2. ຂຽນຟາຍດ້ວຍ Legacy Package
+      await FileSystemLegacy.writeAsStringAsync(fileName, wbout, { encoding: 'base64' });
       
       await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
       setShowExportOptions(false);
@@ -194,13 +198,15 @@ export default function ExpenseScreen() {
     }
   };
 
-  // 🟢 5. Import Excel
+  // 🟢 5. Import Excel (Smart Logic + CSV Support)
   const handleImportExcel = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: [
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
-            'application/vnd.ms-excel'
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+            'application/vnd.ms-excel', // .xls
+            'text/csv', // .csv
+            'text/comma-separated-values'
         ],
         copyToCacheDirectory: true
       });
@@ -210,11 +216,11 @@ export default function ExpenseScreen() {
       setImporting(true);
       const fileUri = result.assets[0].uri;
       
-      // 🟢 ໃຊ້ FileSystem (Legacy)
-      const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
+      // 🟢 ອ່ານຟາຍດ້ວຍ Legacy Package
+      const fileContent = await FileSystemLegacy.readAsStringAsync(fileUri, { encoding: 'base64' });
       
+      // ອ່ານ Workbook
       const wb = XLSX.read(fileContent, { type: 'base64', cellDates: true });
-      
       const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
       const data: any[] = XLSX.utils.sheet_to_json(ws);
@@ -222,25 +228,40 @@ export default function ExpenseScreen() {
       let successCount = 0;
       
       for (const row of data) {
-        const dateRaw = row['Date'] || row['Date(YYYY-MM-DD)'];
-        const catStr = row['Category'] || row['ໝວດໝູ່'];
-        const descStr = row['Description'] || row['ລາຍລະອຽດ'];
-        const amountVal = row['Amount'] || row['ຈຳນວນເງິນ'];
+        // 🟢 Logic ໃໝ່: ຄົ້ນຫາ Key ແບບຍືດຍຸ່ນ (Fuzzy Search)
+        const keys = Object.keys(row);
+        const findKey = (keyword: string) => keys.find(k => k.toLowerCase().includes(keyword.toLowerCase()));
+
+        // ຄົ້ນຫາຄຳຫຼັກທີ່ໜ້າຈະເປັນ Header
+        const dateKey = findKey('date') || findKey('ວັນທີ');
+        const catKey = findKey('category') || findKey('ໝວດ');
+        const descKey = findKey('description') || findKey('ລາຍລະອຽດ');
+        const amountKey = findKey('amount') || findKey('ຈຳນວນ');
+
+        // ດຶງຄ່າຕາມ Key ທີ່ຫາເຫັນ
+        const dateRaw = dateKey ? row[dateKey] : null;
+        const catStr = catKey ? row[catKey] : 'ອື່ນໆ';
+        const descStr = descKey ? row[descKey] : 'Imported';
+        const amountVal = amountKey ? row[amountKey] : 0;
 
         if (!amountVal || isNaN(parseFloat(amountVal))) continue;
 
         let parsedDate = new Date();
+        
+        // ກໍລະນີ Excel/CSV ສົ່ງມາເປັນ Date Object ແລ້ວ
         if (dateRaw instanceof Date) {
             parsedDate = dateRaw;
-        } else if (dateRaw) {
+        } 
+        // ກໍລະນີເປັນ String (ເຊັ່ນ CSV)
+        else if (dateRaw) {
             const d = new Date(dateRaw);
             if (!isNaN(d.getTime())) parsedDate = d;
         }
 
         await push(ref(db, 'expenses'), {
           date: parsedDate.toISOString(),
-          category: catStr?.trim() || 'ອື່ນໆ',
-          description: descStr?.trim() || 'Imported via Excel',
+          category: String(catStr).trim(),
+          description: String(descStr).trim(),
           amount: parseFloat(amountVal),
           createdAt: new Date().toISOString()
         });
@@ -248,12 +269,16 @@ export default function ExpenseScreen() {
         successCount++;
       }
 
-      Alert.alert("ສຳເລັດ", `ນຳເຂົ້າຂໍ້ມູນສຳເລັດ ${successCount} ລາຍການ`);
+      if (successCount === 0) {
+          Alert.alert("ແຈ້ງເຕືອນ", "ບໍ່ພົບຂໍ້ມູນທີ່ນຳເຂົ້າໄດ້ (0 ລາຍການ). \nກະລຸນາກວດສອບວ່າຫົວຂໍ້ໃນ Excel ມີຄຳວ່າ: Date, Category, Amount");
+      } else {
+          Alert.alert("ສຳເລັດ", `ນຳເຂົ້າຂໍ້ມູນສຳເລັດ ${successCount} ລາຍການ`);
+      }
       setShowExportOptions(false);
 
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດໃນການອ່ານຟາຍ Excel");
+      Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດໃນການອ່ານຟາຍ: " + (error as Error).message);
     } finally {
       setImporting(false);
     }
@@ -286,12 +311,13 @@ export default function ExpenseScreen() {
         XLSX.utils.book_append_sheet(wb, ws, "Expenses");
         const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
+        // 🟢 1. ຫາ Path ຈາກ Main
         const docDir = getSaveDirectory();
         if (!docDir) throw new Error("Storage Unavailable");
         const fileName = `${docDir}expenses_report.xlsx`;
 
-        // 🟢 ໃຊ້ FileSystem (Legacy)
-        await FileSystem.writeAsStringAsync(fileName, wbout, { encoding: 'base64' });
+        // 🟢 2. ຂຽນຟາຍດ້ວຍ Legacy
+        await FileSystemLegacy.writeAsStringAsync(fileName, wbout, { encoding: 'base64' });
         
         await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
         setShowExportOptions(false);
@@ -536,14 +562,20 @@ export default function ExpenseScreen() {
 
         {filteredExpenses.map((item) => (
             <View key={item.id} style={styles.expenseItem}>
+                
+                {/* 🟢 UI ໃໝ່: Icon ວົງມົນທາງຊ້າຍ */}
                 <View style={styles.iconBox}>
                     <Ionicons name="pricetag" size={20} color={COLORS.primary} />
                 </View>
+
+                {/* 🟢 UI ໃໝ່: ເນື້ອຫາທາງກາງ */}
                 <View style={{ flex: 1, paddingHorizontal: 12, justifyContent: 'center' }}>
                     <Text style={styles.itemCategory}>{item.category}</Text>
                     {item.description ? (
                         <Text style={styles.itemDesc} numberOfLines={1}>{item.description}</Text>
                     ) : null}
+                    
+                    {/* ວັນທີຢູ່ກ້ອງ */}
                     <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
                         <Ionicons name="calendar-outline" size={12} color="#999" style={{marginRight: 4}} />
                         <Text style={styles.itemDateSmall}>
@@ -551,10 +583,13 @@ export default function ExpenseScreen() {
                         </Text>
                     </View>
                 </View>
+
+                {/* 🟢 UI ໃໝ່: ຈຳນວນເງິນ ແລະ ປຸ່ມທາງຂວາ */}
                 <View style={{ alignItems: 'flex-end', justifyContent: 'space-between' }}>
                     <Text style={[styles.itemAmount, {color: ORANGE_COLOR}]}>
                         - {formatNumber(item.amount)}
                     </Text>
+                    
                     <View style={{ flexDirection: 'row', gap: 15, marginTop: 8 }}>
                         <TouchableOpacity onPress={() => handleEdit(item)}>
                             <Ionicons name="pencil" size={16} color={COLORS.primary} />
@@ -710,6 +745,7 @@ const styles = StyleSheet.create({
   cancelBtn: { width: 50, backgroundColor: '#eee', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   listHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: '#666', marginTop: 15, marginBottom: 10, marginHorizontal: 15 },
   
+  // 🟢 Styles ໃໝ່ສຳລັບລາຍການ
   expenseItem: { 
     flexDirection: 'row', 
     backgroundColor: 'white', 
@@ -753,6 +789,10 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     fontFamily: 'Lao-Bold' 
   },
+  
+  dateBox: { backgroundColor: '#f0f0f0', padding: 8, borderRadius: 8, alignItems: 'center', minWidth: 50 },
+  dayText: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primary },
+  monthText: { fontSize: 10, color: '#888' },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: '80%', maxHeight: '60%', backgroundColor: 'white', borderRadius: 20, padding: 20 },

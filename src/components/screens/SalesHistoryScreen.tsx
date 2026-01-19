@@ -61,13 +61,13 @@ export default function SalesHistoryScreen() {
 
   // 🟢 2. Fetch Data (ດຶງຂໍ້ມູນ)
   useEffect(() => {
-    // Debug: ກວດສອບສິດ
-    console.log("🚀 Start Fetching... Permission Status:", hasPermission('accessReports'));
-
+    // ຖ້າບໍ່ມີສິດ ໃຫ້ຢຸດການດຶງຂໍ້ມູນ (ແຕ່ Hook ຍັງເຮັດວຽກ)
     if (!hasPermission('accessReports')) {
-        console.log("❌ Access Denied: User does not have 'accessReports' permission.");
+        console.log("❌ Access Denied: Skipping Fetch");
         return;
     }
+
+    console.log("🚀 Fetching Sales Data...");
 
     const salesRef = ref(db, 'sales');
     const specialSalesRef = ref(db, 'special_sales');
@@ -80,15 +80,13 @@ export default function SalesHistoryScreen() {
             id: key,
             ...data[key],
             sourceType: 'normal',
-            date: data[key].date || new Date().toISOString() // ກັນໄວ້ຖ້າບໍ່ມີວັນທີ
+            date: data[key].date || new Date().toISOString()
         }));
-        console.log(`✅ Normal Sales Fetched: ${list.length} items`);
         setRawNormalSales(list);
       } else {
-        console.log("⚠️ Normal Sales is empty");
         setRawNormalSales([]);
       }
-    }, (err) => console.error("Sales Error:", err));
+    });
 
     // Fetch Special Sales
     const unsubSpecial = onValue(specialSalesRef, (snapshot) => {
@@ -100,27 +98,23 @@ export default function SalesHistoryScreen() {
             sourceType: 'special',
             date: data[key].date || new Date().toISOString()
         }));
-        console.log(`✅ Special Sales Fetched: ${list.length} items`);
         setRawSpecialSales(list);
       } else {
-        console.log("⚠️ Special Sales is empty");
         setRawSpecialSales([]);
       }
-    }, (err) => console.error("Special Sales Error:", err));
+    });
 
     return () => {
         unsubSales();
         unsubSpecial();
     };
-  }, []);
+  }, [hasPermission]); // 🛑 ໃສ່ hasPermission ໃນ dependency array
 
   // 🟢 3. Merge Data (ລວມຂໍ້ມູນ)
   useEffect(() => {
       const combined = [...rawNormalSales, ...rawSpecialSales];
       // ລຽງຈາກ ໃໝ່ -> ເກົ່າ
       combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
-      console.log(`🔄 Merged Total: ${combined.length} items`);
       setSales(combined);
   }, [rawNormalSales, rawSpecialSales]);
 
@@ -159,8 +153,6 @@ export default function SalesHistoryScreen() {
         end.setHours(23, 59, 59, 999);
     }
 
-    console.log(`🔎 Filtering Range: ${start.toLocaleString()} - ${end.toLocaleString()}`);
-
     const filtered = sales.filter(item => {
       if (!item.date) return false;
       const d = new Date(item.date);
@@ -168,7 +160,6 @@ export default function SalesHistoryScreen() {
       return d >= start && d <= end;
     });
     
-    console.log(`📊 Filter Result: ${filtered.length} items found`);
     setFilteredSales(filtered);
 
   }, [sales, filterType, currentDate, startDate, endDate]);
@@ -267,7 +258,7 @@ export default function SalesHistoryScreen() {
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
-      setShowDatePicker(false);
+      if (Platform.OS === 'android') setShowDatePicker(false);
       if (selectedDate) {
           if (datePickerMode === 'current') setCurrentDate(selectedDate);
           else if (datePickerMode === 'start') setStartDate(selectedDate);
@@ -374,12 +365,14 @@ export default function SalesHistoryScreen() {
     );
   };
 
-  // 🟢 5. Check Permission (Security Layer)
+  // 🟢 5. Check Permission (Security Layer - ວາງລຸ່ມສຸດ)
   if (!hasPermission('accessReports')) {
       return (
-          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
               <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
-              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້</Text>
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
+                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້
+              </Text>
           </View>
       );
   }
@@ -491,6 +484,7 @@ export default function SalesHistoryScreen() {
                             display="inline" 
                             onChange={onDateChange} 
                             style={{backgroundColor: 'white'}}
+                            themeVariant="light" // 🟢 Fix Dark Mode
                         />
                         <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.closeBtn}>
                             <Text style={styles.closeBtnText}>ປິດ</Text>

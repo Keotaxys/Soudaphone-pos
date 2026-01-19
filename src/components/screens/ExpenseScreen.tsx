@@ -2,30 +2,28 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 
-// 🟢 1. Import ແບບ Legacy ອັນດຽວ (ແກ້ໄຂບັນຫາ Path)
-import * as FileSystem from 'expo-file-system/legacy';
-
-// 🟢 Import Library ສຳລັບ Excel
-import * as XLSX from 'xlsx';
+// 🟢 Import ມາດຕະຖານ
+import * as FileSystem from 'expo-file-system';
 
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Keyboard,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  ActivityIndicator
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as XLSX from 'xlsx';
 
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -94,7 +92,6 @@ export default function ExpenseScreen() {
     });
 
     return () => unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading]);
 
   // 2. Logic ກັ່ນຕອງຂໍ້ມູນ
@@ -148,44 +145,47 @@ export default function ExpenseScreen() {
     setFilterDate(newDate);
   };
 
-  // 🟢 Helper Function: ຫາ Directory ທີ່ໃຊ້ໄດ້
+  // Helper Function: ຫາ Directory
   const getSaveDirectory = () => {
-    const fs = FileSystem as any;
-    // ລອງໃຊ້ documentDirectory ກ່ອນ, ຖ້າບໍ່ມີໃຫ້ໃຊ້ cacheDirectory
-    const dir = fs.documentDirectory || fs.cacheDirectory;
-    if (!dir) {
-        throw new Error("ບໍ່ສາມາດເຂົ້າເຖິງ Storage ຂອງເຄື່ອງໄດ້");
-    }
-    return dir;
+    // @ts-ignore
+    const docDir = FileSystem.documentDirectory;
+    // @ts-ignore
+    const cacheDir = FileSystem.cacheDirectory;
+    return docDir || cacheDir; 
   };
 
-  // 🟢 4. Download Template (Excel .xlsx)
+  // 🟢 4. Download Template (ແກ້ໄຂໃຫ້ເປັນວັນທີແທ້ໆ)
   const handleDownloadTemplate = async () => {
     try {
       const data = [
         {
-          "Date(YYYY-MM-DD)": "2026-01-20",
+          "Date": new Date("2026-01-20"), // 🟢 ໃຊ້ Date Object
           "Category": "ສັ່ງສິນຄ້າ",
           "Description": "ຊື້ເຄື່ອງເຂົ້າຮ້ານ",
           "Amount": 500000
         },
         {
-          "Date(YYYY-MM-DD)": "2026-01-21",
+          "Date": new Date("2026-01-21"), // 🟢 ໃຊ້ Date Object
           "Category": "ຄ່າເຊົ່າ",
           "Description": "ຈ່າຍຄ່າເຊົ່າເດືອນ 1",
           "Amount": 2000000
         }
       ];
 
-      const ws = XLSX.utils.json_to_sheet(data);
+      // 🟢 ກຳນົດ cellDates: true ແລະ dateNF (Number Format)
+      const ws = XLSX.utils.json_to_sheet(data, { 
+          cellDates: true, 
+          dateNF: 'dd/mm/yyyy' // ຮູບແບບວັນທີໃນ Excel
+      });
+      
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Template");
       const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
-      // 🟢 ໃຊ້ Function ທີ່ສ້າງໃໝ່ເພື່ອຫາ Path
       const docDir = getSaveDirectory();
       const fileName = `${docDir}expense_template.xlsx`;
 
+      // @ts-ignore
       await FileSystem.writeAsStringAsync(fileName, wbout, { encoding: FileSystem.EncodingType.Base64 });
       await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
       setShowExportOptions(false);
@@ -195,13 +195,13 @@ export default function ExpenseScreen() {
     }
   };
 
-  // 🟢 5. Import Excel (.xlsx)
+  // 🟢 5. Import Excel
   const handleImportExcel = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: [
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-            'application/vnd.ms-excel' // .xls
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
+            'application/vnd.ms-excel'
         ],
         copyToCacheDirectory: true
       });
@@ -211,9 +211,12 @@ export default function ExpenseScreen() {
       setImporting(true);
       const fileUri = result.assets[0].uri;
       
+      // @ts-ignore
       const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
       
-      const wb = XLSX.read(fileContent, { type: 'base64' });
+      // 🟢 cellDates: true ຈະອ່ານຕົວເລກເປັນ Date ໃຫ້ອັດຕະໂນມັດ
+      const wb = XLSX.read(fileContent, { type: 'base64', cellDates: true });
+      
       const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
       const data: any[] = XLSX.utils.sheet_to_json(ws);
@@ -221,16 +224,23 @@ export default function ExpenseScreen() {
       let successCount = 0;
       
       for (const row of data) {
-        const dateStr = row['Date(YYYY-MM-DD)'];
-        const catStr = row['Category'];
-        const descStr = row['Description'];
-        const amountVal = row['Amount'];
+        // ຮອງຮັບທັງ key "Date" ແລະ "Date(YYYY-MM-DD)"
+        const dateRaw = row['Date'] || row['Date(YYYY-MM-DD)'];
+        const catStr = row['Category'] || row['ໝວດໝູ່'];
+        const descStr = row['Description'] || row['ລາຍລະອຽດ'];
+        const amountVal = row['Amount'] || row['ຈຳນວນເງິນ'];
 
         if (!amountVal || isNaN(parseFloat(amountVal))) continue;
 
         let parsedDate = new Date();
-        if (dateStr) {
-            parsedDate = new Date(dateStr);
+        if (dateRaw instanceof Date) {
+            // ຖ້າ xlsx ແປງມາໃຫ້ແລ້ວ
+            parsedDate = dateRaw;
+            // ປັບ Timezone ຖ້າຈຳເປັນ (ເພີ່ມ 7 ຊົ່ວໂມງຖ້າມັນມາເປັນ UTC)
+            // parsedDate.setHours(parsedDate.getHours() + 7); 
+        } else if (dateRaw) {
+            const d = new Date(dateRaw);
+            if (!isNaN(d.getTime())) parsedDate = d;
         }
 
         await push(ref(db, 'expenses'), {
@@ -255,33 +265,38 @@ export default function ExpenseScreen() {
     }
   };
 
-  // 🟢 6. Export Excel (.xlsx)
+  // 🟢 6. Export Excel (ແກ້ໄຂໃຫ້ເປັນວັນທີແທ້ໆ)
   const exportToExcel = async () => {
     try {
         const data = filteredExpenses.map(item => ({
-            "ວັນທີ": new Date(item.date).toLocaleDateString('en-GB'),
-            "ໝວດໝູ່": item.category,
-            "ລາຍລະອຽດ": item.description,
-            "ຈຳນວນເງິນ": item.amount
+            "Date": new Date(item.date), // 🟢 ສົ່ງ Date Object
+            "Category": item.category,
+            "Description": item.description,
+            "Amount": item.amount
         }));
 
         const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
         data.push({
-            "ວັນທີ": "",
-            "ໝວດໝູ່": "",
-            "ລາຍລະອຽດ": "ລວມທັງໝົດ",
-            "ຈຳນວນເງິນ": total
+            "Date": new Date(), // ໃສ່ວັນທີປັດຈຸບັນເປັນ Placeholder
+            "Category": "",
+            "Description": "ລວມທັງໝົດ (Total)",
+            "Amount": total
         });
 
-        const ws = XLSX.utils.json_to_sheet(data);
+        // 🟢 ກຳນົດ cellDates: true ແລະ dateNF
+        const ws = XLSX.utils.json_to_sheet(data, { 
+            cellDates: true, 
+            dateNF: 'dd/mm/yyyy' 
+        });
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Expenses");
         const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
-        // 🟢 ໃຊ້ getSaveDirectory()
         const docDir = getSaveDirectory();
         const fileName = `${docDir}expenses_report.xlsx`;
 
+        // @ts-ignore
         await FileSystem.writeAsStringAsync(fileName, wbout, { encoding: FileSystem.EncodingType.Base64 });
         await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
         setShowExportOptions(false);
@@ -290,7 +305,6 @@ export default function ExpenseScreen() {
     }
   };
 
-  // 7. Export PDF
   const exportToPDF = async () => {
     try {
         const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
@@ -421,7 +435,6 @@ export default function ExpenseScreen() {
         {/* Header with Export */}
         <View style={styles.headerRow}>
             <Text style={styles.screenTitle}>ລາຍຈ່າຍ (Expenses)</Text>
-            {/* ປຸ່ມເມນູ Export/Import */}
             <TouchableOpacity style={styles.exportIconBtn} onPress={() => setShowExportOptions(true)}>
                 <Ionicons name="ellipsis-vertical" size={22} color={COLORS.primary} />
             </TouchableOpacity>

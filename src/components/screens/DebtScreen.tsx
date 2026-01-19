@@ -3,20 +3,20 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້ (ຕາມໂຄງສ້າງໃໝ່ທີ່ຖືກຕ້ອງ)
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
@@ -57,6 +57,7 @@ interface DebtItem {
 export default function DebtScreen() {
   const { hasPermission } = useAuth();
 
+  // --- State Declarations ---
   const [debts, setDebts] = useState<DebtItem[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -79,11 +80,8 @@ export default function DebtScreen() {
   const [payAmount, setPayAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date());
 
-  // ❌ ລຶບການກວດສອບສິດບ່ອນນີ້ອອກ (ຍ້າຍໄປລຸ່ມສຸດ)
-
-  // 1. Fetch Data
+  // 🟢 1. Fetch Data (ເພີ່ມ [hasPermission] ເພື່ອໃຫ້ໂຫຼດຂໍ້ມູນ)
   useEffect(() => {
-    // 🟢 ກວດສອບສິດໃນນີ້ແທນ (ເພື່ອຢຸດການດຶງຂໍ້ມູນ)
     if (!hasPermission('accessFinancial')) return;
 
     const debtRef = ref(db, 'debts');
@@ -118,9 +116,9 @@ export default function DebtScreen() {
         console.error("Debt Load Error:", error);
     });
     return () => unsubscribe();
-  }, []);
+  }, [hasPermission]); // 🛑 ສຳຄັນ! ຕ້ອງໃສ່ hasPermission
 
-  // 2. History Logic
+  // 🟢 2. History Logic
   useEffect(() => {
     if (selectedDebt && historyModalVisible) {
         const currentDebt = debts.find(d => d.id === selectedDebt.id);
@@ -137,7 +135,7 @@ export default function DebtScreen() {
     }
   }, [debts, selectedDebt, historyModalVisible]);
 
-  // Save Debt
+  // --- Functions ---
   const handleSaveDebt = async () => {
     if (!title || !totalAmount) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ ແລະ ຈຳນວນເງິນ');
@@ -304,7 +302,7 @@ export default function DebtScreen() {
     );
   };
 
-  // 🟢 5. ຍ້າຍການກວດສອບສິດມາໄວ້ບ່ອນນີ້ (ແກ້ Error: Rendered more hooks)
+  // 🟢 3. ຍ້າຍການກວດສອບສິດມາໄວ້ບ່ອນນີ້ (ລຸ່ມສຸດ)
   if (!hasPermission('accessFinancial')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
@@ -316,6 +314,7 @@ export default function DebtScreen() {
       );
   }
 
+  // Return ໜ້າຈໍຫຼັກ
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerContainer}>
@@ -518,7 +517,7 @@ const styles = StyleSheet.create({
   historyDate: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
   historyAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.success },
 
-  // 🟢 ເພີ່ມ Styles FAB ທີ່ຂາດໄປ
+  // 🟢 FAB Styles (ແກ້ໄຂທີ່ຂາດໄປ)
   fab: { 
     position: 'absolute', 
     bottom: 20, 

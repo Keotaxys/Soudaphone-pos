@@ -2,8 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 
-// 🟢 1. Import ແບບ Legacy ອັນດຽວ
-import * as FileSystem from 'expo-file-system/legacy';
+// 🟢 Import FileSystem
+import * as FileSystemMain from 'expo-file-system';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
+
+// 🟢 Import Library ສຳລັບ Excel
+import * as XLSX from 'xlsx';
 
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
@@ -145,25 +149,39 @@ export default function ExpenseScreen() {
     setFilterDate(newDate);
   };
 
-  // 🟢 4. Download Template (ແກ້ໄຂ Error ໂດຍໃຊ້ as any)
+  // 🟢 4. Download Template (Excel .xlsx)
   const handleDownloadTemplate = async () => {
     try {
-      const csvContent = 
-        "Date(YYYY-MM-DD),Category,Description,Amount\n" +
-        "2026-01-20,ສັ່ງສິນຄ້າ,ຊື້ເຄື່ອງເຂົ້າຮ້ານ,500000\n" +
-        "2026-01-21,ຄ່າເຊົ່າ,ຈ່າຍຄ່າເຊົ່າເດືອນ 1,2000000";
+      // ຂໍ້ມູນຕົວຢ່າງ
+      const data = [
+        {
+          "Date(YYYY-MM-DD)": "2026-01-20",
+          "Category": "ສັ່ງສິນຄ້າ",
+          "Description": "ຊື້ເຄື່ອງເຂົ້າຮ້ານ",
+          "Amount": 500000
+        },
+        {
+          "Date(YYYY-MM-DD)": "2026-01-21",
+          "Category": "ຄ່າເຊົ່າ",
+          "Description": "ຈ່າຍຄ່າເຊົ່າເດືອນ 1",
+          "Amount": 2000000
+        }
+      ];
 
-      // 🟢 ໃຊ້ (FileSystem as any) ເພື່ອບັງຄັບໃຫ້ TypeScript ຜ່ານ
-      const docDir = (FileSystem as any).documentDirectory;
-      
-      if (!docDir) {
-          throw new Error("Device storage is not available");
-      }
+      // ສ້າງ Workbook
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Template");
 
-      const fileName = `${docDir}expense_template.csv`;
+      // ຂຽນເປັນ Base64
+      const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
-      await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
-      await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+      // ບັນທຶກຟາຍ
+      const docDir = (FileSystemMain as any).documentDirectory;
+      const fileName = `${docDir}expense_template.xlsx`;
+
+      await FileSystemLegacy.writeAsStringAsync(fileName, wbout, { encoding: FileSystemLegacy.EncodingType.Base64 });
+      await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
       setShowExportOptions(false);
     } catch (error) {
       console.error(error);
@@ -171,11 +189,14 @@ export default function ExpenseScreen() {
     }
   };
 
-  // 5. Import CSV
-  const handleImportCSV = async () => {
+  // 🟢 5. Import Excel (.xlsx)
+  const handleImportExcel = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['text/csv', 'application/vnd.ms-excel', 'text/comma-separated-values'],
+        type: [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+            'application/vnd.ms-excel' // .xls
+        ],
         copyToCacheDirectory: true
       });
 
@@ -184,31 +205,39 @@ export default function ExpenseScreen() {
       setImporting(true);
       const fileUri = result.assets[0].uri;
       
-      const fileContent = await FileSystem.readAsStringAsync(fileUri);
+      // ອ່ານຟາຍເປັນ Base64
+      const fileContent = await FileSystemLegacy.readAsStringAsync(fileUri, { encoding: FileSystemLegacy.EncodingType.Base64 });
       
-      const rows = fileContent.split('\n');
+      // Parse Workbook
+      const wb = XLSX.read(fileContent, { type: 'base64' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      
+      // ແປງເປັນ JSON
+      const data: any[] = XLSX.utils.sheet_to_json(ws);
+      
       let successCount = 0;
       
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i].trim();
-        if (!row) continue;
+      for (const row of data) {
+        // ດຶງຂໍ້ມູນຕາມ Key ໃນ Template
+        const dateStr = row['Date(YYYY-MM-DD)'];
+        const catStr = row['Category'];
+        const descStr = row['Description'];
+        const amountVal = row['Amount'];
 
-        const columns = row.split(',');
-        if (columns.length < 4) continue;
+        if (!amountVal || isNaN(parseFloat(amountVal))) continue;
 
-        const [dateStr, catStr, descStr, amountStr] = columns;
-
-        const parsedAmount = parseFloat(amountStr);
-        if (isNaN(parsedAmount)) continue;
-
-        const parsedDate = new Date(dateStr);
-        if (isNaN(parsedDate.getTime())) continue;
+        // ຈັດການວັນທີ (Excel ບາງເທື່ອສົ່ງມາເປັນ serial number)
+        let parsedDate = new Date();
+        if (dateStr) {
+            parsedDate = new Date(dateStr);
+        }
 
         await push(ref(db, 'expenses'), {
           date: parsedDate.toISOString(),
           category: catStr?.trim() || 'ອື່ນໆ',
-          description: descStr?.trim() || 'Imported via CSV',
-          amount: parsedAmount,
+          description: descStr?.trim() || 'Imported via Excel',
+          amount: parseFloat(amountVal),
           createdAt: new Date().toISOString()
         });
         
@@ -220,36 +249,48 @@ export default function ExpenseScreen() {
 
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດໃນການອ່ານຟາຍ CSV");
+      Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດໃນການອ່ານຟາຍ Excel");
     } finally {
       setImporting(false);
     }
   };
 
-  // 6. Export CSV
-  const exportToCSV = async () => {
+  // 🟢 6. Export Excel (.xlsx)
+  const exportToExcel = async () => {
     try {
-        let csvContent = "Date,Category,Description,Amount\n";
-        filteredExpenses.forEach(item => {
-            const dateStr = new Date(item.date).toLocaleDateString('en-GB');
-            const cleanDesc = item.description ? item.description.replace(/,/g, ' ') : '';
-            csvContent += `${dateStr},${item.category},${cleanDesc},${item.amount}\n`;
+        // ກຽມຂໍ້ມູນ
+        const data = filteredExpenses.map(item => ({
+            "ວັນທີ": new Date(item.date).toLocaleDateString('en-GB'), // DD/MM/YYYY
+            "ໝວດໝູ່": item.category,
+            "ລາຍລະອຽດ": item.description,
+            "ຈຳນວນເງິນ": item.amount
+        }));
+
+        // ຄຳນວນຍອດລວມ
+        const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
+        data.push({
+            "ວັນທີ": "",
+            "ໝວດໝູ່": "",
+            "ລາຍລະອຽດ": "ລວມທັງໝົດ",
+            "ຈຳນວນເງິນ": total
         });
 
-        const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
-        csvContent += `\n,,Total,${total}`;
+        // ສ້າງ Workbook
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Expenses");
 
-        // 🟢 ໃຊ້ (FileSystem as any) ເຊັ່ນກັນ
-        const docDir = (FileSystem as any).documentDirectory;
-        if (!docDir) throw new Error("Storage Unavailable");
+        // ຂຽນເປັນ Base64
+        const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
-        const fileName = `${docDir}expenses_report.csv`;
+        const docDir = (FileSystemMain as any).documentDirectory;
+        const fileName = `${docDir}expenses_report.xlsx`;
 
-        await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
-        await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+        await FileSystemLegacy.writeAsStringAsync(fileName, wbout, { encoding: FileSystemLegacy.EncodingType.Base64 });
+        await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
         setShowExportOptions(false);
     } catch (error) {
-        Alert.alert("Error", "Export CSV ບໍ່ສຳເລັດ");
+        Alert.alert("Error", "Export Excel ບໍ່ສຳເລັດ");
     }
   };
 
@@ -528,9 +569,9 @@ export default function ExpenseScreen() {
                 ) : (
                     <>
                         <Text style={styles.sectionHeader}>📤 ສົ່ງອອກ (Export)</Text>
-                        <TouchableOpacity style={styles.exportOption} onPress={exportToCSV}>
-                            <Ionicons name="document-text" size={24} color="#2ecc71" />
-                            <Text style={styles.exportText}>Export as CSV (Excel)</Text>
+                        <TouchableOpacity style={styles.exportOption} onPress={exportToExcel}>
+                            <Ionicons name="grid-outline" size={24} color="#217346" />
+                            <Text style={styles.exportText}>Export as Excel (.xlsx)</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.exportOption} onPress={exportToPDF}>
                             <Ionicons name="print" size={24} color="#e74c3c" />
@@ -540,11 +581,11 @@ export default function ExpenseScreen() {
                         <Text style={styles.sectionHeader}>📥 ນຳເຂົ້າ (Import)</Text>
                         <TouchableOpacity style={styles.exportOption} onPress={handleDownloadTemplate}>
                             <Ionicons name="download-outline" size={24} color={COLORS.primary} />
-                            <Text style={styles.exportText}>ດາວໂຫຼດແບບຟອມ (Template)</Text>
+                            <Text style={styles.exportText}>ດາວໂຫຼດແບບຟອມ (.xlsx)</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.exportOption} onPress={handleImportCSV}>
+                        <TouchableOpacity style={styles.exportOption} onPress={handleImportExcel}>
                             <Ionicons name="cloud-upload-outline" size={24} color={ORANGE_COLOR} />
-                            <Text style={styles.exportText}>Import ຈາກ Excel (CSV)</Text>
+                            <Text style={styles.exportText}>Import ຈາກ Excel (.xlsx)</Text>
                         </TouchableOpacity>
                     </>
                 )}

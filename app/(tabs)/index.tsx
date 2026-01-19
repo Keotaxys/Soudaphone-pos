@@ -37,7 +37,7 @@ import EditShopModal from '../../src/components/modals/EditShopModal';
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
 
-// Any Casts (ເພື່ອຫຼີກລ່ຽງ TS Errors ຊົ່ວຄາວ)
+// Any Casts (ເພື່ອຫຼີກລ່ຽງ TS Errors)
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -70,7 +70,7 @@ export default function App() {
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
   const [isScannerVisible, setScannerVisible] = useState(false);
 
-  // 🟢 State ສຳລັບບອກວ່າກຳລັງສະແກນເພື່ອຫຍັງ ('pos' = ຂາຍ, 'product' = ເພີ່ມສິນຄ້າ)
+  // 🟢 State: scanMode ເພື່ອບອກວ່າສະແກນເພື່ອຫຍັງ ('pos' = ຂາຍ, 'product' = ເພີ່ມສິນຄ້າ)
   const [scanMode, setScanMode] = useState<'pos' | 'product'>('pos');
 
   const [shopInfo, setShopInfo] = useState({
@@ -161,12 +161,12 @@ export default function App() {
     setProductModalVisible(false);
   };
 
-  // 🟢 Logic ການສະແກນ
+  // 🟢 Logic ການສະແກນ (Update)
   const handleScanSuccess = (code: string) => {
     setScannerVisible(false);
 
     if (scanMode === 'pos') {
-        // 🛒 ໂຫມດຂາຍ: ຄົ້ນຫາສິນຄ້າແລ້ວເອົາລົງກະຕ່າ
+        // 🛒 ໂຫມດຂາຍ
         const foundProduct = products.find(p => p.barcode === code);
         if (foundProduct) { 
             addToCart(foundProduct); 
@@ -175,9 +175,9 @@ export default function App() {
             Alert.alert("ບໍ່ພົບສິນຄ້າ", `ລະຫັດ: ${code} ບໍ່ມີໃນລະບົບ`); 
         }
     } else {
-        // ➕ ໂຫມດເພີ່ມສິນຄ້າ: ສົ່ງລະຫັດໄປໜ້າແບບຟອມ
+        // ➕ ໂຫມດເພີ່ມສິນຄ້າ
         setTempProduct(prev => ({ ...prev, barcode: code }));
-        setProductModalVisible(true); // ເປີດ Modal ຄືນ
+        setProductModalVisible(true); 
     }
   };
 
@@ -246,7 +246,7 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="light" backgroundColor="transparent" translucent={true} />
       
-      {/* 🟢 ໃຊ້ View ຫໍ່ເພື່ອຈັດການ Z-Index ໄດ້ງ່າຍ */}
+      {/* 🟢 Main Container ໃຊ້ View ປົກກະຕິ (ບໍ່ແມ່ນ SafeAreaView) ເພື່ອປ້ອງກັນ UI ເພ້ຍ */}
       <View style={{ flex: 1 }}> 
       
         <View style={styles.container}>

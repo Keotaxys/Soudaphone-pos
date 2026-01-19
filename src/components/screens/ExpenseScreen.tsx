@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-// @ts-ignore
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
@@ -38,33 +37,35 @@ export default function ExpenseScreen() {
     const { hasPermission } = useAuth();
     
     // Data States
-    const [allExpenses, setAllExpenses] = useState<ExpenseRecord[]>([]); // ຂໍ້ມູນທັງໝົດ
-    const [filteredExpenses, setFilteredExpenses] = useState<ExpenseRecord[]>([]); // ຂໍ້ມູນທີ່ກັ່ນຕອງແລ້ວ
+    const [allExpenses, setAllExpenses] = useState<ExpenseRecord[]>([]);
+    const [filteredExpenses, setFilteredExpenses] = useState<ExpenseRecord[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Filter States
     const [filterType, setFilterType] = useState<FilterType>('day');
-    const [filterDate, setFilterDate] = useState(new Date()); // ສຳລັບ Day/Month
-    const [startDate, setStartDate] = useState(new Date()); // ສຳລັບ Custom
-    const [endDate, setEndDate] = useState(new Date());   // ສຳລັບ Custom
+    const [filterDate, setFilterDate] = useState(new Date());
+    const [startDate, setStartDate] = useState(new Date());
+    const [endDate, setEndDate] = useState(new Date());
 
     // Form States (Add/Edit)
     const [id, setId] = useState<string | null>(null);
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('ສັ່ງສິນຄ້າ'); 
-    const [formDate, setFormDate] = useState(new Date()); // ວັນທີຂອງການບັນທຶກ
+    const [formDate, setFormDate] = useState(new Date());
     
     // UI States
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-    
-    // Date Picker States
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [datePickerTarget, setDatePickerTarget] = useState<'form' | 'filter' | 'start' | 'end'>('form');
 
-    // 🟢 1. ດຶງຂໍ້ມູນ (Fetch Data)
+    // 🟢 1. ດຶງຂໍ້ມູນ (Fetch Data) - ແກ້ໄຂໃຫ້ Fetch ໃໝ່ເມື່ອມີສິດ
     useEffect(() => {
-        if (!hasPermission('accessFinancial')) return;
+        // ຖ້າບໍ່ມີສິດເຂົ້າເຖິງການເງິນ ບໍ່ໃຫ້ດຶງຂໍ້ມູນ
+        if (!hasPermission('accessFinancial')) {
+            setLoading(false);
+            return;
+        }
 
         const expenseRef = ref(db, 'expenses');
         const unsubscribe = onValue(expenseRef, (snapshot) => {
@@ -74,7 +75,6 @@ export default function ExpenseScreen() {
                     id: key,
                     ...data[key]
                 }));
-                // ລຽງວັນທີ ໃໝ່ -> ເກົ່າ
                 list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                 setAllExpenses(list as ExpenseRecord[]);
             } else {
@@ -82,23 +82,23 @@ export default function ExpenseScreen() {
             }
             setLoading(false);
         });
+
         return () => unsubscribe();
-    }, []);
+    }, [hasPermission]); // 🛑 ໃສ່ hasPermission ເພື່ອໃຫ້ Fetch ໃໝ່ຫຼັງ Login
 
     // 🟢 2. Logic ກັ່ນຕອງຂໍ້ມູນ (Filter Logic)
     useEffect(() => {
         let start = new Date(filterDate);
         let end = new Date(filterDate);
 
-        // Reset Time
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
 
         if (filterType === 'day') {
-            // ໃຊ້ມື້ດຽວກັນ (Default)
+            // Default
         } else if (filterType === 'week') {
             const day = start.getDay();
-            const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
             start.setDate(diff);
             end = new Date(start);
             end.setDate(start.getDate() + 6);
@@ -122,7 +122,6 @@ export default function ExpenseScreen() {
         });
 
         setFilteredExpenses(filtered);
-
     }, [allExpenses, filterType, filterDate, startDate, endDate]);
 
     // --- Helper Functions ---
@@ -174,7 +173,6 @@ export default function ExpenseScreen() {
         setFormDate(new Date());
     };
 
-    // 🟢 Date Picker Handler
     const openDatePicker = (target: 'form' | 'filter' | 'start' | 'end') => {
         setDatePickerTarget(target);
         setShowDatePicker(true);
@@ -182,7 +180,6 @@ export default function ExpenseScreen() {
 
     const onDateChange = (event: any, date?: Date) => {
         if (Platform.OS === 'android') setShowDatePicker(false);
-        
         if (date) {
             if (datePickerTarget === 'form') setFormDate(date);
             else if (datePickerTarget === 'filter') setFilterDate(date);
@@ -191,7 +188,7 @@ export default function ExpenseScreen() {
         }
     };
 
-    // 🟢 3. ກວດສອບສິດ (ວາງໄວ້ລຸ່ມສຸດ)
+    // 🟢 3. ກວດສອບສິດ (ວາງໄວ້ລຸ່ມສຸດຂອງ Hooks ເພື່ອແກ້ Error Rendered more hooks)
     if (!hasPermission('accessFinancial')) {
         return (
             <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
@@ -207,7 +204,7 @@ export default function ExpenseScreen() {
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
                 
-                {/* 🟢 Filter Bar */}
+                {/* Filter Bar */}
                 <View style={styles.filterContainer}>
                     <View style={styles.filterRow}>
                         {['day', 'week', 'month', 'custom'].map((type) => (
@@ -223,7 +220,6 @@ export default function ExpenseScreen() {
                         ))}
                     </View>
 
-                    {/* Date Display based on Filter */}
                     <View style={styles.dateSelectorRow}>
                         {filterType === 'custom' ? (
                             <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
@@ -252,9 +248,6 @@ export default function ExpenseScreen() {
                 <View style={styles.formCard}>
                     <View style={styles.actionRowTop}>
                         <Text style={styles.headerTitle}>{id ? '✏️ ແກ້ໄຂ' : '➕ ເພີ່ມລາຍຈ່າຍ'}</Text>
-                        <View style={{flexDirection: 'row', gap: 5}}>
-                            {/* Export/Import Buttons here if needed */}
-                        </View>
                     </View>
                     
                     <View style={styles.row}>
@@ -322,10 +315,9 @@ export default function ExpenseScreen() {
                         </View>
                     </View>
                 ))}
-
             </ScrollView>
 
-            {/* 🟢 Date Picker with iOS Dark Mode Fix */}
+            {/* Date Picker with iOS Dark Mode Fix */}
             {showDatePicker && (
                 Platform.OS === 'ios' ? (
                     <Modal visible={true} transparent={true} animationType="fade">
@@ -343,7 +335,7 @@ export default function ExpenseScreen() {
                                     onChange={onDateChange} 
                                     style={{ height: 320, width: '100%', backgroundColor: 'white' }} 
                                     textColor="black" 
-                                    themeVariant="light" // 🟢 Fix Dark Mode
+                                    themeVariant="light"
                                 />
                                 <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
                                     <Text style={styles.iosDateDoneText}>ຕົກລົງ</Text>
@@ -366,7 +358,6 @@ export default function ExpenseScreen() {
                 )
             )}
 
-            {/* Category Picker */}
             <Modal visible={showCategoryPicker} transparent={true} animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
@@ -391,8 +382,6 @@ export default function ExpenseScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    
-    // Filter Styles
     filterContainer: { backgroundColor: 'white', padding: 10, marginHorizontal: 15, marginTop: 15, borderRadius: 12, elevation: 2 },
     filterRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
     filterChip: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#f0f0f0' },
@@ -401,11 +390,9 @@ const styles = StyleSheet.create({
     dateSelectorRow: { alignItems: 'center', marginTop: 5 },
     dateDisplayBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#f9f9f9', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
     dateDisplayText: { fontFamily: 'Lao-Bold', color: '#333' },
-
     formCard: { backgroundColor: 'white', margin: 15, marginBottom: 5, padding: 15, borderRadius: 15, elevation: 3, shadowColor: COLORS.primary, shadowOpacity: 0.1 },
     actionRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     headerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primaryDark },
-    iconBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
     row: { flexDirection: 'row', gap: 10, marginBottom: 10 },
     dateBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', padding: 10, borderRadius: 8, gap: 5 },
     dateText: { fontFamily: 'Lao-Bold', color: '#555' },
@@ -419,9 +406,7 @@ const styles = StyleSheet.create({
     saveBtn: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
     cancelBtn: { width: 50, backgroundColor: '#eee', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    
     listHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: '#666', marginTop: 15, marginBottom: 10, marginHorizontal: 15 },
-    
     expenseItem: { flexDirection: 'row', backgroundColor: 'white', padding: 12, borderRadius: 12, marginBottom: 10, marginHorizontal: 15, alignItems: 'center', elevation: 1 },
     dateBox: { backgroundColor: '#f0f0f0', padding: 8, borderRadius: 8, alignItems: 'center', minWidth: 50 },
     dayText: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primary },
@@ -435,7 +420,6 @@ const styles = StyleSheet.create({
     categoryItem: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#f5f5f5', flexDirection: 'row', justifyContent: 'space-between' },
     categoryItemText: { fontFamily: 'Lao-Regular', fontSize: 16, color: '#333' },
     closeModalBtn: { marginTop: 15, padding: 10, alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10 },
-    
     iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
     iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },
     iosDateDoneText: { fontFamily: 'Lao-Bold', color: COLORS.primary, fontSize: 16 }

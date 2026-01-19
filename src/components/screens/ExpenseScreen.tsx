@@ -86,6 +86,7 @@ export default function ExpenseScreen() {
             id: key,
             ...data[key]
         }));
+        // Sort ໃຫມ່ຫາເກົ່າ
         list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setAllExpenses(list as ExpenseRecord[]);
       } else {
@@ -152,7 +153,6 @@ export default function ExpenseScreen() {
   // 🟢 4. Download Template (Excel .xlsx)
   const handleDownloadTemplate = async () => {
     try {
-      // ຂໍ້ມູນຕົວຢ່າງ
       const data = [
         {
           "Date(YYYY-MM-DD)": "2026-01-20",
@@ -168,15 +168,11 @@ export default function ExpenseScreen() {
         }
       ];
 
-      // ສ້າງ Workbook
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Template");
-
-      // ຂຽນເປັນ Base64
       const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
-      // ບັນທຶກຟາຍ
       const docDir = (FileSystemMain as any).documentDirectory;
       const fileName = `${docDir}expense_template.xlsx`;
 
@@ -205,21 +201,16 @@ export default function ExpenseScreen() {
       setImporting(true);
       const fileUri = result.assets[0].uri;
       
-      // ອ່ານຟາຍເປັນ Base64
       const fileContent = await FileSystemLegacy.readAsStringAsync(fileUri, { encoding: FileSystemLegacy.EncodingType.Base64 });
       
-      // Parse Workbook
       const wb = XLSX.read(fileContent, { type: 'base64' });
       const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
-      
-      // ແປງເປັນ JSON
       const data: any[] = XLSX.utils.sheet_to_json(ws);
       
       let successCount = 0;
       
       for (const row of data) {
-        // ດຶງຂໍ້ມູນຕາມ Key ໃນ Template
         const dateStr = row['Date(YYYY-MM-DD)'];
         const catStr = row['Category'];
         const descStr = row['Description'];
@@ -227,7 +218,6 @@ export default function ExpenseScreen() {
 
         if (!amountVal || isNaN(parseFloat(amountVal))) continue;
 
-        // ຈັດການວັນທີ (Excel ບາງເທື່ອສົ່ງມາເປັນ serial number)
         let parsedDate = new Date();
         if (dateStr) {
             parsedDate = new Date(dateStr);
@@ -258,15 +248,13 @@ export default function ExpenseScreen() {
   // 🟢 6. Export Excel (.xlsx)
   const exportToExcel = async () => {
     try {
-        // ກຽມຂໍ້ມູນ
         const data = filteredExpenses.map(item => ({
-            "ວັນທີ": new Date(item.date).toLocaleDateString('en-GB'), // DD/MM/YYYY
+            "ວັນທີ": new Date(item.date).toLocaleDateString('en-GB'),
             "ໝວດໝູ່": item.category,
             "ລາຍລະອຽດ": item.description,
             "ຈຳນວນເງິນ": item.amount
         }));
 
-        // ຄຳນວນຍອດລວມ
         const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
         data.push({
             "ວັນທີ": "",
@@ -275,12 +263,9 @@ export default function ExpenseScreen() {
             "ຈຳນວນເງິນ": total
         });
 
-        // ສ້າງ Workbook
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Expenses");
-
-        // ຂຽນເປັນ Base64
         const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
         const docDir = (FileSystemMain as any).documentDirectory;
@@ -532,22 +517,40 @@ export default function ExpenseScreen() {
 
         {filteredExpenses.map((item) => (
             <View key={item.id} style={styles.expenseItem}>
-                <View style={styles.dateBox}>
-                    <Text style={styles.dayText}>{new Date(item.date).getDate()}</Text>
-                    <Text style={styles.monthText}>{new Date(item.date).getMonth() + 1}/{new Date(item.date).getFullYear().toString().substr(2)}</Text>
+                
+                {/* 🟢 UI ໃໝ່: Icon ວົງມົນທາງຊ້າຍ */}
+                <View style={styles.iconBox}>
+                    <Ionicons name="pricetag" size={20} color={COLORS.primary} />
                 </View>
-                <View style={{ flex: 1, paddingHorizontal: 10 }}>
+
+                {/* 🟢 UI ໃໝ່: ເນື້ອຫາທາງກາງ */}
+                <View style={{ flex: 1, paddingHorizontal: 12, justifyContent: 'center' }}>
                     <Text style={styles.itemCategory}>{item.category}</Text>
-                    <Text style={styles.itemDesc} numberOfLines={1}>{item.description}</Text>
+                    {item.description ? (
+                        <Text style={styles.itemDesc} numberOfLines={1}>{item.description}</Text>
+                    ) : null}
+                    
+                    {/* ວັນທີຢູ່ກ້ອງ */}
+                    <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
+                        <Ionicons name="calendar-outline" size={12} color="#999" style={{marginRight: 4}} />
+                        <Text style={styles.itemDateSmall}>
+                            {new Date(item.date).toLocaleDateString('en-GB')} {new Date(item.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </Text>
+                    </View>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={[styles.itemAmount, {color: ORANGE_COLOR}]}>- {formatNumber(item.amount)}</Text>
-                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 5 }}>
+
+                {/* 🟢 UI ໃໝ່: ຈຳນວນເງິນ ແລະ ປຸ່ມທາງຂວາ */}
+                <View style={{ alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                    <Text style={[styles.itemAmount, {color: ORANGE_COLOR}]}>
+                        - {formatNumber(item.amount)}
+                    </Text>
+                    
+                    <View style={{ flexDirection: 'row', gap: 15, marginTop: 8 }}>
                         <TouchableOpacity onPress={() => handleEdit(item)}>
-                            <Ionicons name="pencil" size={18} color={COLORS.primary} />
+                            <Ionicons name="pencil" size={16} color={COLORS.primary} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleDelete(item.id!)}>
-                            <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
+                            <Ionicons name="trash-outline" size={16} color="#FF5252" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -696,13 +699,55 @@ const styles = StyleSheet.create({
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 },
   cancelBtn: { width: 50, backgroundColor: '#eee', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   listHeader: { fontFamily: 'Lao-Bold', fontSize: 16, color: '#666', marginTop: 15, marginBottom: 10, marginHorizontal: 15 },
-  expenseItem: { flexDirection: 'row', backgroundColor: 'white', padding: 12, borderRadius: 12, marginBottom: 10, marginHorizontal: 15, alignItems: 'center', elevation: 1 },
+  
+  // 🟢 Styles ໃໝ່ສຳລັບລາຍການ
+  expenseItem: { 
+    flexDirection: 'row', 
+    backgroundColor: 'white', 
+    paddingVertical: 15, 
+    paddingHorizontal: 15,
+    borderRadius: 12, 
+    marginBottom: 10, 
+    marginHorizontal: 15, 
+    alignItems: 'center', 
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  iconBox: {
+    width: 45,
+    height: 45,
+    borderRadius: 25,
+    backgroundColor: '#F0F9F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemCategory: { 
+    fontSize: 16, 
+    color: '#333', 
+    fontFamily: 'Lao-Bold', 
+    marginBottom: 2 
+  },
+  itemDesc: { 
+    fontSize: 14, 
+    color: '#555', 
+    fontFamily: 'Lao-Regular' 
+  },
+  itemDateSmall: {
+    fontSize: 12,
+    color: '#999',
+    fontFamily: 'Lao-Regular',
+  },
+  itemAmount: { 
+    fontSize: 16, 
+    fontFamily: 'Lao-Bold' 
+  },
+  
   dateBox: { backgroundColor: '#f0f0f0', padding: 8, borderRadius: 8, alignItems: 'center', minWidth: 50 },
   dayText: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primary },
   monthText: { fontSize: 10, color: '#888' },
-  itemCategory: { fontSize: 12, color: COLORS.primary, fontFamily: 'Lao-Bold', marginBottom: 2 },
-  itemDesc: { fontSize: 14, color: '#333', fontFamily: 'Lao-Regular' },
-  itemAmount: { fontSize: 16, fontFamily: 'Lao-Bold' },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: '80%', maxHeight: '60%', backgroundColor: 'white', borderRadius: 20, padding: 20 },

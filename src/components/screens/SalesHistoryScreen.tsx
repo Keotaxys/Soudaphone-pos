@@ -226,7 +226,6 @@ export default function SalesHistoryScreen() {
         csvContent += `${dateStr},${type},${item.id},"${desc}",${totalLAK},${totalTHB},${item.paymentMethod || 'CASH'}\n`;
     });
 
-    // 🟢 2. ແກ້ໄຂໂດຍການໃຊ້ (as any) ເພື່ອບັງຄັບໃຫ້ TS ຜ່ານ (Bypass TS Check)
     const docDir = (FileSystem as any).documentDirectory; 
     const fileName = `${docDir}sales_report.csv`;
     
@@ -298,6 +297,11 @@ export default function SalesHistoryScreen() {
         currencySymbol = item.currency === 'THB' ? '฿' : '₭';
     }
 
+    // 🟢 ປັບປຸງການສະແດງຜົນວັນທີ
+    const itemDate = new Date(item.date);
+    const dateStr = itemDate.toLocaleDateString('en-GB'); // DD/MM/YYYY
+    const timeStr = itemDate.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
+
     return (
       <View style={[styles.card, isSpecial && { borderLeftWidth: 5, borderLeftColor: SPECIAL_COLOR }]}>
         <TouchableOpacity style={styles.cardHeader} onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}>
@@ -306,7 +310,14 @@ export default function SalesHistoryScreen() {
                     {isSpecial && <View style={styles.specialTag}><Text style={styles.specialTagText}>ຂາຍພິເສດ</Text></View>}
                     <Text style={styles.billId}>#{item.id ? item.id.slice(-4) : '...'}</Text>
                 </View>
-                <Text style={styles.dateText}>{new Date(item.date).toLocaleTimeString('lo-LA')}</Text>
+                
+                {/* 🟢 ສະແດງວັນທີ ແລະ ເວລາ ລະອຽດ */}
+                <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
+                    <Ionicons name="calendar-outline" size={12} color="#888" style={{marginRight: 4}} />
+                    <Text style={styles.dateText}>
+                        {dateStr} • {timeStr}
+                    </Text>
+                </View>
             </View>
             <View style={{alignItems: 'flex-end'}}>
                 <Text style={[styles.amountText, isSpecial && {color: SPECIAL_COLOR}]}>+{formatNumber(displayTotal)} {currencySymbol}</Text>

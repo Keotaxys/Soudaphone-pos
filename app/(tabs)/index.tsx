@@ -6,7 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
 
-// 🟢 ແກ້ Path ຈາກ ./src ເປັນ ../../src ໃຫ້ຖືກຕ້ອງໝົດແລ້ວ
+// ⚠️ ກວດສອບ path ໃຫ້ຖືກຕ້ອງຕາມໂຄງສ້າງໂຟນເດີຂອງທ່ານ
 import { db } from '../../src/firebase';
 import { CartItem, Product, SaleRecord } from '../../src/types';
 
@@ -25,7 +25,7 @@ import ProductsScreen from '../../src/components/screens/ProductsScreen';
 import ReportDashboard from '../../src/components/screens/ReportDashboard';
 import SalesHistoryScreen from '../../src/components/screens/SalesHistoryScreen';
 import ShiftScreen from '../../src/components/screens/ShiftScreen';
-import UserManagementScreen from '../../src/components/screens/UserManagementScreen'; // ເພີ່ມໜ້າຈັດການຜູ້ໃຊ້
+import UserManagementScreen from '../../src/components/screens/UserManagementScreen';
 
 // UI Components
 import Footer from '../../src/components/ui/Footer';
@@ -69,6 +69,9 @@ export default function App() {
   const [isProductModalVisible, setProductModalVisible] = useState(false);
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
   const [isScannerVisible, setScannerVisible] = useState(false);
+
+  // 🟢 1. ເພີ່ມ State ເພື່ອກວດສອບວ່າສະແກນເພື່ອຫຍັງ ('pos' = ຂາຍ, 'product' = ເພີ່ມສິນຄ້າ)
+  const [scanMode, setScanMode] = useState<'pos' | 'product'>('pos');
 
   const [shopInfo, setShopInfo] = useState({
     name: 'ຮ້ານ ສຸດາພອນ',
@@ -158,12 +161,24 @@ export default function App() {
     setProductModalVisible(false);
   };
 
-  // Scanner Logic
+  // 🟢 2. Scanner Logic (ແກ້ໄຂໃໝ່)
   const handleScanSuccess = (code: string) => {
     setScannerVisible(false);
-    const foundProduct = products.find(p => p.barcode === code);
-    if (foundProduct) { addToCart(foundProduct); setActiveTab('POS'); Alert.alert("ສຳເລັດ", `ເພີ່ມ ${foundProduct.name} ລົງກະຕ່າແລ້ວ`); } 
-    else { Alert.alert("ບໍ່ພົບສິນຄ້າ", `ລະຫັດ: ${code} ບໍ່ມີໃນລະບົບ`); }
+
+    if (scanMode === 'pos') {
+        // 🛒 ໂຫມດຂາຍ: ຄົ້ນຫາສິນຄ້າແລ້ວເອົາລົງກະຕ່າ
+        const foundProduct = products.find(p => p.barcode === code);
+        if (foundProduct) { 
+            addToCart(foundProduct); 
+            Alert.alert("ສຳເລັດ", `ເພີ່ມ ${foundProduct.name} ລົງກະຕ່າແລ້ວ`); 
+        } else { 
+            Alert.alert("ບໍ່ພົບສິນຄ້າ", `ລະຫັດ: ${code} ບໍ່ມີໃນລະບົບ`); 
+        }
+    } else {
+        // ➕ ໂຫມດເພີ່ມສິນຄ້າ: ສົ່ງລະຫັດໄປໜ້າແບບຟອມ
+        setTempProduct(prev => ({ ...prev, barcode: code }));
+        setProductModalVisible(true); // ເປີດ Modal ຄືນ (ເພາະມັນອາດຈະປິດໄປຕອນເປີດກ້ອງ)
+    }
   };
 
   const handleSaveShopInfo = (name: string, id: string, logo: string | null) => {
@@ -182,7 +197,10 @@ export default function App() {
             products={products} 
             onQuickAddProduct={openAddProductModal} 
             onSpecialSale={() => setActiveTab('special_sale')} 
-            onQuickScan={() => setScannerVisible(true)} 
+            onQuickScan={() => {
+                setScanMode('pos'); // 🟢 ຕັ້ງຄ່າເປັນໂຫມດຂາຍ
+                setScannerVisible(true);
+            }} 
             onQuickCustomer={() => setActiveTab('Customers')} 
         />
       );
@@ -196,7 +214,10 @@ export default function App() {
             clearCart={clearCart} 
             onCheckout={handleCheckout} 
             openEditProductModal={openEditProductModal}
-            onOpenScan={() => setScannerVisible(true)} 
+            onOpenScan={() => {
+                setScanMode('pos'); // 🟢 ຕັ້ງຄ່າເປັນໂຫມດຂາຍ
+                setScannerVisible(true);
+            }} 
             onOpenAddProduct={openAddProductModal} 
           />
       );
@@ -210,8 +231,6 @@ export default function App() {
       case 'history': return <SalesHistoryScreen />;
       case 'expenses': return <ExpenseScreen />;
       case 'shift': return <ShiftScreen />;
-      
-      // 🟢 Case Users ທີ່ເຮົາເພີ່ມໃໝ່
       case 'users': return <UserManagementScreen />; 
       
       default: return <HomeScreenAny salesHistory={salesHistory} products={products} />;
@@ -258,8 +277,25 @@ export default function App() {
 
         <FooterAny status="Online" version="1.0.0" currentTab={activeTab.toLowerCase()} onTabChange={(tab: string) => setActiveTab(tab)} />
 
-        <ProductModalAny visible={isProductModalVisible} onClose={() => setProductModalVisible(false)} product={tempProduct} setProduct={setTempProduct} onSave={onSaveProductFromModal} onPickImage={() => {}} onScan={() => {}} />
-        <ScannerModalAny visible={isScannerVisible} onClose={() => setScannerVisible(false)} onScan={handleScanSuccess} />
+        <ProductModalAny 
+            visible={isProductModalVisible} 
+            onClose={() => setProductModalVisible(false)} 
+            product={tempProduct} 
+            setProduct={setTempProduct} 
+            onSave={onSaveProductFromModal} 
+            onPickImage={() => {}} 
+            // 🟢 3. ເພີ່ມການກົດປຸ່ມສະແກນໃນ Modal ເພີ່ມສິນຄ້າ
+            onScan={() => {
+                setScanMode('product'); 
+                setScannerVisible(true);
+            }} 
+        />
+        
+        <ScannerModalAny 
+            visible={isScannerVisible} 
+            onClose={() => setScannerVisible(false)} 
+            onScan={handleScanSuccess} 
+        />
         
         <EditShopModal 
             visible={isEditShopVisible}

@@ -1,23 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-// 🟢 1. ແກ້ໄຂການ Import FileSystem (ໃຊ້ແບບ Named Import)
-import { documentDirectory, writeAsStringAsync } from 'expo-file-system';
+// 🟢 1. ແກ້ໄຂການ Import ກັບມາເປັນແບບນີ້ (ມາດຕະຖານ)
+import * as FileSystem from 'expo-file-system';
 import { shareAsync } from 'expo-sharing';
 import { onValue, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    Alert,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -226,10 +226,10 @@ export default function SalesHistoryScreen() {
         csvContent += `${dateStr},${type},${item.id},"${desc}",${totalLAK},${totalTHB},${item.paymentMethod || 'CASH'}\n`;
     });
 
-    // 🟢 2. ໃຊ້ documentDirectory ແລະ writeAsStringAsync ໂດຍກົງ
-    const fileName = `${documentDirectory}sales_report.csv`;
+    // 🟢 2. ໃຊ້ FileSystem.documentDirectory (ແກ້ໄຂຈຸດນີ້)
+    const fileName = `${FileSystem.documentDirectory}sales_report.csv`;
     try {
-        await writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
+        await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
         await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
     } catch (error) {
         Alert.alert("Error", "Export Failed");

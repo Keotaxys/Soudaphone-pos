@@ -1,25 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-// @ts-ignore
-import * as FileSystem from 'expo-file-system/legacy';
+// 🟢 1. ແກ້ໄຂການ Import FileSystem (ໃຊ້ແບບ Named Import)
+import { documentDirectory, writeAsStringAsync } from 'expo-file-system';
 import { shareAsync } from 'expo-sharing';
 import { onValue, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  Alert,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
-// 🟢 1. ປ່ຽນ SafeAreaView ມາໃຊ້ຈາກ library ນີ້ແທນ (ແກ້ Warning)
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
@@ -37,7 +36,7 @@ const formatDateLao = (date: Date) => {
 };
 
 export default function SalesHistoryScreen() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, loading } = useAuth();
 
   // --- State ---
   const [rawNormalSales, setRawNormalSales] = useState<any[]>([]);
@@ -59,9 +58,10 @@ export default function SalesHistoryScreen() {
   const [editDescription, setEditDescription] = useState('');
   const [editAmount, setEditAmount] = useState('');
 
-  // 🟢 2. Fetch Data (ດຶງຂໍ້ມູນ)
+  // 2. Fetch Data
   useEffect(() => {
-    // ຖ້າບໍ່ມີສິດ ໃຫ້ຢຸດການດຶງຂໍ້ມູນ (ແຕ່ Hook ຍັງເຮັດວຽກ)
+    if (loading) return;
+
     if (!hasPermission('accessReports')) {
         console.log("❌ Access Denied: Skipping Fetch");
         return;
@@ -72,7 +72,6 @@ export default function SalesHistoryScreen() {
     const salesRef = ref(db, 'sales');
     const specialSalesRef = ref(db, 'special_sales');
 
-    // Fetch Normal Sales
     const unsubSales = onValue(salesRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
@@ -88,7 +87,6 @@ export default function SalesHistoryScreen() {
       }
     });
 
-    // Fetch Special Sales
     const unsubSpecial = onValue(specialSalesRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
@@ -108,22 +106,20 @@ export default function SalesHistoryScreen() {
         unsubSales();
         unsubSpecial();
     };
-  }, [hasPermission]); // 🛑 ໃສ່ hasPermission ໃນ dependency array
+  }, [loading]); 
 
-  // 🟢 3. Merge Data (ລວມຂໍ້ມູນ)
+  // 3. Merge Data
   useEffect(() => {
       const combined = [...rawNormalSales, ...rawSpecialSales];
-      // ລຽງຈາກ ໃໝ່ -> ເກົ່າ
       combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setSales(combined);
   }, [rawNormalSales, rawSpecialSales]);
 
-  // 🟢 4. Filter Logic
+  // 4. Filter Logic
   useEffect(() => {
     let start = new Date(currentDate);
     let end = new Date(currentDate);
     
-    // Reset Time
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
@@ -230,9 +226,10 @@ export default function SalesHistoryScreen() {
         csvContent += `${dateStr},${type},${item.id},"${desc}",${totalLAK},${totalTHB},${item.paymentMethod || 'CASH'}\n`;
     });
 
-    const fileName = `${FileSystem.documentDirectory}sales_report.csv`;
+    // 🟢 2. ໃຊ້ documentDirectory ແລະ writeAsStringAsync ໂດຍກົງ
+    const fileName = `${documentDirectory}sales_report.csv`;
     try {
-        await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
+        await writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
         await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
     } catch (error) {
         Alert.alert("Error", "Export Failed");
@@ -365,8 +362,7 @@ export default function SalesHistoryScreen() {
     );
   };
 
-  // 🟢 5. Check Permission (Security Layer - ວາງລຸ່ມສຸດ)
-  if (!hasPermission('accessReports')) {
+  if (!loading && !hasPermission('accessReports')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
               <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
@@ -484,7 +480,7 @@ export default function SalesHistoryScreen() {
                             display="inline" 
                             onChange={onDateChange} 
                             style={{backgroundColor: 'white'}}
-                            themeVariant="light" // 🟢 Fix Dark Mode
+                            themeVariant="light"
                         />
                         <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.closeBtn}>
                             <Text style={styles.closeBtnText}>ປິດ</Text>

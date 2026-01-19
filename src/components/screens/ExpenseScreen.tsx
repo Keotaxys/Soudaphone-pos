@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 
-// 🟢 1. Import ມາດຕະຖານ
-import * as FileSystem from 'expo-file-system';
+// 🟢 1. ໃຊ້ Legacy Import ອັນດຽວຈົບ (ມີທັງ documentDirectory ແລະ writeAsStringAsync)
+import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
@@ -145,11 +145,9 @@ export default function ExpenseScreen() {
     setFilterDate(newDate);
   };
 
-  // Helper Function: ຫາ Directory
+  // 🟢 Helper Function: ຫາ Directory ໂດຍໃຊ້ FileSystem (Legacy)
   const getSaveDirectory = () => {
-    // @ts-ignore
     const docDir = FileSystem.documentDirectory;
-    // @ts-ignore
     const cacheDir = FileSystem.cacheDirectory;
     return docDir || cacheDir; 
   };
@@ -182,10 +180,12 @@ export default function ExpenseScreen() {
       const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
       const docDir = getSaveDirectory();
+      if (!docDir) throw new Error("Storage Unavailable");
       const fileName = `${docDir}expense_template.xlsx`;
 
-      // 🟢 ແກ້ໄຂ: ໃຊ້ 'base64' ແທນ FileSystem.EncodingType.Base64
+      // 🟢 ໃຊ້ FileSystem (Legacy) ໂດຍໃຊ້ string 'base64'
       await FileSystem.writeAsStringAsync(fileName, wbout, { encoding: 'base64' });
+      
       await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
       setShowExportOptions(false);
     } catch (error) {
@@ -210,7 +210,7 @@ export default function ExpenseScreen() {
       setImporting(true);
       const fileUri = result.assets[0].uri;
       
-      // 🟢 ແກ້ໄຂ: ໃຊ້ 'base64'
+      // 🟢 ໃຊ້ FileSystem (Legacy)
       const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
       
       const wb = XLSX.read(fileContent, { type: 'base64', cellDates: true });
@@ -287,10 +287,12 @@ export default function ExpenseScreen() {
         const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
         const docDir = getSaveDirectory();
+        if (!docDir) throw new Error("Storage Unavailable");
         const fileName = `${docDir}expenses_report.xlsx`;
 
-        // 🟢 ແກ້ໄຂ: ໃຊ້ 'base64'
+        // 🟢 ໃຊ້ FileSystem (Legacy)
         await FileSystem.writeAsStringAsync(fileName, wbout, { encoding: 'base64' });
+        
         await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
         setShowExportOptions(false);
     } catch (error) {

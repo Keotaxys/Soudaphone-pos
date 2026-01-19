@@ -16,7 +16,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
@@ -29,16 +28,16 @@ const ORANGE_COLOR = '#F57C00';
 
 // Currency Helper
 const formatInputNumber = (val: string) => {
-    const numericValue = val.replace(/[^0-9]/g, '');
-    if (!numericValue) return '';
-    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const numericValue = val.replace(/[^0-9]/g, '');
+  if (!numericValue) return '';
+  return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
 const parseCurrency = (value: any) => {
-    if (!value) return 0;
-    const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
-    const num = parseFloat(strVal);
-    return isNaN(num) ? 0 : num;
+  if (!value) return 0;
+  const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
+  const num = parseFloat(strVal);
+  return isNaN(num) ? 0 : num;
 };
 
 interface DebtItem {
@@ -80,7 +79,7 @@ export default function DebtScreen() {
   const [payAmount, setPayAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date());
 
-  // 🟢 1. Fetch Data (ເພີ່ມ [hasPermission] ເພື່ອໃຫ້ໂຫຼດຂໍ້ມູນ)
+  // Fetch Data
   useEffect(() => {
     if (!hasPermission('accessFinancial')) return;
 
@@ -116,9 +115,9 @@ export default function DebtScreen() {
         console.error("Debt Load Error:", error);
     });
     return () => unsubscribe();
-  }, [hasPermission]); // 🛑 ສຳຄັນ! ຕ້ອງໃສ່ hasPermission
+  }, [hasPermission]);
 
-  // 🟢 2. History Logic
+  // History Logic
   useEffect(() => {
     if (selectedDebt && historyModalVisible) {
         const currentDebt = debts.find(d => d.id === selectedDebt.id);
@@ -302,7 +301,6 @@ export default function DebtScreen() {
     );
   };
 
-  // 🟢 3. ຍ້າຍການກວດສອບສິດມາໄວ້ບ່ອນນີ້ (ລຸ່ມສຸດ)
   if (!hasPermission('accessFinancial')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
@@ -314,7 +312,6 @@ export default function DebtScreen() {
       );
   }
 
-  // Return ໜ້າຈໍຫຼັກ
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerContainer}>
@@ -346,7 +343,7 @@ export default function DebtScreen() {
         <Text style={styles.fabText}>ເພີ່ມໜີ້</Text>
       </TouchableOpacity>
 
-      {/* Add/Edit Modal */}
+      {/* 🟢 Modal: Add/Edit */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -357,6 +354,7 @@ export default function DebtScreen() {
                 <ScrollView showsVerticalScrollIndicator={false}>
                     <Text style={styles.inputLabel}>ຊື່ໜີ້ສິນ *</Text>
                     <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="ເງິນກູ້ທະນາຄານ..." />
+                    
                     <Text style={styles.inputLabel}>ໝວດໝູ່ *</Text>
                     <View style={styles.categoryRow}>
                         {DEBT_CATEGORIES.map((cat) => (
@@ -365,8 +363,10 @@ export default function DebtScreen() {
                             </TouchableOpacity>
                         ))}
                     </View>
+
                     <Text style={styles.inputLabel}>ຈຳນວນເງິນຕົ້ນ *</Text>
                     <CurrencyInput style={styles.input} value={totalAmount} onChangeValue={setTotalAmount} placeholder="0" />
+                    
                     <View style={{flexDirection: 'row', gap: 10}}>
                         <View style={{flex: 1}}>
                             <Text style={styles.inputLabel}>ດອກເບ້ຍ (%)</Text>
@@ -377,11 +377,13 @@ export default function DebtScreen() {
                             <CurrencyInput style={styles.input} value={monthlyPayment} onChangeValue={setMonthlyPayment} placeholder="0" />
                         </View>
                     </View>
+
                     <Text style={styles.inputLabel}>ກຳນົດຊຳລະ</Text>
                     <TouchableOpacity style={styles.dateInput} onPress={() => toggleDatePicker('due')}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(dueDate)}</Text>
                     </TouchableOpacity>
+
                     <View style={styles.modalActions}>
                         <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                             <Text style={styles.cancelBtnText}>ຍົກເລີກ</Text>
@@ -392,6 +394,24 @@ export default function DebtScreen() {
                     </View>
                 </ScrollView>
             </View>
+
+            {/* 🟢 ຍ້າຍ DatePicker ມາໄວ້ໃນ Modal ນີ້ ເພື່ອໃຫ້ມັນຢູ່ເທິງສຸດສະເໝີ */}
+            {showDatePicker && (
+                <View style={styles.datePickerOverlay}>
+                    <View style={styles.datePickerContainer}>
+                        <DateTimePicker 
+                            value={dateMode === 'due' ? dueDate : paymentDate} 
+                            mode="date" 
+                            display="inline" 
+                            onChange={onDateChange} 
+                            themeVariant="light" 
+                        />
+                        <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(false)}>
+                            <Text style={styles.datePickerBtnText}>ຕົກລົງ</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
         </KeyboardAvoidingView>
       </Modal>
 
@@ -438,17 +458,6 @@ export default function DebtScreen() {
         </View>
       </Modal>
 
-      {/* Date Picker */}
-      {showDatePicker && (
-        <View style={styles.datePickerOverlay}>
-            <View style={styles.datePickerContainer}>
-                <DateTimePicker value={dateMode === 'due' ? dueDate : paymentDate} mode="date" display="inline" onChange={onDateChange} themeVariant="light" />
-                <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(false)}>
-                    <Text style={styles.datePickerBtnText}>ຕົກລົງ</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -508,6 +517,7 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
   
+  // 🟢 CSS ສຳລັບ DatePicker Overlay
   datePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
   datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
   datePickerBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },
@@ -517,7 +527,6 @@ const styles = StyleSheet.create({
   historyDate: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
   historyAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.success },
 
-  // 🟢 FAB Styles (ແກ້ໄຂທີ່ຂາດໄປ)
   fab: { 
     position: 'absolute', 
     bottom: 20, 

@@ -7,6 +7,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -16,19 +17,18 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View
 } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ໃໝ່
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
-// 🟢 2. Import Hook
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS } from '../../types';
 
 const { width } = Dimensions.get('window');
 const CARD_GAP = 10;
-const CARD_WIDTH = (width - 30 - CARD_GAP) / 2;
+const CARD_WIDTH = (width - 45) / 2; // ປັບຂະໜາດໃຫ້ພໍດີໜ້າຈໍ
 
 interface Customer {
   id: string;
@@ -40,10 +40,9 @@ interface Customer {
 }
 
 export default function CustomerScreen() {
-  // 🟢 3. ເອີ້ນໃຊ້ Hook
+  // 🟢 1. Hooks (ຕ້ອງຢູ່ເທິງສຸດສະເໝີ)
   const { hasPermission } = useAuth();
 
-  // --- State (ປະກາດໄວ້ເທິງສຸດ) ---
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -57,9 +56,9 @@ export default function CustomerScreen() {
   const [address, setAddress] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
-  // 🟢 4. useEffect ດຶງຂໍ້ມູນ (ວາງໄວ້ບ່ອນນີ້)
+  // 🟢 2. Fetch Data
   useEffect(() => {
-    // ຖ້າບໍ່ມີສິດ ກໍບໍ່ຕ້ອງດຶງ (ແຕ່ Hook ຍັງທຳງານຢູ່ ບໍ່ຜິດກົດ)
+    // ກວດສອບສິດໃນ useEffect ແທນການ return null ກ່ອນ
     if (!hasPermission('accessCustomers')) return;
 
     const customerRef = ref(db, 'customers');
@@ -67,18 +66,16 @@ export default function CustomerScreen() {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        
-        console.log(`✅ Customers Loaded: ${list.length} items`); // Debug Log
+        console.log(`✅ Customers Loaded: ${list.length} items`);
         setCustomers(list.reverse() as Customer[]);
       } else {
-        console.log("⚠️ No Customers Found");
         setCustomers([]);
       }
     }, (error) => {
         console.error("Customer Load Error:", error); 
     });
     return () => unsubscribe();
-  }, []);
+  }, [hasPermission]); // ໃສ່ hasPermission ໃນ dependency
 
   // --- Functions ---
   const pickImage = async () => {
@@ -91,7 +88,7 @@ export default function CustomerScreen() {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [4, 3],
+      aspect: [1, 1], // ຮູບສີ່ຫຼ່ຽມຈະເໝາະກັບໂປຣໄຟລ໌ກວ່າ
       quality: 0.3, 
       base64: true, 
     });
@@ -179,7 +176,7 @@ export default function CustomerScreen() {
                 <Ionicons name="pencil" size={14} color={COLORS.primary} />
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionBtn, {marginTop: 5}]} onPress={() => handleDelete(item.id)}>
-                <Ionicons name="trash" size={14} color={COLORS.danger} /> 
+                <Ionicons name="trash" size={14} color="#FF5252" /> 
             </TouchableOpacity>
         </View>
       </View>
@@ -187,12 +184,12 @@ export default function CustomerScreen() {
       <View style={styles.infoContainer}>
         <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
         <View style={styles.detailRow}>
-            <Ionicons name="call" size={14} color={COLORS.textLight} />
+            <Ionicons name="call" size={14} color="#666" />
             <Text style={styles.detailText} numberOfLines={1}>{item.phone}</Text>
         </View>
         {item.address ? (
             <View style={styles.detailRow}>
-                <Ionicons name="location" size={14} color={COLORS.textLight} />
+                <Ionicons name="location" size={14} color="#666" />
                 <Text style={styles.detailText} numberOfLines={1}>{item.address}</Text>
             </View>
         ) : null}
@@ -214,7 +211,7 @@ export default function CustomerScreen() {
             <Ionicons name="search" size={20} color="#999" />
             <TextInput 
                 style={styles.searchInput} 
-                placeholder="ຄົ້ນຫາ..." 
+                placeholder="ຄົ້ນຫາຊື່ ຫຼື ເບີໂທ..." 
                 value={searchQuery}
                 onChangeText={setSearchQuery}
             />
@@ -222,7 +219,7 @@ export default function CustomerScreen() {
     </View>
   );
 
-  // 🟢 5. ກວດສອບສິດ (Security Check) - ວາງໄວ້ລຸ່ມສຸດ ຫຼັງ Hooks
+  // 🟢 3. Security Check (ວາງໄວ້ລຸ່ມສຸດ)
   if (!hasPermission('accessCustomers')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
@@ -235,7 +232,7 @@ export default function CustomerScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       
       <FlatList 
         data={filteredCustomers}
@@ -263,73 +260,74 @@ export default function CustomerScreen() {
       </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>{isEditing ? 'ແກ້ໄຂຂໍ້ມູນ' : 'ເພີ່ມລູກຄ້າໃໝ່'}</Text>
-                    <TouchableOpacity onPress={() => setModalVisible(false)}>
-                        <Ionicons name="close" size={24} color="#666" />
-                    </TouchableOpacity>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                style={styles.modalOverlay}
+            >
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>{isEditing ? 'ແກ້ໄຂຂໍ້ມູນ' : 'ເພີ່ມລູກຄ້າໃໝ່'}</Text>
+                        <TouchableOpacity onPress={() => setModalVisible(false)}>
+                            <Ionicons name="close" size={24} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
+                            {imageUrl ? (
+                                <Image source={{ uri: imageUrl }} style={styles.previewImage} />
+                            ) : (
+                                <View style={styles.placeholderImage}>
+                                    <Ionicons name="camera" size={30} color="#ccc" />
+                                    <Text style={styles.uploadText}>ເພີ່ມຮູບ</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
+                        <Text style={styles.inputLabel}>ຊື່ລູກຄ້າ <Text style={{color:'red'}}>*</Text></Text>
+                        <TextInput 
+                            style={styles.input} 
+                            placeholder="ປ້ອນຊື່ລູກຄ້າ..." 
+                            value={name} 
+                            onChangeText={setName} 
+                        />
+
+                        <Text style={styles.inputLabel}>ເບີໂທ <Text style={{color:'red'}}>*</Text></Text>
+                        <TextInput 
+                            style={styles.input} 
+                            placeholder="ປ້ອນເບີໂທຕິດຕໍ່..." 
+                            keyboardType="phone-pad" 
+                            value={phone} 
+                            onChangeText={setPhone} 
+                        />
+
+                        <Text style={styles.inputLabel}>Facebook URL</Text>
+                        <TextInput 
+                            style={styles.input} 
+                            placeholder="ວາງລິ້ງ Facebook..." 
+                            value={facebookUrl} 
+                            onChangeText={setFacebookUrl} 
+                            autoCapitalize="none" 
+                        />
+
+                        <Text style={styles.inputLabel}>ທີ່ຢູ່</Text>
+                        <TextInput 
+                            style={[styles.input, {height: 80, textAlignVertical: 'top'}]} 
+                            placeholder="ປ້ອນທີ່ຢູ່..." 
+                            value={address} 
+                            onChangeText={setAddress} 
+                            multiline
+                        />
+
+                        <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                            <Text style={styles.saveBtnText}>ບັນທຶກຂໍ້ມູນ</Text>
+                        </TouchableOpacity>
+                        <View style={{height: 20}} />
+                    </ScrollView>
                 </View>
-
-                <ScrollView showsVerticalScrollIndicator={false}>
-                    <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
-                        {imageUrl ? (
-                            <Image source={{ uri: imageUrl }} style={styles.previewImage} />
-                        ) : (
-                            <View style={styles.placeholderImage}>
-                                <Ionicons name="camera" size={30} color="#ccc" />
-                                <Text style={styles.uploadText}>ເພີ່ມຮູບ</Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-
-                    <Text style={styles.inputLabel}>ຊື່ລູກຄ້າ <Text style={{color:'red'}}>*</Text></Text>
-                    <TextInput 
-                        style={styles.input} 
-                        placeholder="ປ້ອນຊື່ລູກຄ້າ..." 
-                        placeholderTextColor="#999" 
-                        value={name} 
-                        onChangeText={setName} 
-                    />
-
-                    <Text style={styles.inputLabel}>ເບີໂທ <Text style={{color:'red'}}>*</Text></Text>
-                    <TextInput 
-                        style={styles.input} 
-                        placeholder="ປ້ອນເບີໂທຕິດຕໍ່..." 
-                        placeholderTextColor="#999"
-                        keyboardType="phone-pad" 
-                        value={phone} 
-                        onChangeText={setPhone} 
-                    />
-
-                    <Text style={styles.inputLabel}>Facebook URL</Text>
-                    <TextInput 
-                        style={styles.input} 
-                        placeholder="ວາງລິ້ງ Facebook..." 
-                        placeholderTextColor="#999"
-                        value={facebookUrl} 
-                        onChangeText={setFacebookUrl} 
-                        autoCapitalize="none" 
-                    />
-
-                    <Text style={styles.inputLabel}>ທີ່ຢູ່</Text>
-                    <TextInput 
-                        style={[styles.input, {height: 80, textAlignVertical: 'top'}]} 
-                        placeholder="ປ້ອນທີ່ຢູ່..." 
-                        placeholderTextColor="#999"
-                        value={address} 
-                        onChangeText={setAddress} 
-                        multiline
-                    />
-
-                    <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                        <Text style={styles.saveBtnText}>ບັນທຶກຂໍ້ມູນ</Text>
-                    </TouchableOpacity>
-                    <View style={{height: 20}} />
-                </ScrollView>
-            </View>
-        </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
   );
@@ -337,30 +335,33 @@ export default function CustomerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerContainer: { paddingBottom: 15, backgroundColor: COLORS.background }, 
-  title: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.primary },
-  subtitle: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666', marginBottom: 15 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 10, borderWidth: 1, borderColor: '#eee' }, 
-  searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 14 },
+  headerContainer: { paddingBottom: 15 }, 
+  title: { fontSize: 24, fontFamily: 'Lao-Bold', color: COLORS.text },
+  subtitle: { fontSize: 14, fontFamily: 'Lao-Regular', color: '#666', marginBottom: 15 },
   
-  businessCard: { width: CARD_WIDTH, backgroundColor: 'white', borderRadius: 12, marginBottom: 15, elevation: 3, overflow: 'hidden', borderWidth: 1, borderColor: '#eee' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 12, paddingHorizontal: 15, paddingVertical: 12, elevation: 2 }, 
+  searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 16 },
+  
+  businessCard: { width: CARD_WIDTH, backgroundColor: 'white', borderRadius: 12, marginBottom: 15, elevation: 3, overflow: 'hidden' },
   imageContainer: { width: '100%', height: 120, backgroundColor: '#f0f0f0', position: 'relative' },
   coverImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   placeholderCover: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e0e0e0' },
+  
   floatingActions: { position: 'absolute', top: 5, right: 5 },
-  actionBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.9)', justifyContent: 'center', alignItems: 'center', elevation: 2 },
+  actionBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center', elevation: 3 },
+  
   infoContainer: { padding: 10 },
-  cardName: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text, marginBottom: 5 },
+  cardName: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.text, marginBottom: 5 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
-  detailText: { fontFamily: 'Lao-Regular', fontSize: 11, color: '#555' },
-  fbButton: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: '#E3F2FD', padding: 5, borderRadius: 6, justifyContent: 'center' },
-  fbText: { fontFamily: 'Lao-Bold', color: '#1877F2', fontSize: 11 },
+  detailText: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#555' },
+  fbButton: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, backgroundColor: '#E3F2FD', padding: 8, borderRadius: 8, justifyContent: 'center' },
+  fbText: { fontFamily: 'Lao-Bold', color: '#1877F2', fontSize: 12 },
   
   fab: { 
     position: 'absolute', 
     bottom: 90, 
     right: 20, 
-    backgroundColor: COLORS.primary, // Teal
+    backgroundColor: COLORS.primary, 
     flexDirection: 'row', 
     alignItems: 'center', 
     paddingVertical: 12, 
@@ -373,18 +374,20 @@ const styles = StyleSheet.create({
   
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 5, maxHeight: '80%' }, // Limit height for scroll
+  
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '90%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
+  modalTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text },
+  
   imagePicker: { alignSelf: 'center', marginBottom: 20 },
-  placeholderImage: { width: 100, height: 100, borderRadius: 10, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
-  previewImage: { width: 100, height: 100, borderRadius: 10 },
+  placeholderImage: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
+  previewImage: { width: 100, height: 100, borderRadius: 50 },
   uploadText: { fontSize: 12, color: '#999', marginTop: 5, fontFamily: 'Lao-Regular' },
   
-  inputLabel: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text, marginBottom: 5, marginTop: 5 },
-  input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, marginBottom: 5, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Regular', color: '#333' },
+  inputLabel: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text, marginBottom: 5, marginTop: 10 },
+  input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Regular', color: '#333' },
   
-  saveBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 15 },
+  saveBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 20 },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16 }
 });

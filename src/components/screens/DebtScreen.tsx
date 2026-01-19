@@ -70,8 +70,6 @@ export default function DebtScreen() {
 
   const [selectedDebt, setSelectedDebt] = useState<DebtItem | null>(null);
   const [payAmount, setPayAmount] = useState('');
-  
-  // 🟢 State ສຳລັບວັນທີຊຳລະ
   const [paymentDate, setPaymentDate] = useState(new Date());
 
   // Fetch Data
@@ -193,10 +191,9 @@ export default function DebtScreen() {
         return;
     }
     
-    // 🟢 ບັນທຶກໂດຍໃຊ້ paymentDate ທີ່ເລືອກ
     const paymentRecord = {
         amount,
-        date: paymentDate.toISOString(), // ໃຊ້ອັນທີ່ເລືອກ
+        date: paymentDate.toISOString(),
         type: 'PAYMENT'
     };
     try {
@@ -291,7 +288,7 @@ export default function DebtScreen() {
                     <TouchableOpacity style={styles.payBtn} onPress={() => { 
                         setSelectedDebt(item); 
                         setPayAmount(''); 
-                        setPaymentDate(new Date()); // Reset ວັນທີ
+                        setPaymentDate(new Date()); 
                         setPaymentModalVisible(true); 
                     }}>
                         <Ionicons name="wallet-outline" size={16} color="white" />
@@ -345,7 +342,7 @@ export default function DebtScreen() {
         <Text style={styles.fabText}>ເພີ່ມໜີ້</Text>
       </TouchableOpacity>
 
-      {/* Modal: Add/Edit */}
+      {/* 🟢 Modal 1: Add/Edit Debt */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -354,6 +351,7 @@ export default function DebtScreen() {
                     <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
                 </View>
                 <ScrollView showsVerticalScrollIndicator={false}>
+                    {/* ... (Inputs ອື່ນໆຄືເກົ່າ) ... */}
                     <Text style={styles.inputLabel}>ຊື່ໜີ້ສິນ *</Text>
                     <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="ເງິນກູ້ທະນາຄານ..." />
                     
@@ -395,11 +393,29 @@ export default function DebtScreen() {
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
+
+                {/* 🟢 DatePicker ຂອງ Add/Edit - ວາງໄວ້ໃນ Modal ນີ້ເລີຍ */}
+                {showDatePicker && dateMode === 'due' && (
+                    <View style={styles.datePickerOverlay}>
+                        <View style={styles.datePickerContainer}>
+                            <DateTimePicker 
+                                value={dueDate} 
+                                mode="date" 
+                                display="inline" 
+                                onChange={onDateChange} 
+                                themeVariant="light" 
+                            />
+                            <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(false)}>
+                                <Text style={styles.datePickerBtnText}>ຕົກລົງ</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
             </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 🟢 Payment Modal (ອັບເດດແລ້ວ) */}
+      {/* 🟢 Modal 2: Payment */}
       <Modal visible={paymentModalVisible} animationType="fade" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -411,7 +427,6 @@ export default function DebtScreen() {
                     <Text style={styles.inputLabel}>ຈຳນວນເງິນຊຳລະ *</Text>
                     <CurrencyInput style={[styles.inputLarge, { color: COLORS.primary }]} value={payAmount} onChangeValue={setPayAmount} placeholder="0" />
                     
-                    {/* 🟢 ເພີ່ມຊ່ອງເລືອກວັນທີຊຳລະ */}
                     <Text style={styles.inputLabel}>ວັນທີຊຳລະ</Text>
                     <TouchableOpacity style={styles.dateInput} onPress={() => toggleDatePicker('payment')}>
                         <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
@@ -424,6 +439,24 @@ export default function DebtScreen() {
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
+
+                {/* 🟢 DatePicker ຂອງ Payment - ວາງໄວ້ໃນ Modal ນີ້ຄືກັນ */}
+                {showDatePicker && dateMode === 'payment' && (
+                    <View style={styles.datePickerOverlay}>
+                        <View style={styles.datePickerContainer}>
+                            <DateTimePicker 
+                                value={paymentDate} 
+                                mode="date" 
+                                display="inline" 
+                                onChange={onDateChange} 
+                                themeVariant="light" 
+                            />
+                            <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(false)}>
+                                <Text style={styles.datePickerBtnText}>ຕົກລົງ</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
             </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -449,24 +482,6 @@ export default function DebtScreen() {
             </View>
         </View>
       </Modal>
-
-      {/* 🟢 Date Picker (ວາງໄວ້ນອກສຸດ ເພື່ອໃຫ້ຢູ່ເທິງ Modal ທັງໝົດ) */}
-      {showDatePicker && (
-        <View style={styles.datePickerOverlay}>
-            <View style={styles.datePickerContainer}>
-                <DateTimePicker 
-                    value={dateMode === 'due' ? dueDate : paymentDate} 
-                    mode="date" 
-                    display="inline" 
-                    onChange={onDateChange} 
-                    themeVariant="light" 
-                />
-                <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(false)}>
-                    <Text style={styles.datePickerBtnText}>ຕົກລົງ</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-      )}
 
     </SafeAreaView>
   );
@@ -510,7 +525,7 @@ const styles = StyleSheet.create({
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, elevation: 5, maxHeight: '90%' },
+  modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, elevation: 5, maxHeight: '90%', position: 'relative' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
   inputLabel: { fontSize: 13, fontFamily: 'Lao-Bold', color: '#555', marginBottom: 5, marginTop: 10 },
@@ -527,9 +542,10 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', backgroundColor: COLORS.primary },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold' },
   
-  datePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
-  datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
-  datePickerBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },
+  // 🟢 CSS DatePicker (absolute to modal content)
+  datePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.95)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, borderRadius: 15 },
+  datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '100%', alignItems: 'center', elevation: 5 },
+  datePickerBtn: { marginTop: 10, padding: 12, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },
   datePickerBtnText: { fontFamily: 'Lao-Bold', color: COLORS.primary },
 
   historyItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },

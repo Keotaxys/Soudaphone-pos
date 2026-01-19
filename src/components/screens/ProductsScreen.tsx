@@ -19,7 +19,8 @@ import {
     TouchableWithoutFeedback,
     View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+// 🟢 1. ປ່ຽນການໃຊ້ SafeAreaView ເປັນ View ທຳມະດາ
+// (ເພາະ App.tsx ມີ SafeAreaProvider ຢູ່ແລ້ວ ການໃຊ້ຊ້ອນກັນຈະເຮັດໃຫ້ Touch ບໍ່ຕິດ)
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { useCategories } from '../../hooks/useCategories';
@@ -84,11 +85,8 @@ export default function ProductsScreen({
 
   const handleLongPressCategory = (catName: string) => {
       if (catName === 'All') return;
-
       const targetCat = categoryObjs.find(c => c.name === catName);
-      
       if (!targetCat) return;
-
       if (!hasPermission('canEditProduct')) return;
 
       Alert.alert(
@@ -128,7 +126,6 @@ export default function ProductsScreen({
       products.forEach(p => {
           csvContent += `${p.name},${p.price},${p.stock},${p.priceCurrency},${p.barcode || ''},${p.category || ''}\n`;
       });
-      
       const docDir = (FileSystem as any).documentDirectory;
       const fileName = `${docDir}products_export_${new Date().getTime()}.csv`;
       try {
@@ -144,7 +141,6 @@ export default function ProductsScreen({
           Alert.alert('ແຈ້ງເຕືອນ', 'ທ່ານບໍ່ມີສິດໃນການເພີ່ມ/ແກ້ໄຂຂໍ້ມູນ');
           return;
       }
-
       try {
           const result = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'application/vnd.ms-excel', '*/*'] });
           if (result.canceled) return;
@@ -198,7 +194,6 @@ export default function ProductsScreen({
                     <Ionicons name="pencil" size={20} color={COLORS.primary} />
                 </TouchableOpacity>
             )}
-
             {hasPermission('canDeleteProduct') && (
                 <TouchableOpacity style={styles.deleteBtn} onPress={() => onDeleteProduct(item.id!)}>
                     <Ionicons name="trash-outline" size={20} color={ORANGE_THEME} />
@@ -209,8 +204,8 @@ export default function ProductsScreen({
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* 🟢 ແຍກ Header ອອກມາຢູ່ນອກ FlatList ເພື່ອປ້ອງກັນບັນຫາ Scroll/Touch */}
+    // 🟢 2. ໃຊ້ View ທຳມະດາແທນ SafeAreaView
+    <View style={styles.container}>
       <View style={styles.headerArea}>
         <View style={styles.searchBar}>
             <Ionicons name="search" size={20} color="#999" />
@@ -313,7 +308,7 @@ export default function ProductsScreen({
         </TouchableWithoutFeedback>
       </Modal>
 
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -323,8 +318,8 @@ const styles = StyleSheet.create({
   headerArea: { 
     padding: 15, 
     paddingBottom: 5,
-    backgroundColor: COLORS.background, // 🟢 ຕັ້ງສີພື້ນຫຼັງໃຫ້ຊັດເຈນ
-    zIndex: 1 // 🟢 ຍົກລະດັບໃຫ້ຢູ່ເໜືອ List
+    backgroundColor: COLORS.background,
+    // 🟢 3. ລຶບ zIndex ອອກ ເພື່ອໃຫ້ Touch event ທຳງານປົກກະຕິ
   },
   
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, elevation: 2, marginBottom: 10 },
@@ -355,7 +350,6 @@ const styles = StyleSheet.create({
   editBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
   deleteBtn: { padding: 8, backgroundColor: '#FFF3E0', borderRadius: 8 },
 
-  // 🟢 ປັບ ZIndex ຂອງ FAB ໃຫ້ສູງສຸດ
   fab: { 
     position: 'absolute', 
     bottom: 90, 
@@ -367,7 +361,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center', 
     elevation: 10, 
-    zIndex: 9999, // 🟢 ສຳຄັນຫຼາຍ
+    zIndex: 999, // 🟢 ຮັກສາ zIndex ໄວ້ສະເພາະ FAB
     shadowColor: '#000', 
     shadowOffset: { width: 0, height: 4 }, 
     shadowOpacity: 0.3, 

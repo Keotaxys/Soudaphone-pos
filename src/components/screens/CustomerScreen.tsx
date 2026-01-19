@@ -18,7 +18,8 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
+  ActivityIndicator // ເພີ່ມ Loading Indicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,7 +29,7 @@ import { COLORS } from '../../types';
 
 const { width } = Dimensions.get('window');
 const CARD_GAP = 10;
-const CARD_WIDTH = (width - 45) / 2; // ປັບຂະໜາດໃຫ້ພໍດີໜ້າຈໍ
+const CARD_WIDTH = (width - 45) / 2; 
 
 interface Customer {
   id: string;
@@ -40,13 +41,13 @@ interface Customer {
 }
 
 export default function CustomerScreen() {
-  // 🟢 1. Hooks (ຕ້ອງຢູ່ເທິງສຸດສະເໝີ)
   const { hasPermission } = useAuth();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true); // 🟢 ເພີ່ມ state loading
   
   // Form States
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -56,26 +57,43 @@ export default function CustomerScreen() {
   const [address, setAddress] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
-  // 🟢 2. Fetch Data
+  // 🟢 4. useEffect ດຶງຂໍ້ມູນ (ແກ້ໄຂຈຸດນີ້)
   useEffect(() => {
-    // ກວດສອບສິດໃນ useEffect ແທນການ return null ກ່ອນ
-    if (!hasPermission('accessCustomers')) return;
+    console.log("🔄 Start fetching customers...");
+
+    // ⚠️ ປິດບັນທັດນີ້ຊົ່ວຄາວ ເພື່ອທົດສອບວ່າຂໍ້ມູນມາບໍ່
+    // if (!hasPermission('accessCustomers')) {
+    //     console.log("⛔ Permission Denied: accessCustomers");
+    //     setLoading(false);
+    //     return;
+    // }
 
     const customerRef = ref(db, 'customers');
     const unsubscribe = onValue(customerRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        console.log(`✅ Customers Loaded: ${list.length} items`);
+        // 🟢 Debug: ເບິ່ງຂໍ້ມູນດິບທີ່ໄດ້ມາ
+        console.log("✅ Raw Data from Firebase:", data);
+
+        const list = Object.keys(data).map(key => ({ 
+            id: key, 
+            ...data[key] 
+        }));
+        
+        console.log(`📊 Processed List: ${list.length} items`);
         setCustomers(list.reverse() as Customer[]);
       } else {
+        console.log("⚠️ No data in 'customers' node");
         setCustomers([]);
       }
+      setLoading(false);
     }, (error) => {
-        console.error("Customer Load Error:", error); 
+        console.error("❌ Firebase Error:", error);
+        setLoading(false);
     });
+
     return () => unsubscribe();
-  }, [hasPermission]); // ໃສ່ hasPermission ໃນ dependency
+  }, []); // ບໍ່ຕ້ອງໃສ່ hasPermission ໃນ dependency ຖ້າເຮົາປິດ check
 
   // --- Functions ---
   const pickImage = async () => {
@@ -88,7 +106,7 @@ export default function CustomerScreen() {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [1, 1], // ຮູບສີ່ຫຼ່ຽມຈະເໝາະກັບໂປຣໄຟລ໌ກວ່າ
+      aspect: [1, 1],
       quality: 0.3, 
       base64: true, 
     });
@@ -219,14 +237,12 @@ export default function CustomerScreen() {
     </View>
   );
 
-  // 🟢 3. Security Check (ວາງໄວ້ລຸ່ມສຸດ)
-  if (!hasPermission('accessCustomers')) {
+  // 🟢 Loading View
+  if (loading) {
       return (
-          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
-              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
-                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນລູກຄ້າ
-              </Text>
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={{marginTop: 10, fontFamily: 'Lao-Regular'}}>ກຳລັງໂຫຼດຂໍ້ມູນ...</Text>
           </View>
       );
   }

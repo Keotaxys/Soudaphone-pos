@@ -6,7 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { onValue, push, ref, remove, set, update } from 'firebase/database';
 
-// ⚠️ ກວດສອບ path ໃຫ້ຖືກຕ້ອງ
+// ⚠️ ກວດສອບ path ໃຫ້ຖືກຕ້ອງຕາມໂຄງສ້າງໂຟນເດີຂອງທ່ານ
 import { db } from '../../src/firebase';
 import { CartItem, Product, SaleRecord } from '../../src/types';
 
@@ -37,6 +37,7 @@ import EditShopModal from '../../src/components/modals/EditShopModal';
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
 
+// Any Casts (ເພື່ອຫຼີກລ່ຽງ TS Errors)
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -69,6 +70,7 @@ export default function App() {
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
   const [isScannerVisible, setScannerVisible] = useState(false);
 
+  // 🟢 State: scanMode ເພື່ອບອກວ່າສະແກນເພື່ອຫຍັງ ('pos' = ຂາຍ, 'product' = ເພີ່ມສິນຄ້າ)
   const [scanMode, setScanMode] = useState<'pos' | 'product'>('pos');
 
   const [shopInfo, setShopInfo] = useState({
@@ -78,6 +80,7 @@ export default function App() {
   });
   const [isEditShopVisible, setEditShopVisible] = useState(false);
 
+  // Load Data
   useEffect(() => {
     if (!isLoggedIn) return; 
     
@@ -120,6 +123,7 @@ export default function App() {
     };
   }, [isLoggedIn]); 
 
+  // Cart Logic
   const addToCart = (product: Product) => {
     setCart(prev => {
         const existing = prev.find(item => item.id === product.id);
@@ -144,6 +148,7 @@ export default function App() {
     set(newSaleRef, newSale).then(() => { Alert.alert("Success", "ການຂາຍສຳເລັດ!"); setCart([]); }).catch(err => Alert.alert("Error", err.message));
   };
 
+  // Product CRUD
   const handleAddProduct = (p: Product) => { const newRef = push(ref(db, 'products')); set(newRef, { ...p, id: newRef.key }); };
   const handleEditProduct = (p: Product) => { if(p.id) update(ref(db, `products/${p.id}`), p); };
   const handleDeleteProduct = (id: string) => { remove(ref(db, `products/${id}`)); };
@@ -156,10 +161,12 @@ export default function App() {
     setProductModalVisible(false);
   };
 
+  // 🟢 Logic ການສະແກນ (Update)
   const handleScanSuccess = (code: string) => {
     setScannerVisible(false);
 
     if (scanMode === 'pos') {
+        // 🛒 ໂຫມດຂາຍ
         const foundProduct = products.find(p => p.barcode === code);
         if (foundProduct) { 
             addToCart(foundProduct); 
@@ -168,8 +175,12 @@ export default function App() {
             Alert.alert("ບໍ່ພົບສິນຄ້າ", `ລະຫັດ: ${code} ບໍ່ມີໃນລະບົບ`); 
         }
     } else {
-        setTempProduct(prev => ({ ...prev, barcode: code }));
-        setProductModalVisible(true); 
+        // ➕ ໂຫມດເພີ່ມສິນຄ້າ
+        // ໃຊ້ setTimeout ເລັກນ້ອຍເພື່ອໃຫ້ Modal ເກົ່າປິດ ແລະ ອັບເດດ State ທັນ
+        setTimeout(() => {
+            setTempProduct(prev => ({ ...prev, barcode: code }));
+            setProductModalVisible(true); 
+        }, 200);
     }
   };
 
@@ -179,6 +190,7 @@ export default function App() {
       set(ref(db, 'shopInfo'), newInfo).catch(err => console.error(err));
   };
 
+  // Navigation Logic
   const renderScreen = () => {
     const tabName = activeTab.toLowerCase();
     switch (tabName) {
@@ -188,7 +200,10 @@ export default function App() {
             products={products} 
             onQuickAddProduct={openAddProductModal} 
             onSpecialSale={() => setActiveTab('special_sale')} 
-            onQuickScan={() => { setScanMode('pos'); setScannerVisible(true); }} 
+            onQuickScan={() => {
+                setScanMode('pos');
+                setScannerVisible(true);
+            }} 
             onQuickCustomer={() => setActiveTab('Customers')} 
         />
       );
@@ -202,7 +217,10 @@ export default function App() {
             clearCart={clearCart} 
             onCheckout={handleCheckout} 
             openEditProductModal={openEditProductModal}
-            onOpenScan={() => { setScanMode('pos'); setScannerVisible(true); }} 
+            onOpenScan={() => {
+                setScanMode('pos');
+                setScannerVisible(true);
+            }} 
             onOpenAddProduct={openAddProductModal} 
           />
       );
@@ -217,6 +235,7 @@ export default function App() {
       case 'expenses': return <ExpenseScreen />;
       case 'shift': return <ShiftScreen />;
       case 'users': return <UserManagementScreen />; 
+      
       default: return <HomeScreenAny salesHistory={salesHistory} products={products} />;
     }
   };
@@ -230,11 +249,11 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="light" backgroundColor="transparent" translucent={true} />
       
-      {/* 🟢 1. Container ຫຼັກ */}
-      <View style={styles.appContainer}>
-        
-        {/* Header */}
-        <View style={styles.headerWrapper}>
+      {/* 🟢 ໃຊ້ View ຫໍ່ເພື່ອຈັດການ Z-Index ໄດ້ງ່າຍ */}
+      <View style={{ flex: 1, backgroundColor: '#F5F9FA' }}> 
+      
+        {/* Header: zIndex 20 ເພື່ອໃຫ້ຢູ່ເທິງ Content */}
+        <View style={{ zIndex: 20 }}>
             <HeaderAny 
                 toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
                 user={{ name: 'Admin', role: 'Manager' }} 
@@ -246,8 +265,10 @@ export default function App() {
             />
         </View>
 
-        {/* 🟢 2. Content Area (ZIndex: 1) */}
-        <View style={styles.contentContainer}>
+        {/* Main Content Area */}
+        <View style={styles.mainContainer}>
+            
+            {/* Sidebar Overlay: zIndex 15 ເພື່ອໃຫ້ຢູ່ເທິງ Content ແຕ່ໃຕ້ Header */}
             {isSidebarOpen && (
               <View style={styles.sidebarOverlay}>
                  <SidebarAny 
@@ -260,49 +281,58 @@ export default function App() {
               </View>
             )}
             
-            <View style={styles.screenWrapper}>
+            {/* Screen Content: zIndex 1 */}
+            <View style={styles.contentWrapper}>
               {renderScreen()}
             </View>
         </View>
 
-        {/* 🟢 3. Footer (ZIndex: 10 - ຮັບປະກັນວ່າຢູ່ເທິງສຸດຂອງ content) */}
+        {/* Footer: zIndex 20 ເພື່ອໃຫ້ຢູ່ເທິງ Content ແລະ ກົດໄດ້ສະເໝີ */}
         <View style={styles.footerWrapper}>
             <FooterAny status="Online" version="1.0.0" currentTab={activeTab.toLowerCase()} onTabChange={(tab: string) => setActiveTab(tab)} />
         </View>
 
+        {/* 🟢 Modals: ວາງຢູ່ນອກ Container ຫຼັກ ເພື່ອບໍ່ໃຫ້ຖືກບັງ (Z-Index ສູງສຸດ) */}
+        {isProductModalVisible && (
+            <ProductModalAny 
+                visible={isProductModalVisible} 
+                onClose={() => setProductModalVisible(false)} 
+                product={tempProduct} 
+                setProduct={setTempProduct} 
+                onSave={onSaveProductFromModal} 
+                onPickImage={() => {}} 
+                onScan={() => {
+                    setProductModalVisible(false); // ປິດ Modal ກ່ອນ
+                    setScanMode('product'); 
+                    setTimeout(() => setScannerVisible(true), 200); // ລໍຖ້າຈັກໜ້ອຍແລ້ວເປີດກ້ອງ
+                }} 
+            />
+        )}
+        
+        {isScannerVisible && (
+            <ScannerModalAny 
+                visible={isScannerVisible} 
+                onClose={() => setScannerVisible(false)} 
+                onScan={handleScanSuccess} 
+            />
+        )}
+        
+        {isEditShopVisible && (
+            <EditShopModal 
+                visible={isEditShopVisible}
+                onClose={() => setEditShopVisible(false)}
+                initialData={shopInfo}
+                onSave={handleSaveShopInfo}
+            />
+        )}
+
       </View>
-
-      {/* 🟢 4. Modals (ZIndex: 999 - ຢູ່ນອກສຸດ) */}
-      {isProductModalVisible && (
-          <ProductModalAny 
-              visible={isProductModalVisible} 
-              onClose={() => setProductModalVisible(false)} 
-              product={tempProduct} 
-              setProduct={setTempProduct} 
-              onSave={onSaveProductFromModal} 
-              onPickImage={() => {}} 
-              onScan={() => { setScanMode('product'); setScannerVisible(true); }} 
-          />
-      )}
-      
-      {isScannerVisible && (
-          <ScannerModalAny visible={isScannerVisible} onClose={() => setScannerVisible(false)} onScan={handleScanSuccess} />
-      )}
-      
-      {isEditShopVisible && (
-          <EditShopModal visible={isEditShopVisible} onClose={() => setEditShopVisible(false)} initialData={shopInfo} onSave={handleSaveShopInfo} />
-      )}
-
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  appContainer: { flex: 1, backgroundColor: '#F5F9FA' },
-  
-  headerWrapper: { zIndex: 20 },
-  
-  contentContainer: { 
+  mainContainer: { 
     flex: 1, 
     position: 'relative', 
     zIndex: 1 // ໃຫ້ເນື້ອຫາຢູ່ຊັ້ນລຸ່ມ
@@ -314,24 +344,25 @@ const styles = StyleSheet.create({
     left: 0, 
     bottom: 0, 
     right: 0, 
-    zIndex: 999, // Sidebar ຕ້ອງທັບ Content
+    zIndex: 15, // Sidebar ຕ້ອງທັບ Content
     flexDirection: 'row' 
   },
   
   transparentCloseArea: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   
-  screenWrapper: { 
+  contentWrapper: { 
     flex: 1, 
     backgroundColor: '#fff', 
     marginHorizontal: 10, 
     marginTop: 10, 
     marginBottom: 0, 
     borderRadius: 10, 
-    overflow: 'hidden' 
+    overflow: 'hidden',
+    zIndex: 1
   },
 
   footerWrapper: {
-    zIndex: 10, // 🟢 ສຳຄັນ: ໃຫ້ Footer ຢູ່ເທິງ Content ສະເໝີ
+    zIndex: 20, // 🟢 ສຳຄັນ: ໃຫ້ Footer ຢູ່ເທິງ Content ສະເໝີ
     backgroundColor: 'white', // ປ້ອງກັນການເບິ່ງທະລຸ
     elevation: 10 // ສຳລັບ Android
   }

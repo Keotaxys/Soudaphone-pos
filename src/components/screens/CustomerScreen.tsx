@@ -19,7 +19,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-  ActivityIndicator // ເພີ່ມ Loading Indicator
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,6 +30,9 @@ import { COLORS } from '../../types';
 const { width } = Dimensions.get('window');
 const CARD_GAP = 10;
 const CARD_WIDTH = (width - 45) / 2; 
+
+// 🟢 ກຳນົດສີສົ້ມ
+const ORANGE_THEME = '#FF8F00';
 
 interface Customer {
   id: string;
@@ -47,7 +50,7 @@ export default function CustomerScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(true); // 🟢 ເພີ່ມ state loading
+  const [loading, setLoading] = useState(true);
   
   // Form States
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -57,43 +60,27 @@ export default function CustomerScreen() {
   const [address, setAddress] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
-  // 🟢 4. useEffect ດຶງຂໍ້ມູນ (ແກ້ໄຂຈຸດນີ້)
+  // Fetch Data
   useEffect(() => {
-    console.log("🔄 Start fetching customers...");
-
-    // ⚠️ ປິດບັນທັດນີ້ຊົ່ວຄາວ ເພື່ອທົດສອບວ່າຂໍ້ມູນມາບໍ່
-    // if (!hasPermission('accessCustomers')) {
-    //     console.log("⛔ Permission Denied: accessCustomers");
-    //     setLoading(false);
-    //     return;
-    // }
+    // ຖ້າຢາກເປີດ Permission ກໍ uncomment ບັນທັດລຸ່ມນີ້
+    // if (!hasPermission('accessCustomers')) return;
 
     const customerRef = ref(db, 'customers');
     const unsubscribe = onValue(customerRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        // 🟢 Debug: ເບິ່ງຂໍ້ມູນດິບທີ່ໄດ້ມາ
-        console.log("✅ Raw Data from Firebase:", data);
-
-        const list = Object.keys(data).map(key => ({ 
-            id: key, 
-            ...data[key] 
-        }));
-        
-        console.log(`📊 Processed List: ${list.length} items`);
+        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
         setCustomers(list.reverse() as Customer[]);
       } else {
-        console.log("⚠️ No data in 'customers' node");
         setCustomers([]);
       }
       setLoading(false);
     }, (error) => {
-        console.error("❌ Firebase Error:", error);
+        console.error("Customer Load Error:", error); 
         setLoading(false);
     });
-
     return () => unsubscribe();
-  }, []); // ບໍ່ຕ້ອງໃສ່ hasPermission ໃນ dependency ຖ້າເຮົາປິດ check
+  }, []);
 
   // --- Functions ---
   const pickImage = async () => {
@@ -193,8 +180,10 @@ export default function CustomerScreen() {
             <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModal(item)}>
                 <Ionicons name="pencil" size={14} color={COLORS.primary} />
             </TouchableOpacity>
+            
+            {/* 🟢 ແກ້ໄຂສີປຸ່ມລຶບເປັນສີສົ້ມ */}
             <TouchableOpacity style={[styles.actionBtn, {marginTop: 5}]} onPress={() => handleDelete(item.id)}>
-                <Ionicons name="trash" size={14} color="#FF5252" /> 
+                <Ionicons name="trash" size={14} color={ORANGE_THEME} /> 
             </TouchableOpacity>
         </View>
       </View>
@@ -237,7 +226,6 @@ export default function CustomerScreen() {
     </View>
   );
 
-  // 🟢 Loading View
   if (loading) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -246,6 +234,20 @@ export default function CustomerScreen() {
           </View>
       );
   }
+
+  // ຖ້າຢາກເປີດ Permission Check ໃຫ້ Uncomment ບ່ອນນີ້
+  /*
+  if (!hasPermission('accessCustomers')) {
+      return (
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
+              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
+                  ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນລູກຄ້າ
+              </Text>
+          </View>
+      );
+  }
+  */
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

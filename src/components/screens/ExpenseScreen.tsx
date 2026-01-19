@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 
-// 🟢 Import ມາດຕະຖານ
+// 🟢 1. Import ມາດຕະຖານ
 import * as FileSystem from 'expo-file-system';
 
 import * as Print from 'expo-print';
@@ -154,28 +154,27 @@ export default function ExpenseScreen() {
     return docDir || cacheDir; 
   };
 
-  // 🟢 4. Download Template (ແກ້ໄຂໃຫ້ເປັນວັນທີແທ້ໆ)
+  // 🟢 4. Download Template
   const handleDownloadTemplate = async () => {
     try {
       const data = [
         {
-          "Date": new Date("2026-01-20"), // 🟢 ໃຊ້ Date Object
+          "Date": new Date("2026-01-20"), 
           "Category": "ສັ່ງສິນຄ້າ",
           "Description": "ຊື້ເຄື່ອງເຂົ້າຮ້ານ",
           "Amount": 500000
         },
         {
-          "Date": new Date("2026-01-21"), // 🟢 ໃຊ້ Date Object
+          "Date": new Date("2026-01-21"), 
           "Category": "ຄ່າເຊົ່າ",
           "Description": "ຈ່າຍຄ່າເຊົ່າເດືອນ 1",
           "Amount": 2000000
         }
       ];
 
-      // 🟢 ກຳນົດ cellDates: true ແລະ dateNF (Number Format)
       const ws = XLSX.utils.json_to_sheet(data, { 
           cellDates: true, 
-          dateNF: 'dd/mm/yyyy' // ຮູບແບບວັນທີໃນ Excel
+          dateNF: 'dd/mm/yyyy' 
       });
       
       const wb = XLSX.utils.book_new();
@@ -185,8 +184,8 @@ export default function ExpenseScreen() {
       const docDir = getSaveDirectory();
       const fileName = `${docDir}expense_template.xlsx`;
 
-      // @ts-ignore
-      await FileSystem.writeAsStringAsync(fileName, wbout, { encoding: FileSystem.EncodingType.Base64 });
+      // 🟢 ແກ້ໄຂ: ໃຊ້ 'base64' ແທນ FileSystem.EncodingType.Base64
+      await FileSystem.writeAsStringAsync(fileName, wbout, { encoding: 'base64' });
       await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
       setShowExportOptions(false);
     } catch (error) {
@@ -211,10 +210,9 @@ export default function ExpenseScreen() {
       setImporting(true);
       const fileUri = result.assets[0].uri;
       
-      // @ts-ignore
-      const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+      // 🟢 ແກ້ໄຂ: ໃຊ້ 'base64'
+      const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
       
-      // 🟢 cellDates: true ຈະອ່ານຕົວເລກເປັນ Date ໃຫ້ອັດຕະໂນມັດ
       const wb = XLSX.read(fileContent, { type: 'base64', cellDates: true });
       
       const wsname = wb.SheetNames[0];
@@ -224,7 +222,6 @@ export default function ExpenseScreen() {
       let successCount = 0;
       
       for (const row of data) {
-        // ຮອງຮັບທັງ key "Date" ແລະ "Date(YYYY-MM-DD)"
         const dateRaw = row['Date'] || row['Date(YYYY-MM-DD)'];
         const catStr = row['Category'] || row['ໝວດໝູ່'];
         const descStr = row['Description'] || row['ລາຍລະອຽດ'];
@@ -234,10 +231,7 @@ export default function ExpenseScreen() {
 
         let parsedDate = new Date();
         if (dateRaw instanceof Date) {
-            // ຖ້າ xlsx ແປງມາໃຫ້ແລ້ວ
             parsedDate = dateRaw;
-            // ປັບ Timezone ຖ້າຈຳເປັນ (ເພີ່ມ 7 ຊົ່ວໂມງຖ້າມັນມາເປັນ UTC)
-            // parsedDate.setHours(parsedDate.getHours() + 7); 
         } else if (dateRaw) {
             const d = new Date(dateRaw);
             if (!isNaN(d.getTime())) parsedDate = d;
@@ -265,11 +259,11 @@ export default function ExpenseScreen() {
     }
   };
 
-  // 🟢 6. Export Excel (ແກ້ໄຂໃຫ້ເປັນວັນທີແທ້ໆ)
+  // 🟢 6. Export Excel
   const exportToExcel = async () => {
     try {
         const data = filteredExpenses.map(item => ({
-            "Date": new Date(item.date), // 🟢 ສົ່ງ Date Object
+            "Date": new Date(item.date),
             "Category": item.category,
             "Description": item.description,
             "Amount": item.amount
@@ -277,13 +271,12 @@ export default function ExpenseScreen() {
 
         const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
         data.push({
-            "Date": new Date(), // ໃສ່ວັນທີປັດຈຸບັນເປັນ Placeholder
+            "Date": new Date(),
             "Category": "",
             "Description": "ລວມທັງໝົດ (Total)",
             "Amount": total
         });
 
-        // 🟢 ກຳນົດ cellDates: true ແລະ dateNF
         const ws = XLSX.utils.json_to_sheet(data, { 
             cellDates: true, 
             dateNF: 'dd/mm/yyyy' 
@@ -296,8 +289,8 @@ export default function ExpenseScreen() {
         const docDir = getSaveDirectory();
         const fileName = `${docDir}expenses_report.xlsx`;
 
-        // @ts-ignore
-        await FileSystem.writeAsStringAsync(fileName, wbout, { encoding: FileSystem.EncodingType.Base64 });
+        // 🟢 ແກ້ໄຂ: ໃຊ້ 'base64'
+        await FileSystem.writeAsStringAsync(fileName, wbout, { encoding: 'base64' });
         await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
         setShowExportOptions(false);
     } catch (error) {

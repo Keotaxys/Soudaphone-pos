@@ -58,7 +58,7 @@ export default function DebtsReceivableScreen() {
   // 🟢 3. ເອີ້ນໃຊ້ Hook (ໄວ້ເທິງສຸດ)
   const { hasPermission } = useAuth();
 
-  // --- State Declarations (ໄວ້ບ່ອນນີ້ ຫ້າມມີ return ກ່ອນໜ້ານີ້) ---
+  // --- State Declarations ---
   const [debts, setDebts] = useState<DebtItem[]>([]);
   
   // Modals
@@ -84,9 +84,9 @@ export default function DebtsReceivableScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateMode, setDateMode] = useState<'due' | 'payment'>('due');
 
-  // 🟢 4. useEffect: Fetch Data (ວາງໄວ້ບ່ອນນີ້)
+  // 🟢 4. useEffect: Fetch Data
   useEffect(() => {
-    // ຖ້າບໍ່ມີສິດ ໃຫ້ຢຸດການດຶງຂໍ້ມູນ (ແຕ່ Hook ຍັງຖືກປະກາດຢູ່)
+    // ຖ້າບໍ່ມີສິດ ໃຫ້ຢຸດການດຶງຂໍ້ມູນ (ແຕ່ Hook ຍັງເຮັດວຽກ)
     if (!hasPermission('accessFinancial')) return;
 
     const debtRef = ref(db, 'debts_receivable');
@@ -102,17 +102,15 @@ export default function DebtsReceivableScreen() {
                 remaining: item.remaining !== undefined ? item.remaining : (item.totalAmount - (item.paidAmount || 0))
             };
         });
-        // console.log(`✅ Debts Receivable Loaded: ${list.length}`);
         setDebts(list.reverse() as DebtItem[]);
       } else {
-        // console.log("⚠️ No Debts Receivable Found");
         setDebts([]);
       }
     }, (error) => {
         console.error("Debt Load Error:", error);
     });
     return () => unsubscribe();
-  }, []);
+  }, [hasPermission]); // 🛑 ໃສ່ hasPermission ໃນ dependency array
 
   // 🟢 5. useEffect: History Logic
   useEffect(() => {

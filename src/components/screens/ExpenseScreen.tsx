@@ -2,25 +2,25 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 
-// 🟢 1. Import ແບບ Legacy ອັນດຽວຈົບ (ເພື່ອແກ້ Warning Deprecated)
-import * as FileSystem from 'expo-file-system/legacy'; 
+// 🟢 1. Import ແບບ Legacy ອັນດຽວ
+import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Keyboard,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  ActivityIndicator
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -42,7 +42,7 @@ const EXPENSE_CATEGORIES = [
 type FilterType = 'day' | 'week' | 'month' | 'custom';
 
 export default function ExpenseScreen() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
   
   const [allExpenses, setAllExpenses] = useState<ExpenseRecord[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<ExpenseRecord[]>([]);
@@ -67,6 +67,8 @@ export default function ExpenseScreen() {
 
   // 1. Fetch Data
   useEffect(() => {
+    if (authLoading) return;
+
     if (!hasPermission('accessFinancial')) {
         setLoading(false);
         return;
@@ -89,7 +91,8 @@ export default function ExpenseScreen() {
     });
 
     return () => unsubscribe();
-  }, [hasPermission]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading]);
 
   // 2. Logic ກັ່ນຕອງຂໍ້ມູນ
   useEffect(() => {
@@ -150,8 +153,7 @@ export default function ExpenseScreen() {
         "2026-01-20,ສັ່ງສິນຄ້າ,ຊື້ເຄື່ອງເຂົ້າຮ້ານ,500000\n" +
         "2026-01-21,ຄ່າເຊົ່າ,ຈ່າຍຄ່າເຊົ່າເດືອນ 1,2000000";
 
-      // 🟢 ໃຊ້ (FileSystem as any) ເພື່ອ Bypass TypeScript Error
-      // ແຕ່ຍັງໃຊ້ 'expo-file-system/legacy' ເພື່ອບໍ່ໃຫ້ເກີດ Warning
+      // 🟢 ໃຊ້ (FileSystem as any) ເພື່ອບັງຄັບໃຫ້ TypeScript ຜ່ານ
       const docDir = (FileSystem as any).documentDirectory;
       
       if (!docDir) {
@@ -182,7 +184,6 @@ export default function ExpenseScreen() {
       setImporting(true);
       const fileUri = result.assets[0].uri;
       
-      // 🟢 ໃຊ້ FileSystem ຈາກ legacy
       const fileContent = await FileSystem.readAsStringAsync(fileUri);
       
       const rows = fileContent.split('\n');
@@ -238,7 +239,7 @@ export default function ExpenseScreen() {
         const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
         csvContent += `\n,,Total,${total}`;
 
-        // 🟢 ໃຊ້ (as any) ເຊັ່ນກັນ
+        // 🟢 ໃຊ້ (FileSystem as any) ເຊັ່ນກັນ
         const docDir = (FileSystem as any).documentDirectory;
         if (!docDir) throw new Error("Storage Unavailable");
 
@@ -365,7 +366,7 @@ export default function ExpenseScreen() {
     }
   };
 
-  if (!hasPermission('accessFinancial')) {
+  if (!authLoading && !hasPermission('accessFinancial')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
               <Ionicons name="lock-closed-outline" size={50} color="#ccc" />

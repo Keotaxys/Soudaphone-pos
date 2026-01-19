@@ -37,7 +37,7 @@ import EditShopModal from '../../src/components/modals/EditShopModal';
 import ProductModal from '../../src/components/modals/ProductModal';
 import ScannerModal from '../../src/components/modals/ScannerModal';
 
-// Any Casts (ເພື່ອຫຼີກລ່ຽງ TS Errors)
+// Any Casts (ເພື່ອຫຼີກລ່ຽງ TS Errors ຊົ່ວຄາວ)
 const POSScreenAny = POSScreen as any;
 const ProductsScreenAny = ProductsScreen as any;
 const HomeScreenAny = HomeScreen as any;
@@ -70,7 +70,7 @@ export default function App() {
   const [tempProduct, setTempProduct] = useState<Product>(emptyProduct);
   const [isScannerVisible, setScannerVisible] = useState(false);
 
-  // 🟢 1. ເພີ່ມ State ເພື່ອກວດສອບວ່າສະແກນເພື່ອຫຍັງ ('pos' = ຂາຍ, 'product' = ເພີ່ມສິນຄ້າ)
+  // 🟢 State ສຳລັບບອກວ່າກຳລັງສະແກນເພື່ອຫຍັງ ('pos' = ຂາຍ, 'product' = ເພີ່ມສິນຄ້າ)
   const [scanMode, setScanMode] = useState<'pos' | 'product'>('pos');
 
   const [shopInfo, setShopInfo] = useState({
@@ -161,7 +161,7 @@ export default function App() {
     setProductModalVisible(false);
   };
 
-  // 🟢 2. Scanner Logic (ແກ້ໄຂໃໝ່)
+  // 🟢 Logic ການສະແກນ
   const handleScanSuccess = (code: string) => {
     setScannerVisible(false);
 
@@ -177,7 +177,7 @@ export default function App() {
     } else {
         // ➕ ໂຫມດເພີ່ມສິນຄ້າ: ສົ່ງລະຫັດໄປໜ້າແບບຟອມ
         setTempProduct(prev => ({ ...prev, barcode: code }));
-        setProductModalVisible(true); // ເປີດ Modal ຄືນ (ເພາະມັນອາດຈະປິດໄປຕອນເປີດກ້ອງ)
+        setProductModalVisible(true); // ເປີດ Modal ຄືນ
     }
   };
 
@@ -198,7 +198,7 @@ export default function App() {
             onQuickAddProduct={openAddProductModal} 
             onSpecialSale={() => setActiveTab('special_sale')} 
             onQuickScan={() => {
-                setScanMode('pos'); // 🟢 ຕັ້ງຄ່າເປັນໂຫມດຂາຍ
+                setScanMode('pos');
                 setScannerVisible(true);
             }} 
             onQuickCustomer={() => setActiveTab('Customers')} 
@@ -215,7 +215,7 @@ export default function App() {
             onCheckout={handleCheckout} 
             openEditProductModal={openEditProductModal}
             onOpenScan={() => {
-                setScanMode('pos'); // 🟢 ຕັ້ງຄ່າເປັນໂຫມດຂາຍ
+                setScanMode('pos');
                 setScannerVisible(true);
             }} 
             onOpenAddProduct={openAddProductModal} 
@@ -246,63 +246,74 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="light" backgroundColor="transparent" translucent={true} />
       
-      <View style={styles.container}>
-        
-        <HeaderAny 
-            toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
-            user={{ name: 'Admin', role: 'Manager' }} 
-            shopName={shopInfo.name}
-            shopId={shopInfo.id}
-            shopLogo={shopInfo.logo}
-            onEditPress={() => setEditShopVisible(true)}
-            onLogout={() => setIsLoggedIn(false)}
-        />
+      {/* 🟢 ໃຊ້ View ຫໍ່ເພື່ອຈັດການ Z-Index ໄດ້ງ່າຍ */}
+      <View style={{ flex: 1 }}> 
+      
+        <View style={styles.container}>
+          
+          <HeaderAny 
+              toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
+              user={{ name: 'Admin', role: 'Manager' }} 
+              shopName={shopInfo.name}
+              shopId={shopInfo.id}
+              shopLogo={shopInfo.logo}
+              onEditPress={() => setEditShopVisible(true)}
+              onLogout={() => setIsLoggedIn(false)}
+          />
 
-        <View style={styles.mainContainer}>
-          {isSidebarOpen && (
-            <View style={styles.sidebarOverlay}>
-               <SidebarAny 
-                 activeTab={activeTab} 
-                 onTabChange={(tab: string) => { setActiveTab(tab); setIsSidebarOpen(false); }} 
-                 tabs={TABS} 
-                 onClose={() => setIsSidebarOpen(false)} 
-               />
-               <View style={styles.transparentCloseArea} onTouchEnd={() => setIsSidebarOpen(false)} />
+          <View style={styles.mainContainer}>
+            {isSidebarOpen && (
+              <View style={styles.sidebarOverlay}>
+                 <SidebarAny 
+                   activeTab={activeTab} 
+                   onTabChange={(tab: string) => { setActiveTab(tab); setIsSidebarOpen(false); }} 
+                   tabs={TABS} 
+                   onClose={() => setIsSidebarOpen(false)} 
+                 />
+                 <View style={styles.transparentCloseArea} onTouchEnd={() => setIsSidebarOpen(false)} />
+              </View>
+            )}
+            <View style={styles.contentWrapper}>
+              {renderScreen()}
             </View>
-          )}
-          <View style={styles.contentWrapper}>
-            {renderScreen()}
           </View>
+
+          <FooterAny status="Online" version="1.0.0" currentTab={activeTab.toLowerCase()} onTabChange={(tab: string) => setActiveTab(tab)} />
+
         </View>
 
-        <FooterAny status="Online" version="1.0.0" currentTab={activeTab.toLowerCase()} onTabChange={(tab: string) => setActiveTab(tab)} />
-
-        <ProductModalAny 
-            visible={isProductModalVisible} 
-            onClose={() => setProductModalVisible(false)} 
-            product={tempProduct} 
-            setProduct={setTempProduct} 
-            onSave={onSaveProductFromModal} 
-            onPickImage={() => {}} 
-            // 🟢 3. ເພີ່ມການກົດປຸ່ມສະແກນໃນ Modal ເພີ່ມສິນຄ້າ
-            onScan={() => {
-                setScanMode('product'); 
-                setScannerVisible(true);
-            }} 
-        />
+        {/* 🟢 Modals: ວາງຢູ່ນອກ Container ຫຼັກ ເພື່ອບໍ່ໃຫ້ຖືກບັງ (Z-Index ສູງສຸດ) */}
+        {isProductModalVisible && (
+            <ProductModalAny 
+                visible={isProductModalVisible} 
+                onClose={() => setProductModalVisible(false)} 
+                product={tempProduct} 
+                setProduct={setTempProduct} 
+                onSave={onSaveProductFromModal} 
+                onPickImage={() => {}} 
+                onScan={() => {
+                    setScanMode('product'); 
+                    setScannerVisible(true);
+                }} 
+            />
+        )}
         
-        <ScannerModalAny 
-            visible={isScannerVisible} 
-            onClose={() => setScannerVisible(false)} 
-            onScan={handleScanSuccess} 
-        />
+        {isScannerVisible && (
+            <ScannerModalAny 
+                visible={isScannerVisible} 
+                onClose={() => setScannerVisible(false)} 
+                onScan={handleScanSuccess} 
+            />
+        )}
         
-        <EditShopModal 
-            visible={isEditShopVisible}
-            onClose={() => setEditShopVisible(false)}
-            initialData={shopInfo}
-            onSave={handleSaveShopInfo}
-        />
+        {isEditShopVisible && (
+            <EditShopModal 
+                visible={isEditShopVisible}
+                onClose={() => setEditShopVisible(false)}
+                initialData={shopInfo}
+                onSave={handleSaveShopInfo}
+            />
+        )}
 
       </View>
     </SafeAreaProvider>

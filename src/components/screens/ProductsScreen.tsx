@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-// @ts-ignore
 import * as FileSystem from 'expo-file-system/legacy';
 import { shareAsync } from 'expo-sharing';
 import { push, ref } from 'firebase/database';
@@ -22,11 +21,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { db } from '../../firebase';
+import { useAuth } from '../../hooks/useAuth';
 import { useCategories } from '../../hooks/useCategories';
 import { COLORS, formatNumber, Product } from '../../types';
-
-// 🟢 1. Import Hook ກວດສອບສິດ
-import { useAuth } from '../../hooks/useAuth';
 
 const ORANGE_THEME = '#FF8F00'; 
 
@@ -44,9 +41,7 @@ export default function ProductsScreen({
   onDeleteProduct 
 }: ProductsScreenProps) {
 
-  // 🟢 2. ເອີ້ນໃຊ້ Hook
   const { hasPermission } = useAuth();
-
   const { categories: dbCategories, categoryObjs, addCategory, editCategory, deleteCategory } = useCategories();
   const categoryList = ['All', ...dbCategories];
 
@@ -94,7 +89,6 @@ export default function ProductsScreen({
       
       if (!targetCat) return;
 
-      // 🟢 ກວດສອບສິດກ່ອນໃຫ້ແກ້ໄຂໝວດໝູ່ (ໃຊ້ສິດດຽວກັບແກ້ໄຂສິນຄ້າ)
       if (!hasPermission('canEditProduct')) return;
 
       Alert.alert(
@@ -117,10 +111,10 @@ export default function ProductsScreen({
       );
   };
 
-  // --- Logic ເດີມ (Template, Export, Import) ---
   const handleDownloadTemplate = async () => {
       const csvContent = "Name,Price,Stock,Currency(LAK/THB),Barcode,Category\nເສື້ອຢືດ,50000,10,LAK,88889999,ເສື້ອຜ້າ\n";
-      const fileName = `${FileSystem.documentDirectory}product_template.csv`;
+      const docDir = (FileSystem as any).documentDirectory;
+      const fileName = `${docDir}product_template.csv`;
       try {
           await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
           await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
@@ -134,7 +128,9 @@ export default function ProductsScreen({
       products.forEach(p => {
           csvContent += `${p.name},${p.price},${p.stock},${p.priceCurrency},${p.barcode || ''},${p.category || ''}\n`;
       });
-      const fileName = `${FileSystem.documentDirectory}products_export_${new Date().getTime()}.csv`;
+      
+      const docDir = (FileSystem as any).documentDirectory;
+      const fileName = `${docDir}products_export_${new Date().getTime()}.csv`;
       try {
           await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
           await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
@@ -144,7 +140,6 @@ export default function ProductsScreen({
   };
 
   const handleImport = async () => {
-      // 🟢 ກວດສອບສິດກ່ອນ Import (ໃຊ້ສິດແກ້ໄຂສິນຄ້າ)
       if (!hasPermission('canEditProduct')) {
           Alert.alert('ແຈ້ງເຕືອນ', 'ທ່ານບໍ່ມີສິດໃນການເພີ່ມ/ແກ້ໄຂຂໍ້ມູນ');
           return;
@@ -198,14 +193,12 @@ export default function ProductsScreen({
             <Text style={[styles.stock, item.stock <= 5 && { color: ORANGE_THEME }]}>ຄົງເຫຼືອ: {item.stock}</Text>
         </View>
         <View style={styles.actions}>
-            {/* 🟢 3. ກວດສອບສິດປຸ່ມແກ້ໄຂ */}
             {hasPermission('canEditProduct') && (
                 <TouchableOpacity style={styles.editBtn} onPress={() => onEditProduct(item)}>
                     <Ionicons name="pencil" size={20} color={COLORS.primary} />
                 </TouchableOpacity>
             )}
 
-            {/* 🟢 4. ກວດສອບສິດປຸ່ມລຶບ */}
             {hasPermission('canDeleteProduct') && (
                 <TouchableOpacity style={styles.deleteBtn} onPress={() => onDeleteProduct(item.id!)}>
                     <Ionicons name="trash-outline" size={20} color={ORANGE_THEME} />
@@ -215,8 +208,10 @@ export default function ProductsScreen({
     </View>
   );
 
-  const ListHeader = () => (
-    <View style={styles.headerArea}>
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* 🟢 ແຍກ Header ອອກມາຢູ່ນອກ FlatList ເພື່ອປ້ອງກັນບັນຫາ Scroll/Touch */}
+      <View style={styles.headerArea}>
         <View style={styles.searchBar}>
             <Ionicons name="search" size={20} color="#999" />
             <TextInput 
@@ -233,7 +228,6 @@ export default function ProductsScreen({
         </View>
 
         <View style={{flexDirection: 'row', marginBottom: 10, alignItems: 'center'}}>
-            {/* 🟢 5. ກວດສອບສິດການເພີ່ມໝວດໝູ່ */}
             {hasPermission('canEditProduct') && (
                 <TouchableOpacity style={[styles.addCatMiniBtn, {backgroundColor: COLORS.primary}]} onPress={() => openCategoryModal('add')}>
                     <Ionicons name="add" size={20} color="white" />
@@ -261,21 +255,16 @@ export default function ProductsScreen({
 
         <View style={styles.actionIcons}>
             <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}><Ionicons name="download-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
-            {/* 🟢 6. ກວດສອບສິດປຸ່ມ Import (Export ໃຫ້ເຫັນໄດ້ ແຕ່ Import ຕ້ອງມີສິດ) */}
             {hasPermission('canEditProduct') && (
                 <TouchableOpacity style={styles.iconBtn} onPress={handleImport}><Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
             )}
             <TouchableOpacity style={styles.iconBtn} onPress={handleExport}><Ionicons name="share-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
         </View>
-    </View>
-  );
+      </View>
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
       <FlatList
         data={filteredProducts}
         keyExtractor={(item) => item.id!}
-        ListHeaderComponent={ListHeader}
         renderItem={renderProductItem}
         contentContainerStyle={{ padding: 15, paddingBottom: 120 }}
         ListEmptyComponent={
@@ -286,7 +275,6 @@ export default function ProductsScreen({
         }
       />
 
-      {/* 🟢 7. ກວດສອບສິດປຸ່ມເພີ່ມສິນຄ້າ (FAB) */}
       {hasPermission('canEditProduct') && (
           <TouchableOpacity 
             style={styles.fab} 
@@ -297,7 +285,7 @@ export default function ProductsScreen({
           </TouchableOpacity>
       )}
 
-      {/* Modal ສຳລັບ Add/Edit Category */}
+      {/* Modal */}
       <Modal visible={showCatModal} transparent animationType="slide">
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
@@ -332,7 +320,13 @@ export default function ProductsScreen({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   
-  headerArea: { paddingBottom: 10 },
+  headerArea: { 
+    padding: 15, 
+    paddingBottom: 5,
+    backgroundColor: COLORS.background, // 🟢 ຕັ້ງສີພື້ນຫຼັງໃຫ້ຊັດເຈນ
+    zIndex: 1 // 🟢 ຍົກລະດັບໃຫ້ຢູ່ເໜືອ List
+  },
+  
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, elevation: 2, marginBottom: 10 },
   searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 16 },
   
@@ -361,6 +355,7 @@ const styles = StyleSheet.create({
   editBtn: { padding: 8, backgroundColor: '#E0F2F1', borderRadius: 8 },
   deleteBtn: { padding: 8, backgroundColor: '#FFF3E0', borderRadius: 8 },
 
+  // 🟢 ປັບ ZIndex ຂອງ FAB ໃຫ້ສູງສຸດ
   fab: { 
     position: 'absolute', 
     bottom: 90, 
@@ -372,7 +367,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center', 
     elevation: 10, 
-    zIndex: 9999, 
+    zIndex: 9999, // 🟢 ສຳຄັນຫຼາຍ
     shadowColor: '#000', 
     shadowOffset: { width: 0, height: 4 }, 
     shadowOpacity: 0.3, 

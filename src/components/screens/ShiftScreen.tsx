@@ -3,10 +3,16 @@ import { onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  SafeAreaView,
-  ScrollView, StyleSheet, Text,
-  TextInput, TouchableOpacity, View
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { db } from '../../firebase';
 import { COLORS, formatNumber, ShiftRecord } from '../../types';
 
@@ -25,6 +31,7 @@ export default function ShiftScreen() {
   const [closeLakCounts, setCloseLakCounts] = useState<{ [key: number]: string }>({});
   const [closeThbCounts, setCloseThbCounts] = useState<{ [key: number]: string }>({});
 
+  // 🟢 2. Fetch Active Shift
   useEffect(() => {
     const shiftsRef = ref(db, 'shifts');
     const unsubscribe = onValue(shiftsRef, (snapshot) => {
@@ -89,7 +96,6 @@ export default function ShiftScreen() {
     ]);
   };
 
-  // 🟢 ປັບຟັງຊັນ renderDenomRow ໃຫ້ຮັບຄ່າສີ (totalColor)
   const renderDenomRow = (val: number, counts: any, setCounts: any, symbol: string, totalColor: string) => (
     <View key={val} style={styles.denomRow}>
       <View style={styles.denomInfo}>
@@ -102,7 +108,6 @@ export default function ShiftScreen() {
         value={counts[val] || ''}
         onChangeText={(t) => setCounts({ ...counts, [val]: t })}
       />
-      {/* 🟢 ໃຊ້ສີທີ່ສົ່ງເຂົ້າມາ */}
       <Text style={[styles.denomSum, { color: totalColor }]}>{formatNumber(val * (parseInt(counts[val]) || 0))}</Text>
     </View>
   );
@@ -122,7 +127,6 @@ export default function ShiftScreen() {
 
             <Text style={styles.sectionTitle}>💵 ໃບເງິນກີບ (LAK)</Text>
             <View style={styles.denomCard}>
-                {/* 🟢 ສົ່ງສີ Teal (COLORS.primary) ໃຫ້ເງິນກີບ */}
                 {LAK_DENOMS.map(v => renderDenomRow(v, openLakCounts, setOpenLakCounts, '₭', COLORS.primary))}
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>ລວມເງິນກີບຕັ້ງຕົ້ນ:</Text>
@@ -132,7 +136,6 @@ export default function ShiftScreen() {
 
             <Text style={styles.sectionTitle}>฿ ໃບເງິນບາດ (THB)</Text>
             <View style={styles.denomCard}>
-                {/* 🟢 ສົ່ງສີສົ້ມ (#F57C00) ໃຫ້ເງິນບາດ */}
                 {THB_DENOMS.map(v => renderDenomRow(v, openThbCounts, setOpenThbCounts, '฿', '#F57C00'))}
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>ລວມເງິນບາດຕັ້ງຕົ້ນ:</Text>
@@ -146,7 +149,6 @@ export default function ShiftScreen() {
           </View>
         ) : (
           <View>
-            {/* ສ່ວນການສະແດງຜົນຕອນກຳລັງເປີດກະ ແລະ ປຸ່ມປິດກະ */}
             <View style={styles.activeHeader}>
                 <View>
                     <Text style={styles.activeStatus}>🟢 ກຳລັງເປີດກະຂາຍ</Text>
@@ -159,7 +161,6 @@ export default function ShiftScreen() {
 
             <Text style={styles.sectionTitle}>🧾 ນັບເງິນສົດກ່ອນປິດກະ (ກີບ)</Text>
             <View style={styles.denomCard}>
-                {/* 🟢 ສົ່ງສີ Teal ໃຫ້ເງິນກີບຕອນປິດກະ */}
                 {LAK_DENOMS.map(v => renderDenomRow(v, closeLakCounts, setCloseLakCounts, '₭', COLORS.primary))}
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>ລວມເງິນກີບ:</Text>
@@ -169,7 +170,6 @@ export default function ShiftScreen() {
 
             <Text style={styles.sectionTitle}>💰 ນັບເງິນສົດກ່ອນປິດກະ (ບາດ)</Text>
             <View style={styles.denomCard}>
-                {/* 🟢 ສົ່ງສີສົ້ມ ໃຫ້ເງິນບາດຕອນປິດກະ */}
                 {THB_DENOMS.map(v => renderDenomRow(v, closeThbCounts, setCloseThbCounts, '฿', '#F57C00'))}
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>ລວມເງິນບາດ:</Text>

@@ -2,9 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 
-// 🟢 1. ແກ້ໄຂການ Import FileSystem (ແຍກກັນເພື່ອແກ້ Warning ແລະ Error)
-import * as FileSystem from 'expo-file-system/legacy'; // ສຳລັບ method (write/read)
-import { documentDirectory } from 'expo-file-system'; // ສຳລັບ constant path
+// 🟢 1. ແກ້ໄຂ Import: ໃຊ້ legacy ອັນດຽວຈົບ
+import * as FileSystem from 'expo-file-system/legacy'; 
 
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
@@ -143,7 +142,7 @@ export default function ExpenseScreen() {
     setFilterDate(newDate);
   };
 
-  // 4. Download Template
+  // 🟢 4. Download Template (ແກ້ໄຂ Error ບໍ່ພົບ documentDirectory)
   const handleDownloadTemplate = async () => {
     try {
       const csvContent = 
@@ -151,14 +150,21 @@ export default function ExpenseScreen() {
         "2026-01-20,ສັ່ງສິນຄ້າ,ຊື້ເຄື່ອງເຂົ້າຮ້ານ,500000\n" +
         "2026-01-21,ຄ່າເຊົ່າ,ຈ່າຍຄ່າເຊົ່າເດືອນ 1,2000000";
 
-      // 🟢 2. ໃຊ້ documentDirectory ໂດຍກົງ (ບໍ່ຕ້ອງມີ as any)
-      const fileName = `${documentDirectory}expense_template.csv`;
+      // ✨ Trick: ໃຊ້ (as any) ເພື່ອ Bypass TypeScript
+      const docDir = (FileSystem as any).documentDirectory;
+      
+      if (!docDir) {
+          throw new Error("Device storage is not available");
+      }
+
+      const fileName = `${docDir}expense_template.csv`;
 
       await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
       await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
       setShowExportOptions(false);
     } catch (error) {
-      Alert.alert("Error", "ບໍ່ສາມາດດາວໂຫຼດ Template ໄດ້");
+      console.error(error);
+      Alert.alert("Error", "ບໍ່ສາມາດດາວໂຫຼດ Template ໄດ້: " + (error as Error).message);
     }
   };
 
@@ -175,7 +181,6 @@ export default function ExpenseScreen() {
       setImporting(true);
       const fileUri = result.assets[0].uri;
       
-      // 🟢 ໃຊ້ FileSystem ຈາກ legacy
       const fileContent = await FileSystem.readAsStringAsync(fileUri);
       
       const rows = fileContent.split('\n');
@@ -231,8 +236,11 @@ export default function ExpenseScreen() {
         const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
         csvContent += `\n,,Total,${total}`;
 
-        // 🟢 ໃຊ້ documentDirectory ໂດຍກົງ
-        const fileName = `${documentDirectory}expenses_report.csv`;
+        // ✨ Trick: ໃຊ້ (as any) ເຊັ່ນກັນ
+        const docDir = (FileSystem as any).documentDirectory;
+        if (!docDir) throw new Error("Storage Unavailable");
+
+        const fileName = `${docDir}expenses_report.csv`;
 
         await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
         await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
@@ -373,7 +381,7 @@ export default function ExpenseScreen() {
         {/* Header with Export */}
         <View style={styles.headerRow}>
             <Text style={styles.screenTitle}>ລາຍຈ່າຍ (Expenses)</Text>
-            {/* ປຸ່ມເມນູ Export/Import */}
+            {/* 🟢 ປຸ່ມເມນູ Export/Import */}
             <TouchableOpacity style={styles.exportIconBtn} onPress={() => setShowExportOptions(true)}>
                 <Ionicons name="ellipsis-vertical" size={22} color={COLORS.primary} />
             </TouchableOpacity>

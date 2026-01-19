@@ -16,11 +16,9 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
-// 🟢 2. Import Hook
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS, formatDate, formatNumber } from '../../types';
 import CurrencyInput from '../ui/CurrencyInput';
@@ -28,17 +26,11 @@ import CurrencyInput from '../ui/CurrencyInput';
 const ORANGE_COLOR = '#F57C00';
 
 // Currency Helper
-const formatInputNumber = (val: string) => {
-    const numericValue = val.replace(/[^0-9]/g, '');
-    if (!numericValue) return '';
-    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-};
-
 const parseCurrency = (value: any) => {
-    if (!value) return 0;
-    const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
-    const num = parseFloat(strVal);
-    return isNaN(num) ? 0 : num;
+  if (!value) return 0;
+  const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
+  const num = parseFloat(strVal);
+  return isNaN(num) ? 0 : num;
 };
 
 interface DebtItem {
@@ -55,7 +47,6 @@ interface DebtItem {
 }
 
 export default function DebtsReceivableScreen() {
-  // 🟢 3. ເອີ້ນໃຊ້ Hook (ໄວ້ເທິງສຸດ)
   const { hasPermission } = useAuth();
 
   // --- State Declarations ---
@@ -84,9 +75,8 @@ export default function DebtsReceivableScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateMode, setDateMode] = useState<'due' | 'payment'>('due');
 
-  // 🟢 4. useEffect: Fetch Data
+  // Fetch Data
   useEffect(() => {
-    // ຖ້າບໍ່ມີສິດ ໃຫ້ຢຸດການດຶງຂໍ້ມູນ (ແຕ່ Hook ຍັງເຮັດວຽກ)
     if (!hasPermission('accessFinancial')) return;
 
     const debtRef = ref(db, 'debts_receivable');
@@ -110,9 +100,9 @@ export default function DebtsReceivableScreen() {
         console.error("Debt Load Error:", error);
     });
     return () => unsubscribe();
-  }, [hasPermission]); // 🛑 ໃສ່ hasPermission ໃນ dependency array
+  }, [hasPermission]);
 
-  // 🟢 5. useEffect: History Logic
+  // History Logic
   useEffect(() => {
     if (selectedDebt && historyModalVisible) {
         const currentDebt = debts.find(d => d.id === selectedDebt.id);
@@ -336,7 +326,6 @@ export default function DebtsReceivableScreen() {
     );
   };
 
-  // 🟢 6. ຍ້າຍການກວດສອບສິດມາໄວ້ບ່ອນນີ້! (ລຸ່ມສຸດ ຫຼັງ Hooks ທັງໝົດ)
   if (!hasPermission('accessFinancial')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
@@ -348,7 +337,6 @@ export default function DebtsReceivableScreen() {
       );
   }
 
-  // Return ໜ້າຈໍຫຼັກ
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerContainer}>
@@ -380,7 +368,7 @@ export default function DebtsReceivableScreen() {
         <Text style={styles.fabText}>ເພີ່ມໜີ້</Text>
       </TouchableOpacity>
 
-      {/* Add/Edit Modal */}
+      {/* 🟢 Modal 1: Add/Edit Debt */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -429,11 +417,29 @@ export default function DebtsReceivableScreen() {
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
+
+                {/* 🟢 DatePicker for Add/Edit - ວາງໄວ້ໃນ Modal ນີ້ */}
+                {showDatePicker && dateMode === 'due' && (
+                    <View style={styles.datePickerOverlay}>
+                        <View style={styles.datePickerContainer}>
+                            <DateTimePicker 
+                                value={date} 
+                                mode="date" 
+                                display="inline" 
+                                onChange={onDateChange} 
+                                themeVariant="light" 
+                            />
+                            <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(false)}>
+                                <Text style={styles.datePickerBtnText}>ຕົກລົງ</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
             </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Payment Modal */}
+      {/* 🟢 Modal 2: Payment Modal */}
       <Modal visible={paymentModalVisible} animationType="fade" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -473,6 +479,24 @@ export default function DebtsReceivableScreen() {
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
+
+                {/* 🟢 DatePicker for Payment - ວາງໄວ້ໃນ Modal ນີ້ຄືກັນ */}
+                {showDatePicker && dateMode === 'payment' && (
+                    <View style={styles.datePickerOverlay}>
+                        <View style={styles.datePickerContainer}>
+                            <DateTimePicker 
+                                value={paymentDate} 
+                                mode="date" 
+                                display="inline" 
+                                onChange={onDateChange} 
+                                themeVariant="light" 
+                            />
+                            <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(false)}>
+                                <Text style={styles.datePickerBtnText}>ຕົກລົງ</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
             </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -515,17 +539,6 @@ export default function DebtsReceivableScreen() {
         </View>
       </Modal>
 
-      {/* Date Picker */}
-      {showDatePicker && (
-        <View style={styles.datePickerOverlay}>
-            <View style={styles.datePickerContainer}>
-                <DateTimePicker value={dateMode === 'due' ? date : paymentDate} mode="date" display="inline" onChange={onDateChange} themeVariant="light" />
-                <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(false)}>
-                    <Text style={styles.datePickerBtnText}>ຕົກລົງ</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -573,7 +586,7 @@ const styles = StyleSheet.create({
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, elevation: 5, maxHeight: '90%' },
+  modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, elevation: 5, maxHeight: '90%', position: 'relative' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', color: COLORS.text },
   inputLabel: { fontSize: 13, fontFamily: 'Lao-Bold', color: '#555', marginBottom: 5, marginTop: 10 },
@@ -595,12 +608,12 @@ const styles = StyleSheet.create({
   currencyTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginRight: 5 },
   currencyTagText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
 
-  datePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
-  datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '90%', alignItems: 'center' },
-  datePickerBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },
+  datePickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.95)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, borderRadius: 15 },
+  datePickerContainer: { backgroundColor: 'white', padding: 20, borderRadius: 20, width: '100%', alignItems: 'center', elevation: 5 },
+  datePickerBtn: { marginTop: 10, padding: 12, width: '100%', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10 },
   datePickerBtnText: { fontFamily: 'Lao-Bold', color: COLORS.primary },
 
   historyItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   historyDate: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
-  historyAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.success }
+  historyAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.success },
 });

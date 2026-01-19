@@ -1,24 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-// 🟢 ເພີ່ມ DocumentPicker
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+
+// 🟢 1. ແກ້ໄຂການ Import FileSystem (ແຍກກັນເພື່ອແກ້ Warning ແລະ Error)
+import * as FileSystem from 'expo-file-system/legacy'; // ສຳລັບ method (write/read)
+import { documentDirectory } from 'expo-file-system'; // ສຳລັບ constant path
+
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Keyboard,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Keyboard,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -42,26 +45,22 @@ type FilterType = 'day' | 'week' | 'month' | 'custom';
 export default function ExpenseScreen() {
   const { hasPermission } = useAuth();
   
-  // Data States
   const [allExpenses, setAllExpenses] = useState<ExpenseRecord[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<ExpenseRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [importing, setImporting] = useState(false); // ສະຖານະການ Import
+  const [importing, setImporting] = useState(false);
 
-  // Filter States
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [filterDate, setFilterDate] = useState(new Date());
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
 
-  // Form States
   const [id, setId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('ສັ່ງສິນຄ້າ'); 
   const [formDate, setFormDate] = useState(new Date());
   
-  // UI States
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerTarget, setDatePickerTarget] = useState<'form' | 'filter' | 'start' | 'end'>('form');
@@ -102,7 +101,6 @@ export default function ExpenseScreen() {
     end.setHours(23, 59, 59, 999);
 
     if (filterType === 'day') {
-        // Default
     } else if (filterType === 'week') {
         const day = start.getDay();
         const diff = start.getDate() - day + (day === 0 ? -6 : 1);
@@ -131,7 +129,6 @@ export default function ExpenseScreen() {
     setFilteredExpenses(filtered);
   }, [allExpenses, filterType, filterDate, startDate, endDate]);
 
-  // 3. ຟັງຊັນເລື່ອນວັນທີ
   const handleDateNavigate = (direction: number) => {
     if (filterType === 'custom') return;
 
@@ -146,17 +143,16 @@ export default function ExpenseScreen() {
     setFilterDate(newDate);
   };
 
-  // 🟢 4. ຟັງຊັນດາວໂຫຼດ Template
+  // 4. Download Template
   const handleDownloadTemplate = async () => {
     try {
-      // Header + ຕົວຢ່າງຂໍ້ມູນ
       const csvContent = 
         "Date(YYYY-MM-DD),Category,Description,Amount\n" +
         "2026-01-20,ສັ່ງສິນຄ້າ,ຊື້ເຄື່ອງເຂົ້າຮ້ານ,500000\n" +
         "2026-01-21,ຄ່າເຊົ່າ,ຈ່າຍຄ່າເຊົ່າເດືອນ 1,2000000";
 
-      const docDir = (FileSystem as any).documentDirectory;
-      const fileName = `${docDir}expense_template.csv`;
+      // 🟢 2. ໃຊ້ documentDirectory ໂດຍກົງ (ບໍ່ຕ້ອງມີ as any)
+      const fileName = `${documentDirectory}expense_template.csv`;
 
       await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
       await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
@@ -166,7 +162,7 @@ export default function ExpenseScreen() {
     }
   };
 
-  // 🟢 5. ຟັງຊັນ Import CSV
+  // 5. Import CSV
   const handleImportCSV = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -178,30 +174,28 @@ export default function ExpenseScreen() {
 
       setImporting(true);
       const fileUri = result.assets[0].uri;
+      
+      // 🟢 ໃຊ້ FileSystem ຈາກ legacy
       const fileContent = await FileSystem.readAsStringAsync(fileUri);
       
       const rows = fileContent.split('\n');
       let successCount = 0;
       
-      // ເລີ່ມຈາກແຖວທີ 1 (ຂ້າມ Header ແຖວທີ 0)
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i].trim();
         if (!row) continue;
 
-        // ແຍກດ້ວຍຈຸດ (,)
         const columns = row.split(',');
         if (columns.length < 4) continue;
 
         const [dateStr, catStr, descStr, amountStr] = columns;
 
-        // ກວດສອບຂໍ້ມູນ
         const parsedAmount = parseFloat(amountStr);
         if (isNaN(parsedAmount)) continue;
 
         const parsedDate = new Date(dateStr);
         if (isNaN(parsedDate.getTime())) continue;
 
-        // ບັນທຶກລົງ Firebase
         await push(ref(db, 'expenses'), {
           date: parsedDate.toISOString(),
           category: catStr?.trim() || 'ອື່ນໆ',
@@ -237,8 +231,8 @@ export default function ExpenseScreen() {
         const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
         csvContent += `\n,,Total,${total}`;
 
-        const docDir = (FileSystem as any).documentDirectory;
-        const fileName = `${docDir}expenses_report.csv`;
+        // 🟢 ໃຊ້ documentDirectory ໂດຍກົງ
+        const fileName = `${documentDirectory}expenses_report.csv`;
 
         await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
         await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
@@ -379,7 +373,7 @@ export default function ExpenseScreen() {
         {/* Header with Export */}
         <View style={styles.headerRow}>
             <Text style={styles.screenTitle}>ລາຍຈ່າຍ (Expenses)</Text>
-            {/* 🟢 ປຸ່ມເມນູ Export/Import */}
+            {/* ປຸ່ມເມນູ Export/Import */}
             <TouchableOpacity style={styles.exportIconBtn} onPress={() => setShowExportOptions(true)}>
                 <Ionicons name="ellipsis-vertical" size={22} color={COLORS.primary} />
             </TouchableOpacity>

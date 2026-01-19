@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-// 🟢 Import ສຳລັບການ Export ແລະ File Management
+// 🟢 ເພີ່ມ DocumentPicker
+import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Keyboard,
     Modal,
@@ -44,6 +46,7 @@ export default function ExpenseScreen() {
   const [allExpenses, setAllExpenses] = useState<ExpenseRecord[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<ExpenseRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false); // ສະຖານະການ Import
 
   // Filter States
   const [filterType, setFilterType] = useState<FilterType>('day');
@@ -62,7 +65,7 @@ export default function ExpenseScreen() {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerTarget, setDatePickerTarget] = useState<'form' | 'filter' | 'start' | 'end'>('form');
-  const [showExportOptions, setShowExportOptions] = useState(false); // 🟢 Modal ເລືອກ Export
+  const [showExportOptions, setShowExportOptions] = useState(false);
 
   // 1. Fetch Data
   useEffect(() => {
@@ -128,9 +131,9 @@ export default function ExpenseScreen() {
     setFilteredExpenses(filtered);
   }, [allExpenses, filterType, filterDate, startDate, endDate]);
 
-  // 🟢 3. ຟັງຊັນເລື່ອນວັນທີ (Date Navigation)
+  // 3. ຟັງຊັນເລື່ອນວັນທີ
   const handleDateNavigate = (direction: number) => {
-    if (filterType === 'custom') return; // Custom ບໍ່ໃຫ້ເລື່ອນ
+    if (filterType === 'custom') return;
 
     const newDate = new Date(filterDate);
     if (filterType === 'day') {
@@ -143,7 +146,85 @@ export default function ExpenseScreen() {
     setFilterDate(newDate);
   };
 
-  // 🟢 4. ຟັງຊັນ Export CSV (Excel)
+  // 🟢 4. ຟັງຊັນດາວໂຫຼດ Template
+  const handleDownloadTemplate = async () => {
+    try {
+      // Header + ຕົວຢ່າງຂໍ້ມູນ
+      const csvContent = 
+        "Date(YYYY-MM-DD),Category,Description,Amount\n" +
+        "2026-01-20,ສັ່ງສິນຄ້າ,ຊື້ເຄື່ອງເຂົ້າຮ້ານ,500000\n" +
+        "2026-01-21,ຄ່າເຊົ່າ,ຈ່າຍຄ່າເຊົ່າເດືອນ 1,2000000";
+
+      const docDir = (FileSystem as any).documentDirectory;
+      const fileName = `${docDir}expense_template.csv`;
+
+      await FileSystem.writeAsStringAsync(fileName, csvContent, { encoding: 'utf8' });
+      await shareAsync(fileName, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+      setShowExportOptions(false);
+    } catch (error) {
+      Alert.alert("Error", "ບໍ່ສາມາດດາວໂຫຼດ Template ໄດ້");
+    }
+  };
+
+  // 🟢 5. ຟັງຊັນ Import CSV
+  const handleImportCSV = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/csv', 'application/vnd.ms-excel', 'text/comma-separated-values'],
+        copyToCacheDirectory: true
+      });
+
+      if (result.canceled) return;
+
+      setImporting(true);
+      const fileUri = result.assets[0].uri;
+      const fileContent = await FileSystem.readAsStringAsync(fileUri);
+      
+      const rows = fileContent.split('\n');
+      let successCount = 0;
+      
+      // ເລີ່ມຈາກແຖວທີ 1 (ຂ້າມ Header ແຖວທີ 0)
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i].trim();
+        if (!row) continue;
+
+        // ແຍກດ້ວຍຈຸດ (,)
+        const columns = row.split(',');
+        if (columns.length < 4) continue;
+
+        const [dateStr, catStr, descStr, amountStr] = columns;
+
+        // ກວດສອບຂໍ້ມູນ
+        const parsedAmount = parseFloat(amountStr);
+        if (isNaN(parsedAmount)) continue;
+
+        const parsedDate = new Date(dateStr);
+        if (isNaN(parsedDate.getTime())) continue;
+
+        // ບັນທຶກລົງ Firebase
+        await push(ref(db, 'expenses'), {
+          date: parsedDate.toISOString(),
+          category: catStr?.trim() || 'ອື່ນໆ',
+          description: descStr?.trim() || 'Imported via CSV',
+          amount: parsedAmount,
+          createdAt: new Date().toISOString()
+        });
+        
+        successCount++;
+      }
+
+      Alert.alert("ສຳເລັດ", `ນຳເຂົ້າຂໍ້ມູນສຳເລັດ ${successCount} ລາຍການ`);
+      setShowExportOptions(false);
+
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດໃນການອ່ານຟາຍ CSV");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // 6. Export CSV
   const exportToCSV = async () => {
     try {
         let csvContent = "Date,Category,Description,Amount\n";
@@ -153,7 +234,6 @@ export default function ExpenseScreen() {
             csvContent += `${dateStr},${item.category},${cleanDesc},${item.amount}\n`;
         });
 
-        // ຄຳນວນຍອດລວມ
         const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
         csvContent += `\n,,Total,${total}`;
 
@@ -168,7 +248,7 @@ export default function ExpenseScreen() {
     }
   };
 
-  // 🟢 5. ຟັງຊັນ Export PDF
+  // 7. Export PDF
   const exportToPDF = async () => {
     try {
         const total = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
@@ -218,7 +298,6 @@ export default function ExpenseScreen() {
     }
   };
 
-  // --- Helper Functions ---
   const handleSave = async () => {
     if (!amount || !description) {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຈຳນວນເງິນ ແລະ ລາຍລະອຽດ');
@@ -300,11 +379,10 @@ export default function ExpenseScreen() {
         {/* Header with Export */}
         <View style={styles.headerRow}>
             <Text style={styles.screenTitle}>ລາຍຈ່າຍ (Expenses)</Text>
-            {filteredExpenses.length > 0 && (
-                <TouchableOpacity style={styles.exportIconBtn} onPress={() => setShowExportOptions(true)}>
-                    <Ionicons name="share-outline" size={22} color={COLORS.primary} />
-                </TouchableOpacity>
-            )}
+            {/* 🟢 ປຸ່ມເມນູ Export/Import */}
+            <TouchableOpacity style={styles.exportIconBtn} onPress={() => setShowExportOptions(true)}>
+                <Ionicons name="ellipsis-vertical" size={22} color={COLORS.primary} />
+            </TouchableOpacity>
         </View>
 
         {/* Filter Bar */}
@@ -323,7 +401,7 @@ export default function ExpenseScreen() {
                 ))}
             </View>
 
-            {/* 🟢 Date Selector with Navigation Arrows */}
+            {/* Date Selector */}
             <View style={styles.dateSelectorRow}>
                 {filterType === 'custom' ? (
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
@@ -431,27 +509,49 @@ export default function ExpenseScreen() {
         ))}
       </ScrollView>
 
-      {/* Export Options Modal */}
+      {/* Export/Import Options Modal */}
       <Modal visible={showExportOptions} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowExportOptions(false)}>
             <View style={styles.exportModalContent}>
-                <Text style={styles.exportTitle}>ເລືອກຮູບແບບການສົ່ງອອກ</Text>
-                <TouchableOpacity style={styles.exportOption} onPress={exportToCSV}>
-                    <Ionicons name="document-text" size={24} color="#2ecc71" />
-                    <Text style={styles.exportText}>Export as CSV (Excel)</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.exportOption} onPress={exportToPDF}>
-                    <Ionicons name="print" size={24} color="#e74c3c" />
-                    <Text style={styles.exportText}>Export as PDF</Text>
-                </TouchableOpacity>
+                <Text style={styles.exportTitle}>ຈັດການຂໍ້ມູນ (Data Management)</Text>
+                
+                {importing ? (
+                    <View style={{padding: 20, alignItems: 'center'}}>
+                        <ActivityIndicator size="large" color={COLORS.primary} />
+                        <Text style={{marginTop: 10, fontFamily: 'Lao-Regular'}}>ກຳລັງນຳເຂົ້າຂໍ້ມູນ...</Text>
+                    </View>
+                ) : (
+                    <>
+                        <Text style={styles.sectionHeader}>📤 ສົ່ງອອກ (Export)</Text>
+                        <TouchableOpacity style={styles.exportOption} onPress={exportToCSV}>
+                            <Ionicons name="document-text" size={24} color="#2ecc71" />
+                            <Text style={styles.exportText}>Export as CSV (Excel)</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.exportOption} onPress={exportToPDF}>
+                            <Ionicons name="print" size={24} color="#e74c3c" />
+                            <Text style={styles.exportText}>Export as PDF</Text>
+                        </TouchableOpacity>
+
+                        <Text style={styles.sectionHeader}>📥 ນຳເຂົ້າ (Import)</Text>
+                        <TouchableOpacity style={styles.exportOption} onPress={handleDownloadTemplate}>
+                            <Ionicons name="download-outline" size={24} color={COLORS.primary} />
+                            <Text style={styles.exportText}>ດາວໂຫຼດແບບຟອມ (Template)</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.exportOption} onPress={handleImportCSV}>
+                            <Ionicons name="cloud-upload-outline" size={24} color={ORANGE_COLOR} />
+                            <Text style={styles.exportText}>Import ຈາກ Excel (CSV)</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
                 <TouchableOpacity style={styles.cancelExportBtn} onPress={() => setShowExportOptions(false)}>
-                    <Text style={{color: '#666', fontFamily: 'Lao-Bold'}}>ຍົກເລີກ</Text>
+                    <Text style={{color: '#666', fontFamily: 'Lao-Bold'}}>ປິດ</Text>
                 </TouchableOpacity>
             </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* Date Picker with iOS Dark Mode Fix */}
+      {/* Date Picker */}
       {showDatePicker && (
         Platform.OS === 'ios' ? (
             <Modal visible={true} transparent={true} animationType="fade">
@@ -566,10 +666,11 @@ const styles = StyleSheet.create({
   closeModalBtn: { marginTop: 15, padding: 10, alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10 },
   
   // Export Modal Styles
-  exportModalContent: { width: '80%', backgroundColor: 'white', borderRadius: 15, padding: 20 },
-  exportTitle: { fontFamily: 'Lao-Bold', fontSize: 18, marginBottom: 20, textAlign: 'center', color: '#333' },
-  exportOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#f5f5f5', gap: 15 },
-  exportText: { fontFamily: 'Lao-Bold', fontSize: 16, color: '#333' },
+  exportModalContent: { width: '85%', backgroundColor: 'white', borderRadius: 15, padding: 20 },
+  exportTitle: { fontFamily: 'Lao-Bold', fontSize: 18, marginBottom: 10, textAlign: 'center', color: '#333' },
+  sectionHeader: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#999', marginTop: 15, marginBottom: 5, borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 5 },
+  exportOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5', gap: 15 },
+  exportText: { fontFamily: 'Lao-Regular', fontSize: 16, color: '#333' },
   cancelExportBtn: { marginTop: 15, alignItems: 'center', padding: 10 },
 
   iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },

@@ -1,9 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Image, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// ໃຊ້ useSafeAreaInsets ເພື່ອດຶງຄ່າຄວາມສູງຂອງຕິ່ງໜ້າຈໍມາໃຊ້ເອງ
+import React, { useEffect, useState } from 'react';
+import { 
+  Image, 
+  Platform, 
+  StatusBar, 
+  StyleSheet, 
+  Text, 
+  TouchableOpacity, 
+  View, 
+  Modal, 
+  TextInput, 
+  Alert,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS } from '../../types';
+// 🟢 1. Import Firebase Functions
+import { ref, onValue, update } from 'firebase/database';
+import { db } from '../../firebase'; // ປັບ Path ໃຫ້ຖືກກັບໂຄງສ້າງໂປຣເຈັກຂອງທ່ານ
+import { COLORS, formatNumber } from '../../types';
 
 interface HeaderProps {
   toggleSidebar: () => void; 
@@ -27,15 +43,49 @@ export default function Header({
   onLogout 
 }: HeaderProps) {
   
-  // 🟢 1. ດຶງຄ່າ Insets (ໄລຍະຫ່າງຂອບຈໍ)
   const insets = useSafeAreaInsets();
   
+  // 🟢 2. State ສຳລັບອັດຕາແລກປ່ຽນ
+  const [exchangeRate, setExchangeRate] = useState('0');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [newRate, setNewRate] = useState('');
+
   const displayName = shopName || user?.name || "ຮ້ານ ສຸດາພອນ";
   const displayDetail = shopId || (user?.role ? `Role: ${user.role}` : "");
 
+  // 🟢 3. useEffect ດຶງຄ່າອັດຕາແລກປ່ຽນຈາກ RTDB ແບບ Realtime
+  useEffect(() => {
+    const rateRef = ref(db, 'settings/exchangeRate');
+    const unsubscribe = onValue(rateRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setExchangeRate(data.toString());
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 🟢 4. ຟັງຊັນບັນທຶກອັດຕາແລກປ່ຽນລົງ RTDB
+  const handleSaveRate = async () => {
+    if (!newRate) return;
+    try {
+      await update(ref(db, 'settings'), {
+        exchangeRate: parseFloat(newRate)
+      });
+      setModalVisible(false);
+      Alert.alert("ສຳເລັດ", "ອັບເດດອັດຕາແລກປ່ຽນຮຽບຮ້ອຍແລ້ວ");
+    } catch (error) {
+      Alert.alert("Error", "ບໍ່ສາມາດບັນທຶກຂໍ້ມູນໄດ້");
+    }
+  };
+
+  const openRateModal = () => {
+    setNewRate(exchangeRate);
+    setModalVisible(true);
+  };
+
   return (
-    // 🟢 2. ກຳນົດ paddingTop ຕາມຄ່າ insets.top
-    // ວິທີນີ້ພື້ນຫຼັງສີ Teal ຈະຢືດເຕັມຈໍ (ລວມທັງ Status Bar) ແຕ່ຕົວໜັງສືຈະຖືກດັນລົງມາບໍ່ໃຫ້ບັງ
     <View style={[styles.container, { paddingTop: insets.top }]}>
       
       {/* Top Bar */}
@@ -71,25 +121,77 @@ export default function Header({
           <View>
             <Text style={styles.shopName}>{displayName}</Text>
             <Text style={styles.shopId}>{displayDetail}</Text>
+            
+            {/* 🟢 5. ສະແດງອັດຕາແລກປ່ຽນປະຈຸບັນ */}
+            <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
+                <Text style={{fontSize: 12, color: '#666', fontFamily: 'Lao-Regular'}}>Rate: </Text>
+                <Text style={{fontSize: 12, color: COLORS.primary, fontFamily: 'Lao-Bold'}}>1 ฿ = {formatNumber(parseFloat(exchangeRate))} ₭</Text>
+            </View>
           </View>
         </View>
         
-        <TouchableOpacity style={styles.editBtn} onPress={onEditPress}>
-          <Text style={styles.editBtnText}>ແກ້ໄຂ</Text>
-        </TouchableOpacity>
+        <View style={{gap: 8}}>
+            {/* 🟢 6. ປຸ່ມແກ້ໄຂ Rate */}
+            <TouchableOpacity style={styles.rateBtn} onPress={openRateModal}>
+                <Ionicons name="swap-horizontal" size={16} color="white" />
+                <Text style={styles.rateBtnText}>ປ່ຽນ Rate</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.editBtn} onPress={onEditPress}>
+                <Text style={styles.editBtnText}>ແກ້ໄຂຮ້ານ</Text>
+            </TouchableOpacity>
+        </View>
       </View>
+
+      {/* 🟢 7. Modal ສຳລັບປ່ຽນອັດຕາແລກປ່ຽນ */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.modalOverlay}
+            >
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>ກຳນົດອັດຕາແລກປ່ຽນ</Text>
+                    <Text style={styles.modalSubtitle}>ກຳນົດຄ່າເງິນກີບ ຕໍ່ 1 ບາດ (THB)</Text>
+                    
+                    <TextInput 
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={newRate}
+                        onChangeText={setNewRate}
+                        placeholder="ຕົວຢ່າງ: 680"
+                        autoFocus
+                    />
+
+                    <View style={styles.modalActions}>
+                        <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setModalVisible(false)}>
+                            <Text style={styles.cancelText}>ຍົກເລີກ</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.saveModalBtn} onPress={handleSaveRate}>
+                            <Text style={styles.saveText}>ບັນທຶກ</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </Modal>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
-    backgroundColor: COLORS.primary, // ສີ Teal (#008B94)
+    backgroundColor: COLORS.primary, 
     paddingBottom: 20, 
     borderBottomLeftRadius: 20, 
     borderBottomRightRadius: 20, 
     zIndex: 1000, 
-    // ບໍ່ຕ້ອງກຳນົດ paddingTop ຢູ່ທີ່ນີ້ ເພາະເຮົາກຳນົດແບບ Dynamic ຢູ່ດ້ານເທິງແລ້ວ
   },
   topBar: { 
     flexDirection: 'row', 
@@ -117,12 +219,38 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4
   },
-  shopInfo: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  shopInfo: { flexDirection: 'row', alignItems: 'center', gap: 15, flex: 1 },
   shopLogo: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eee' },
   shopLogoPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E0F2F1', justifyContent: 'center', alignItems: 'center' },
   shopLogoText: { fontSize: 24, fontFamily: 'Lao-Bold', color: COLORS.primary },
   shopName: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text },
   shopId: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
-  editBtn: { backgroundColor: '#f0f0f0', paddingVertical: 5, paddingHorizontal: 15, borderRadius: 20 },
-  editBtnText: { fontSize: 12, fontFamily: 'Lao-Regular', color: '#666' },
+  
+  editBtn: { backgroundColor: '#f0f0f0', paddingVertical: 6, paddingHorizontal: 15, borderRadius: 20, alignItems: 'center' },
+  editBtnText: { fontSize: 10, fontFamily: 'Lao-Regular', color: '#666' },
+
+  // 🟢 Styles ໃໝ່
+  rateBtn: { 
+    backgroundColor: COLORS.primary, // ຫຼືສີສົ້ມ '#FF8F00' ຖ້າຢາກໃຫ້ເດັ່ນ
+    paddingVertical: 6, 
+    paddingHorizontal: 12, 
+    borderRadius: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 4,
+    justifyContent: 'center'
+  },
+  rateBtnText: { fontSize: 10, fontFamily: 'Lao-Bold', color: 'white' },
+
+  // Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { backgroundColor: 'white', width: '80%', padding: 20, borderRadius: 15, elevation: 5 },
+  modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', textAlign: 'center', marginBottom: 5, color: COLORS.text },
+  modalSubtitle: { fontSize: 12, fontFamily: 'Lao-Regular', textAlign: 'center', marginBottom: 15, color: '#666' },
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 18, fontFamily: 'Lao-Bold', textAlign: 'center', marginBottom: 20 },
+  modalActions: { flexDirection: 'row', gap: 10 },
+  cancelModalBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#f0f0f0', alignItems: 'center' },
+  saveModalBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: COLORS.primary, alignItems: 'center' },
+  cancelText: { fontFamily: 'Lao-Bold', color: '#666' },
+  saveText: { fontFamily: 'Lao-Bold', color: 'white' }
 });

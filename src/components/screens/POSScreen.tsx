@@ -2,29 +2,32 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 
-// 🟢 1. Import Hooks ທັງສອງອັນ
+// 🟢 1. Import Hooks
 import { useCategories } from '../../hooks/useCategories';
 import { useExchangeRate } from '../../hooks/useExchangeRate';
 import { CartItem, COLORS, formatNumber, Product } from '../../types';
 
 const { width } = Dimensions.get('window');
 const ORANGE_THEME = '#FF8F00'; 
+
+// 🟢 ກຳນົດຄ່າເລດເງິນສຳຮອງ (ກໍລະນີດຶງຈາກເນັດບໍ່ໄດ້)
+const DEFAULT_EXCHANGE_RATE = 680;
 
 interface POSScreenProps {
   products: Product[];
@@ -41,13 +44,13 @@ interface POSScreenProps {
 
 // Helper Functions
 const formatInputNumber = (val: string) => {
-    const numericValue = val.replace(/[^0-9]/g, '');
-    if (!numericValue) return '';
-    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const numericValue = val.replace(/[^0-9]/g, '');
+  if (!numericValue) return '';
+  return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
 const parseInputNumber = (val: string) => {
-    return parseFloat(val.replace(/,/g, '')) || 0;
+  return parseFloat(val.replace(/,/g, '')) || 0;
 };
 
 export default function POSScreen({
@@ -62,19 +65,18 @@ export default function POSScreen({
   onOpenAddProduct
 }: POSScreenProps) {
   
-  // 🟢 2. ເອີ້ນໃຊ້ Hooks
-  const exchangeRate = useExchangeRate(); 
-  const { categories: dbCategories } = useCategories(); // ດຶງໝວດໝູ່ຈາກ DB
+  // 🟢 2. ດຶງຄ່າຈາກ Hooks ແລະ ໃສ່ Logic ປ້ອງກັນຄ່າ 0
+  const rawExchangeRate = useExchangeRate(); 
+  const exchangeRate = rawExchangeRate && rawExchangeRate > 0 ? rawExchangeRate : DEFAULT_EXCHANGE_RATE;
 
-  // 🟢 3. ສ້າງລາຍການໝວດໝູ່ສຳລັບ Filter (ເພີ່ມ 'All' ໄວ້ທາງໜ້າ)
-  const categories = ['All', ...dbCategories];
+  const { categories: dbCategories } = useCategories(); 
+
+  // 🟢 3. ປ້ອງກັນ dbCategories ເປັນ undefined
+  const categories = ['All', ...(dbCategories || [])];
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  
-  // ❌ ລຶບ state categories ເກົ່າອອກ (ເພາະເຮົາໃຊ້ຈາກ Hook ແລ້ວ)
-  // const [categories, setCategories] = useState<string[]>(['All']);
   
   const [isCartVisible, setCartVisible] = useState(false);
   const [orderSource, setOrderSource] = useState<'shop' | 'online'>('shop');
@@ -91,7 +93,6 @@ export default function POSScreen({
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
   useEffect(() => {
-    // 🟢 4. ປັບ Logic ການ Filter (ບໍ່ຕ້ອງສ້າງ Categories ໃໝ່ຢູ່ນີ້ແລ້ວ)
     const filtered = products.filter(p => {
       const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (p.barcode && p.barcode.includes(searchQuery));
@@ -101,13 +102,12 @@ export default function POSScreen({
     setFilteredProducts(filtered);
   }, [searchQuery, selectedCategory, products]);
 
-  // ... (Logic ການຄິດໄລ່ເງິນ ແລະ Render ຍັງຄືເກົ່າທຸກຢ່າງ) ...
-
   const calculateBaseTotalLAK = () => {
     return cart.reduce((sum, item) => {
         let itemTotalLAK = 0;
         if (item.priceCurrency === 'THB') {
-            itemTotalLAK = item.price * (exchangeRate || 0) * item.quantity;
+            // 🟢 ໃຊ້ exchangeRate ທີ່ຜ່ານການ Validate ແລ້ວ (ບໍ່ມີທາງເປັນ 0)
+            itemTotalLAK = item.price * exchangeRate * item.quantity;
         } else {
             itemTotalLAK = item.price * item.quantity;
         }
@@ -118,7 +118,7 @@ export default function POSScreen({
   const getDisplayTotal = () => {
     const baseTotalLAK = calculateBaseTotalLAK();
     if (currency === 'LAK') return baseTotalLAK;
-    if (!exchangeRate || exchangeRate === 0) return 0;
+    // 🟢 ຫານດ້ວຍ exchangeRate ທີ່ຖືກຕ້ອງ
     return Math.ceil(baseTotalLAK / exchangeRate); 
   };
 
@@ -156,7 +156,7 @@ export default function POSScreen({
         paymentMethod,
         amountReceived: receivedVal,
         change: change,
-        exchangeRateUsed: exchangeRate,
+        exchangeRateUsed: exchangeRate, // 🟢 ບັນທຶກເຣດທີ່ຖືກຕ້ອງລົງ Database
         date: orderDate.toISOString()
     };
 
@@ -204,7 +204,7 @@ export default function POSScreen({
                 {/* Categories List */}
                 <FlatList 
                     horizontal 
-                    data={categories} // 🟢 ໃຊ້ categories ທີ່ລວມ 'All' + DB ແລ້ວ
+                    data={categories}
                     keyExtractor={i => i} 
                     showsHorizontalScrollIndicator={false} 
                     contentContainerStyle={{paddingHorizontal: 15, marginBottom: 10}} 

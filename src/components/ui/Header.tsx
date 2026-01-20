@@ -1,23 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { 
-  Image, 
-  Platform, 
-  StatusBar, 
-  StyleSheet, 
-  Text, 
-  TouchableOpacity, 
-  View, 
-  Modal, 
-  TextInput, 
+import {
   Alert,
+  Image,
+  Keyboard,
   KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
   TouchableWithoutFeedback,
-  Keyboard
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // 🟢 1. Import Firebase Functions
-import { ref, onValue, update } from 'firebase/database';
+import { onValue, ref, update } from 'firebase/database';
 import { db } from '../../firebase'; // ປັບ Path ໃຫ້ຖືກກັບໂຄງສ້າງໂປຣເຈັກຂອງທ່ານ
 import { COLORS, formatNumber } from '../../types';
 
@@ -53,9 +52,9 @@ export default function Header({
   const displayName = shopName || user?.name || "ຮ້ານ ສຸດາພອນ";
   const displayDetail = shopId || (user?.role ? `Role: ${user.role}` : "");
 
-  // 🟢 3. useEffect ດຶງຄ່າອັດຕາແລກປ່ຽນຈາກ RTDB ແບບ Realtime
+  // 🟢 3. useEffect ດຶງຄ່າອັດຕາແລກປ່ຽນຈາກ RTDB (path: settings/exchangeRateTHB)
   useEffect(() => {
-    const rateRef = ref(db, 'settings/exchangeRate');
+    const rateRef = ref(db, 'settings/exchangeRateTHB');
     const unsubscribe = onValue(rateRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -71,7 +70,7 @@ export default function Header({
     if (!newRate) return;
     try {
       await update(ref(db, 'settings'), {
-        exchangeRate: parseFloat(newRate)
+        exchangeRateTHB: parseFloat(newRate)
       });
       setModalVisible(false);
       Alert.alert("ສຳເລັດ", "ອັບເດດອັດຕາແລກປ່ຽນຮຽບຮ້ອຍແລ້ວ");
@@ -231,7 +230,7 @@ const styles = StyleSheet.create({
 
   // 🟢 Styles ໃໝ່
   rateBtn: { 
-    backgroundColor: COLORS.primary, // ຫຼືສີສົ້ມ '#FF8F00' ຖ້າຢາກໃຫ້ເດັ່ນ
+    backgroundColor: COLORS.primary, 
     paddingVertical: 6, 
     paddingHorizontal: 12, 
     borderRadius: 20, 

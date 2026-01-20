@@ -1,29 +1,32 @@
-// path: src/hooks/useExchangeRate.ts
 import { onValue, ref } from 'firebase/database';
 import { useEffect, useState } from 'react';
-
-// ✅ ແກ້ໄຂ Path: ດຶງ db ໂດຍກົງຈາກ ../firebase (ເພາະທັງສອງຢູ່ໃນ src ຄືກັນ)
 import { db } from '../firebase';
 
 export const useExchangeRate = () => {
-  const [rate, setRate] = useState<number>(0);
+  // ກຳນົດຄ່າເລີ່ມຕົ້ນເປັນ 680 (ກັນພາດ ກໍລະນີດຶງບໍ່ໄດ້)
+  const [exchangeRate, setExchangeRate] = useState<number>(680);
 
   useEffect(() => {
-    // ✅ ບໍ່ຕ້ອງໃຊ້ getDatabase(app) ຊ້ຳອີກ, ໃຊ້ db ທີ່ import ມາໄດ້ເລີຍ
-    const rateRef = ref(db, 'settings/exchangeRateTHB');
+    // 🟢 ຈຸດສຳຄັນ: ຕ້ອງດຶງຈາກ 'settings/exchangeRate' ໃຫ້ກົງກັບ Header
+    const rateRef = ref(db, 'settings/exchangeRate');
 
     const unsubscribe = onValue(rateRef, (snapshot) => {
-      const data = snapshot.val();
-      const numericRate = Number(data);
-      
-      // ກວດສອບຂໍ້ມູນກ່ອນບັນທຶກ
-      if (!isNaN(numericRate) && data !== null) {
-        setRate(numericRate);
+      if (snapshot.exists()) {
+        const val = snapshot.val();
+        // ແປງຄ່າເປັນ Number ໃຫ້ຊັດເຈນ
+        const numVal = parseFloat(val);
+        
+        if (!isNaN(numVal) && numVal > 0) {
+          console.log("✅ Updated Rate from DB:", numVal);
+          setExchangeRate(numVal);
+        }
+      } else {
+        console.log("⚠️ No rate found in DB, using default");
       }
     });
 
     return () => unsubscribe();
   }, []);
 
-  return rate;
+  return exchangeRate;
 };

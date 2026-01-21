@@ -3,17 +3,16 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Dimensions,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView, // Import SafeAreaView
-  StatusBar // Import StatusBar
-  ,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Dimensions,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../types';
@@ -21,6 +20,23 @@ import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../typ
 const { width } = Dimensions.get('window');
 const ORANGE_COLOR = '#FF7043';
 const ORANGE_BG = '#FFF3E0';
+
+// 🟢 ກຳນົດຄ່າຄົງທີ່ (Fallback)
+const FIXED_EXCHANGE_RATE = 680;
+
+// 🟢 ຟັງຊັນຄິດໄລ່ເງິນທຽບເທົ່າເປັນກີບ (LAK)
+const calculateLAK = (item: any) => {
+    const amount = parseFloat(item.total || item.amount || 0);
+    
+    // ຖ້າເປັນເງິນບາດ ໃຫ້ຄູນດ້ວຍເລດທີ່ໃຊ້ຕອນນັ້ນ ຫຼື ເລດກາງ
+    if (item.currency === 'THB') {
+        const rate = item.exchangeRateUsed || FIXED_EXCHANGE_RATE;
+        return amount * rate;
+    }
+    
+    // ຖ້າເປັນກີບຢູ່ແລ້ວ ກໍສົ່ງຄ່າກັບໄປເລີຍ
+    return amount;
+};
 
 interface HomeScreenProps {
   salesHistory: SaleRecord[];
@@ -63,7 +79,6 @@ export default function HomeScreen({
   }, []);
 
   const getDateRange = () => {
-    // ... (Logic ເດີມຂອງທ່ານ)
     let start = new Date(currentDate);
     let end = new Date(currentDate);
     start.setHours(0, 0, 0, 0);
@@ -98,7 +113,6 @@ export default function HomeScreen({
   };
 
   useEffect(() => {
-    // ... (Logic ເດີມຂອງທ່ານ)
     const { start, end } = getDateRange();
     
     const fSales = salesHistory.filter(sale => {
@@ -111,13 +125,15 @@ export default function HomeScreen({
       return d >= start && d <= end;
     });
 
-    setFilteredTotal(fSales.reduce((sum, sale) => sum + sale.total, 0));
+    // 🟢 ປັບປຸງ: ໃຊ້ calculateLAK ເພື່ອຄິດໄລ່ຍອດຂາຍລວມເປັນກີບ
+    const totalSalesLAK = fSales.reduce((sum, sale) => sum + calculateLAK(sale), 0);
+    setFilteredTotal(totalSalesLAK);
+
     setFilteredOrders(fSales.length);
     setFilteredExpenses(fExp.reduce((sum, exp) => sum + exp.amount, 0));
 
   }, [salesHistory, expensesData, filterType, currentDate, customStartDate, customEndDate]);
 
-  // ... (Functions ເດີມຂອງທ່ານ: handleNavigateDate, getDateLabel, openDatePicker, onDateChange)
   const handleNavigateDate = (dir: 'prev' | 'next') => {
     if (filterType === 'custom') return;
     const newDate = new Date(currentDate);
@@ -161,22 +177,17 @@ export default function HomeScreen({
   const profit = filteredTotal - filteredExpenses;
 
   return (
-    // 🟢 2. ແກ້ໄຂ iOS: ໃຊ້ View ຫຸ້ມນອກສຸດ ແລະ ໃສ່ສີພື້ນຫຼັງເປັນສີ Theme
     <View style={{ flex: 1, backgroundColor: COLORS.primary }}>
         
-        {/* 🟢 2.1 ຕັ້ງຄ່າ StatusBar ໃຫ້ເປັນສີດຽວກັນ */}
         <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
 
-        {/* 🟢 2.2 ໃຊ້ SafeAreaView ເພື່ອຈັດການ Notch (ຕິ່ງໜ້າຈໍ) */}
         <SafeAreaView style={{ flex: 1 }}>
             
-            {/* 🟢 2.3 ສ່ວນເນື້ອຫາທາງໃນ ໃຫ້ກັບມາເປັນສີເທົາອ່ອນຄືເກົ່າ */}
             <View style={styles.contentContainer}>
                 
                 <ScrollView 
                     style={styles.scrollView} 
                     showsVerticalScrollIndicator={false}
-                    // 🟢 1. ແກ້ໄຂ Android: ເພີ່ມ paddingBottom ໃຫ້ຫຼາຍຂຶ້ນເພື່ອດັນເມນູດ່ວນຂຶ້ນມາ
                     contentContainerStyle={{ paddingBottom: 150 }} 
                 >
                 
@@ -320,7 +331,6 @@ export default function HomeScreen({
 }
 
 const styles = StyleSheet.create({
-  // 🟢 2.3 ປັບ container ໃຫ້ບໍ່ມີສີ background (ເພາະໄປໃສ່ຢູ່ View ນອກສຸດແລ້ວ)
   contentContainer: { 
       flex: 1, 
       backgroundColor: COLORS.background 

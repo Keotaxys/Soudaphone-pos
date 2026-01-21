@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-// 🟢 ແກ້ໄຂ: ໃຊ້ /legacy ແລະໃສ່ @ts-ignore ເພື່ອບໍ່ໃຫ້ມັນຟ້ອງ Error
+// 🟢 ແກ້ໄຂ: ໃຊ້ /legacy ແລະໃສ່ @ts-ignore
 // @ts-ignore
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -10,28 +10,46 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Alert,
+    Image,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, formatNumber } from '../../types';
+
+// 🟢 ກຳນົດຄ່າຄົງທີ່ (Fallback)
+const FIXED_EXCHANGE_RATE = 680;
 
 const formatDateLao = (date: Date) => {
   return date.toLocaleDateString('lo-LA', { day: 'numeric', month: 'numeric', year: '2-digit' });
 };
 
+// 🟢 ຟັງຊັນແປງຄ່າເງິນເປັນ Number ປົກກະຕິ
 const parseCurrency = (value: any): number => {
     if (value === undefined || value === null || value === '') return 0;
     const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
     const num = parseFloat(strVal);
     return isNaN(num) ? 0 : num;
+};
+
+// 🟢 ຟັງຊັນຄິດໄລ່ເງິນທຽບເທົ່າເປັນກີບ (LAK)
+const calculateLAK = (item: any) => {
+    const amount = parseCurrency(item.total || item.amount);
+    
+    // ຖ້າເປັນເງິນບາດ ໃຫ້ຄູນດ້ວຍເລດທີ່ໃຊ້ຕອນນັ້ນ ຫຼື ເລດກາງ
+    if (item.currency === 'THB') {
+        const rate = item.exchangeRateUsed || FIXED_EXCHANGE_RATE;
+        return amount * rate;
+    }
+    
+    // ຖ້າເປັນກີບຢູ່ແລ້ວ ກໍສົ່ງຄ່າກັບໄປເລີຍ
+    return amount;
 };
 
 type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
@@ -109,28 +127,44 @@ export default function ReportDashboard() {
     return { fSales, fExpenses, start, end };
   };
 
-  // 2. Calculate Stats
+  // 2. Calculate Stats (🟢 ປັບປຸງ Logic ຄິດໄລ່ເງິນ)
   useEffect(() => {
     const { fSales, fExpenses } = getFilteredData();
 
-    const revenue = fSales.reduce((sum, item: any) => sum + parseCurrency(item.total), 0);
-    const expense = fExpenses.reduce((sum, item: any) => sum + parseCurrency(item.amount), 0);
+    // 🟢 ໃຊ້ calculateLAK ແທນການບວກດື້ໆ
+    const revenue = fSales.reduce((sum, item: any) => sum + calculateLAK(item), 0);
+    const expense = fExpenses.reduce((sum, item: any) => sum + parseCurrency(item.amount), 0); // Expense ສ່ວນຫຼາຍເປັນ LAK
     
     setTotalRevenue(revenue);
     setTotalExpense(expense);
 
     const prodStats: any = {};
     const catStats: any = {};
+    
     fSales.forEach((sale: any) => {
+        // ຄິດໄລ່ຍອດຂາຍລວມຂອງບິນນີ້ເປັນ LAK ກ່ອນ
+        const saleTotalLAK = calculateLAK(sale); 
+        
         if(sale.items) {
             sale.items.forEach((p: any) => {
                 if(!prodStats[p.id]) prodStats[p.id] = { ...p, totalSold: 0, totalAmount: 0 };
+                
                 prodStats[p.id].totalSold += p.quantity;
-                prodStats[p.id].totalAmount += (p.price * p.quantity);
+                
+                // ຄິດໄລ່ລາຄາຕໍ່ຊິ້ນເປັນ LAK
+                let itemTotalLAK = 0;
+                if (p.priceCurrency === 'THB') {
+                    const rate = sale.exchangeRateUsed || FIXED_EXCHANGE_RATE;
+                    itemTotalLAK = (p.price * p.quantity) * rate;
+                } else {
+                    itemTotalLAK = p.price * p.quantity;
+                }
+
+                prodStats[p.id].totalAmount += itemTotalLAK;
 
                 const cat = p.category || 'ອື່ນໆ';
                 if(!catStats[cat]) catStats[cat] = 0;
-                catStats[cat] += (p.price * p.quantity);
+                catStats[cat] += itemTotalLAK;
             });
         }
     });
@@ -179,32 +213,32 @@ export default function ReportDashboard() {
     try {
         const { fSales, fExpenses } = getFilteredData();
         
-        let csv = "Date,Type,Category,Description,Amount\n";
+        let csv = "Date,Type,Category,Description,Total(LAK),Original Total,Currency\n";
         
         fSales.forEach(s => {
             const dateStr = new Date(s.date).toLocaleDateString('lo-LA');
-            csv += `${dateStr},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${parseCurrency(s.total)}\n`;
+            const totalLAK = calculateLAK(s);
+            csv += `${dateStr},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${totalLAK},${s.total},${s.currency}\n`;
         });
 
         fExpenses.forEach(e => {
             const dateStr = new Date(e.date).toLocaleDateString('lo-LA');
-            csv += `${dateStr},Expense,${e.category},${e.note || '-'},-${parseCurrency(e.amount)}\n`;
+            csv += `${dateStr},Expense,${e.category},${e.note || '-'},-${parseCurrency(e.amount)},${e.amount},LAK\n`;
         });
 
-        const totalRev = fSales.reduce((s, i) => s + parseCurrency(i.total), 0);
+        // 🟢 ສະຫຼຸບຍອດເປັນ LAK
+        const totalRev = fSales.reduce((s, i) => s + calculateLAK(i), 0);
         const totalExp = fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0);
+        
         csv += `\nSUMMARY,,,\n`;
-        csv += `,,Total Revenue,${totalRev}\n`;
-        csv += `,,Total Expense,${totalExp}\n`;
-        csv += `,,Net Profit,${totalRev - totalExp}\n`;
+        csv += `,,Total Revenue (LAK),${totalRev}\n`;
+        csv += `,,Total Expense (LAK),${totalExp}\n`;
+        csv += `,,Net Profit (LAK),${totalRev - totalExp}\n`;
 
         const fileName = `Report_${new Date().getTime()}.csv`;
-        
-        // 🟢 ໃຊ້ API ຈາກ legacy
         const docDir = FileSystem.documentDirectory;
         const fileUri = docDir + fileName;
 
-        // 🟢 ໃຊ້ 'utf8' string ທຳມະດາ
         await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: 'utf8' });
         await shareAsync(fileUri, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
 
@@ -217,7 +251,7 @@ export default function ReportDashboard() {
   const generatePDF = async () => {
     try {
         const { fSales, fExpenses, start, end } = getFilteredData();
-        const totalRev = fSales.reduce((s, i) => s + parseCurrency(i.total), 0);
+        const totalRev = fSales.reduce((s, i) => s + calculateLAK(i), 0);
         const totalExp = fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0);
         const profit = totalRev - totalExp;
 
@@ -254,12 +288,13 @@ export default function ReportDashboard() {
 
             <h3>ລາຍການຂາຍລ່າສຸດ (Sales)</h3>
             <table>
-                <tr><th>ວັນທີ</th><th>ເລກບິນ</th><th class="money">ຈຳນວນເງິນ</th></tr>
+                <tr><th>ວັນທີ</th><th>ເລກບິນ</th><th class="money">ຍອດ LAK</th><th class="money">ຍອດເດີມ</th></tr>
                 ${fSales.slice(0, 20).map((s: any) => `
                     <tr>
                         <td>${new Date(s.date).toLocaleDateString()}</td>
                         <td>#${s.id ? s.id.slice(-4) : '-'}</td>
-                        <td class="money">${formatNumber(parseCurrency(s.total))}</td>
+                        <td class="money">${formatNumber(calculateLAK(s))}</td>
+                        <td class="money" style="color: #888;">${formatNumber(s.total)} ${s.currency}</td>
                     </tr>
                 `).join('')}
             </table>

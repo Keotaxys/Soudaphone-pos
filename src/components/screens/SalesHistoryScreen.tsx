@@ -6,18 +6,18 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  Alert,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -286,20 +286,22 @@ export default function SalesHistoryScreen() {
     let displayTotal = 0;
     let currencySymbol = '₭';
 
+    // ດຶງອັດຕາແລກປ່ຽນທີ່ໃຊ້ໃນບິນນັ້ນ
+    const rateUsed = item.exchangeRateUsed || FIXED_EXCHANGE_RATE;
+
     if (isSpecial) {
         displayTotal = item.amount || 0;
         currencySymbol = item.currency === 'THB' ? '฿' : '₭';
     } else {
         const correctTotalLAK = getCorrectTotalLAK(item);
         displayTotal = item.currency === 'THB' 
-            ? Math.ceil(correctTotalLAK / (item.exchangeRateUsed || FIXED_EXCHANGE_RATE)) 
+            ? Math.ceil(correctTotalLAK / rateUsed) 
             : correctTotalLAK;
         currencySymbol = item.currency === 'THB' ? '฿' : '₭';
     }
 
-    // 🟢 ປັບປຸງການສະແດງຜົນວັນທີ
     const itemDate = new Date(item.date);
-    const dateStr = itemDate.toLocaleDateString('en-GB'); // DD/MM/YYYY
+    const dateStr = itemDate.toLocaleDateString('en-GB'); 
     const timeStr = itemDate.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
 
     return (
@@ -311,7 +313,6 @@ export default function SalesHistoryScreen() {
                     <Text style={styles.billId}>#{item.id ? item.id.slice(-4) : '...'}</Text>
                 </View>
                 
-                {/* 🟢 ສະແດງວັນທີ ແລະ ເວລາ ລະອຽດ */}
                 <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
                     <Ionicons name="calendar-outline" size={12} color="#888" style={{marginRight: 4}} />
                     <Text style={styles.dateText}>
@@ -329,6 +330,20 @@ export default function SalesHistoryScreen() {
             <View style={styles.details}>
                 <View style={[styles.expandedContent, {padding: 15}]}>
                     
+                    {/* 🟢 2. ສະແດງຂໍ້ມູນອັດຕາແລກປ່ຽນ ແລະ ຍອດທຽບເທົ່າ (ຖ້າເປັນເງິນບາດ) */}
+                    {item.currency === 'THB' && (
+                        <View style={styles.rateInfoBox}>
+                            <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2}}>
+                                <Text style={styles.rateTextLabel}>ອັດຕາແລກປ່ຽນ:</Text>
+                                <Text style={styles.rateTextValue}>1 ฿ = {formatNumber(rateUsed)} ₭</Text>
+                            </View>
+                            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                                <Text style={styles.rateTextLabel}>ທຽບເທົ່າ:</Text>
+                                <Text style={[styles.rateTextValue, {color: COLORS.primary}]}>{formatNumber(displayTotal * rateUsed)} ₭</Text>
+                            </View>
+                        </View>
+                    )}
+
                     {isSpecial ? (
                         <View>
                             <Text style={styles.label}>ລາຍລະອຽດ:</Text>
@@ -363,6 +378,7 @@ export default function SalesHistoryScreen() {
                         )}
 
                         {hasPermission('canDeleteProduct') && (
+                            // 🟢 1. ປ່ຽນສີປຸ່ມລຶບເປັນສີສົ້ມ (ORANGE_COLOR)
                             <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
                                 <Ionicons name="trash-outline" size={18} color="white" />
                                 <Text style={styles.btnText}>ລຶບ</Text>
@@ -540,13 +556,22 @@ const styles = StyleSheet.create({
   specialTagText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
   details: { backgroundColor: 'white' },
   expandedContent: { backgroundColor: '#f9f9f9', padding: 10 },
+  
+  // 🟢 Styles ໃໝ່ສຳລັບກ່ອງອັດຕາແລກປ່ຽນ
+  rateInfoBox: { backgroundColor: '#FFF8E1', padding: 10, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#FFE0B2' },
+  rateTextLabel: { fontFamily: 'Lao-Regular', fontSize: 12, color: '#666' },
+  rateTextValue: { fontFamily: 'Lao-Bold', fontSize: 12, color: '#333' },
+
   divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   itemName: { fontFamily: 'Lao-Regular', fontSize: 14, color: '#333' },
   itemPrice: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#333' },
   actionRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 15 },
   editBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 5 },
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF5252', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 5 },
+  
+  // 🟢 ປັບປຸງ Style ປຸ່ມລຶບໃຫ້ເປັນສີສົ້ມ
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: ORANGE_COLOR, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 5 },
+  
   btnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 12 },
   label: { fontFamily: 'Lao-Bold', fontSize: 14, color: '#666', marginBottom: 2 },
   value: { fontFamily: 'Lao-Regular', fontSize: 16, color: '#333', marginBottom: 10 },

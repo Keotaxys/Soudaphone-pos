@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { onValue, ref, set } from 'firebase/database';
+// 🟢 1. Import 'update' ເພີ່ມເຂົ້າມາ
+import { onValue, ref, set, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -43,7 +44,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
         setPhone(data.phone || '');
         setFooterText(data.footerText || '');
         
-        // 🟢 ກວດສອບວ່າຂໍ້ມູນເກົ່າເປັນ Local Path ຫຼືບໍ່, ຖ້າແມ່ນໃຫ້ລ້າງອອກ
+        // ກວດສອບວ່າຂໍ້ມູນເກົ່າເປັນ Local Path ຫຼືບໍ່, ຖ້າແມ່ນໃຫ້ລ້າງອອກ
         if (data.logo && data.logo.startsWith('file://')) {
             setLogo(''); 
         } else {
@@ -66,12 +67,12 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.3, // 🟢 ຫຼຸດຄຸນນະພາບລົງໜ້ອຍໜຶ່ງ ເພື່ອບໍ່ໃຫ້ Base64 ຍາວເກີນໄປ
-      base64: true, // 🟢 ສຳຄັນ! ຕ້ອງເປີດອັນນີ້ ເພື່ອໃຫ້ໄດ້ Base64 String
+      quality: 0.3, // ຫຼຸດຄຸນນະພາບລົງໜ້ອຍໜຶ່ງ ເພື່ອບໍ່ໃຫ້ Base64 ຍາວເກີນໄປ
+      base64: true, // ສຳຄັນ! ຕ້ອງເປີດອັນນີ້ ເພື່ອໃຫ້ໄດ້ Base64 String
     });
 
     if (!result.canceled && result.assets[0].base64) {
-      // 🟢 ບັນທຶກເປັນ Base64 String (Data URI)
+      // ບັນທຶກເປັນ Base64 String (Data URI)
       const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
       setLogo(base64Img);
     }
@@ -86,14 +87,22 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
     setLoading(true);
 
     try {
+      // 🟢 2. ບັນທຶກລົງ billSettings (ສຳລັບສະແດງໃນໃບບິນ)
       await set(ref(db, 'billSettings'), {
         shopName,
         address,
         phone,
         footerText,
-        logo // 🟢 ຕອນນີ້ logo ຈະເປັນ Base64 string ຍາວໆ ແລ້ວ
+        logo 
       });
-      Alert.alert('ສຳເລັດ', 'ບັນທຶກການຕັ້ງຄ່າໃບບິນຮຽບຮ້ອຍແລ້ວ');
+
+      // 🟢 3. ອັບເດດລົງ shopInfo ນຳ (ສຳລັບສະແດງໃນ Header ແລະ ໜ້າ Login)
+      await update(ref(db, 'shopInfo'), {
+        name: shopName,
+        logo: logo
+      });
+
+      Alert.alert('ສຳເລັດ', 'ບັນທຶກການຕັ້ງຄ່າຮຽບຮ້ອຍແລ້ວ');
       onClose();
     } catch (error) {
       console.error(error);

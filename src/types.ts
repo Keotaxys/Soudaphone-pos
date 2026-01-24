@@ -51,6 +51,7 @@ export interface SaleRecord {
   status: string;
   createdAt: string;
   isSpecial?: boolean; 
+  exchangeRateUsed?: number; // ເພີ່ມ Field ນີ້ຖ້າມີການບັນທຶກເຣດເງິນ
 }
 
 // 🟢 5. ExpenseRecord Interface
@@ -141,25 +142,38 @@ export interface ShiftRecord {
   status: 'OPEN' | 'CLOSED';
   startingCashLAK: number;
   startingCashTHB: number;
-  denominationsLAK: CashDenomination[];
-  denominationsTHB: CashDenomination[];
+  denominationsLAK: CashDenomination[] | { [key: number]: string }; // ຮອງຮັບທັງ Array ແລະ Object
+  denominationsTHB: CashDenomination[] | { [key: number]: string };
   totalSalesLAK?: number;
   totalSalesTHB?: number;
   actualCashLAK?: number;
   actualCashTHB?: number;
   note?: string;
+  
+  // ເພີ່ມ Field ສຳລັບບັນທຶກຕອນປິດກະ
+  openDenominationsLAK?: { [key: number]: string };
+  openDenominationsTHB?: { [key: number]: string };
+  closeDenominationsLAK?: { [key: number]: string };
+  closeDenominationsTHB?: { [key: number]: string };
 }
 
-// 🟢 13. User Permissions Interface (ລວມກັນແລ້ວ)
+// 🟢 13. User Permissions Interface (ອັບເດດໃໝ່)
 export interface UserPermissions {
-  // Functional Permissions
+  // Functional Permissions (ສິດການທຳງານທົ່ວໄປ)
   canSell: boolean;
   canEditProduct: boolean;
   canDeleteProduct: boolean;
   canViewReports: boolean;
   canManageUsers: boolean;
 
-  // Page Access Permissions (ເພີ່ມໃໝ່)
+  // 🆕 Specific Permissions (ສິດລະອຽດທີ່ເພີ່ມເຂົ້າມາໃໝ່)
+  editSettings?: boolean;      // ສິດແກ້ໄຂ Header/Logo ຮ້ານ
+  viewFinancials?: boolean;    // ສິດເບິ່ງກຳໄລ/ຂາດທຶນ (Profit/Cost)
+  viewSalesHistory?: boolean;  // ສິດເບິ່ງປະຫວັດການຂາຍ
+  canEditStock?: boolean;      // ສິດແກ້ໄຂສະຕັອກ (Optional)
+  canDeleteSale?: boolean;     // ສິດລຶບການຂາຍ (Optional)
+
+  // Page Access Permissions (ສິດເຂົ້າເຖິງໜ້າຕ່າງໆ)
   accessPos: boolean;
   accessProducts: boolean;
   accessCustomers: boolean;

@@ -16,7 +16,7 @@ import {
     ActivityIndicator,
     Alert,
     Keyboard,
-    KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
+    KeyboardAvoidingView,
     Modal,
     Platform,
     ScrollView,
@@ -443,10 +443,11 @@ export default function ExpenseScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 🟢 1. ໃຊ້ KeyboardAvoidingView ຫຸ້ມ ScrollView ໄວ້ */}
+      {/* 🟢 ແກ້ໄຂ: behavior ເປັນ undefined ສຳລັບ Android */}
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0} // ເພີ່ມ Offset ໃຫ້ iOS
       >
           <ScrollView 
             contentContainerStyle={{ paddingBottom: 100 }} 

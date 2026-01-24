@@ -6,6 +6,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  ScrollView, // 🟢 1. Import ScrollView ເພີ່ມ
   StyleSheet,
   Text,
   TextInput,
@@ -13,9 +14,7 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native';
-// 🟢 1. ປ່ຽນມາໃຊ້ SafeAreaView ຈາກ library ນີ້ແທນ react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS } from '../../types';
 
@@ -45,66 +44,76 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      {/* 🟢 ໃຊ້ SafeAreaView ທີ່ import ມາໃໝ່ */}
       <SafeAreaView style={styles.container}>
+        {/* 🟢 2. ໃຊ້ KeyboardAvoidingView ຫຸ້ມໄວ້ຊັ້ນນອກ */}
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-          style={styles.content}
+          style={{ flex: 1 }}
         >
-          {/* Logo Section */}
-          <View style={styles.logoSection}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="cart" size={50} color="white" />
-            </View>
-            <Text style={styles.appTitle}>Soudaphone POS</Text>
-            <Text style={styles.appSubTitle}>ລະບົບຈັດການຮ້ານທີ່ທັນສະໄໝ</Text>
-          </View>
-
-          {/* Form Section */}
-          <View style={styles.formContainer}>
-            <Text style={styles.loginText}>ເຂົ້າສູ່ລະບົບ (Login)</Text>
-
-            {/* Username Input */}
-            <View style={styles.inputWrapper}>
-              <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="ຊື່ຜູ້ໃຊ້ (Username)"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-              />
+          {/* 🟢 3. ໃຊ້ ScrollView ຫຸ້ມເນື້ອຫາທັງໝົດ */}
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent} 
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled" // ໃຫ້ກົດປຸ່ມໄດ້ເລີຍໂດຍບໍ່ຕ້ອງປິດຄີບອດກ່ອນ
+          >
+            
+            {/* Logo Section */}
+            <View style={styles.logoSection}>
+              <View style={styles.logoCircle}>
+                <Ionicons name="cart" size={50} color="white" />
+              </View>
+              {/* ປ່ຽນຊື່ເປັນ Keota ໃຫ້ເລີຍ */}
+              <Text style={styles.appTitle}>Keota POS (Demo)</Text>
+              <Text style={styles.appSubTitle}>ລະບົບຈັດການຮ້ານທີ່ທັນສະໄໝ</Text>
             </View>
 
-            {/* Password Input */}
-            <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="ລະຫັດຜ່ານ (Password)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                keyboardType="default" 
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#666" />
+            {/* Form Section */}
+            <View style={styles.formContainer}>
+              <Text style={styles.loginText}>ເຂົ້າສູ່ລະບົບ (Login)</Text>
+
+              {/* Username Input */}
+              <View style={styles.inputWrapper}>
+                <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="ຊື່ຜູ້ໃຊ້ (Username)"
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="ລະຫັດຜ່ານ (Password)"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  keyboardType="default" 
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Login Button */}
+              <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.loginBtnText}>ເຂົ້າສູ່ລະບົບ</Text>
+                )}
               </TouchableOpacity>
+
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>ຕິດຂັດບັນຫາ? ຕິດຕໍ່ Admin</Text>
+              </View>
             </View>
 
-            {/* Login Button */}
-            <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.loginBtnText}>ເຂົ້າສູ່ລະບົບ</Text>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>ຕິດຂັດບັນຫາ? ຕິດຕໍ່ Admin</Text>
-            </View>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </TouchableWithoutFeedback>
@@ -113,7 +122,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS?.primary || '#008B94' },
-  content: { flex: 1, justifyContent: 'center', padding: 20 },
+  
+  // 🟢 4. ປັບ Style ສຳລັບ ScrollView ໃຫ້ຈັດກາງ
+  scrollContent: { 
+    flexGrow: 1, 
+    justifyContent: 'center', 
+    padding: 20 
+  },
   
   logoSection: { alignItems: 'center', marginBottom: 40 },
   logoCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },

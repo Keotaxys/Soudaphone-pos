@@ -3,18 +3,18 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -344,14 +344,16 @@ export default function DebtScreen() {
 
       {/* 🟢 Modal 1: Add/Edit Debt */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={styles.modalOverlay}
+        >
             <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>{currentId ? 'ແກ້ໄຂຂໍ້ມູນ' : 'ເພີ່ມໜີ້ສິນໃໝ່'}</Text>
                     <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
                 </View>
-                <ScrollView showsVerticalScrollIndicator={false}>
-                    {/* ... (Inputs ອື່ນໆຄືເກົ່າ) ... */}
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                     <Text style={styles.inputLabel}>ຊື່ໜີ້ສິນ *</Text>
                     <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="ເງິນກູ້ທະນາຄານ..." />
                     
@@ -394,7 +396,7 @@ export default function DebtScreen() {
                     </View>
                 </ScrollView>
 
-                {/* 🟢 DatePicker ຂອງ Add/Edit - ວາງໄວ້ໃນ Modal ນີ້ເລີຍ */}
+                {/* 🟢 DatePicker ຂອງ Add/Edit */}
                 {showDatePicker && dateMode === 'due' && (
                     <View style={styles.datePickerOverlay}>
                         <View style={styles.datePickerContainer}>
@@ -417,13 +419,16 @@ export default function DebtScreen() {
 
       {/* 🟢 Modal 2: Payment */}
       <Modal visible={paymentModalVisible} animationType="fade" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={styles.modalOverlay}
+        >
             <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>ບັນທຶກການຊຳລະໜີ້</Text>
                     <TouchableOpacity onPress={() => setPaymentModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
                 </View>
-                <ScrollView>
+                <ScrollView keyboardShouldPersistTaps="handled">
                     <Text style={styles.inputLabel}>ຈຳນວນເງິນຊຳລະ *</Text>
                     <CurrencyInput style={[styles.inputLarge, { color: COLORS.primary }]} value={payAmount} onChangeValue={setPayAmount} placeholder="0" />
                     
@@ -440,7 +445,7 @@ export default function DebtScreen() {
                     </View>
                 </ScrollView>
 
-                {/* 🟢 DatePicker ຂອງ Payment - ວາງໄວ້ໃນ Modal ນີ້ຄືກັນ */}
+                {/* 🟢 DatePicker ຂອງ Payment */}
                 {showDatePicker && dateMode === 'payment' && (
                     <View style={styles.datePickerOverlay}>
                         <View style={styles.datePickerContainer}>

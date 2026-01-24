@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert, FlatList, Image,
   Keyboard,
+  KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
   Modal,
   Platform,
   SafeAreaView,
@@ -13,10 +14,11 @@ import {
 } from 'react-native';
 import { db } from '../../firebase';
 import { COLORS, CustomerOrder, OrderItem, formatDate, formatNumber } from '../../types';
-import CurrencyInput from '../ui/CurrencyInput'; // 🟢 Import Component ໃໝ່
+import CurrencyInput from '../ui/CurrencyInput';
 
 const SOURCES = ['ຈີນ', 'ຫວຽດ', 'ໄທ', 'ອື່ນໆ'];
 const STATUSES = ['ຮັບອໍເດີ້', 'ສັ່ງເຄື່ອງແລ້ວ', 'ເຄື່ອງຮອດແລ້ວ', 'ຈັດສົ່ງສຳເລັດ'];
+const ORANGE_COLOR = '#FF9800'; // 🟢 ກຳນົດສີສົ້ມສຳລັບປຸ່ມລຶບ
 
 export default function OrderTrackingScreen() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
@@ -103,7 +105,6 @@ export default function OrderTrackingScreen() {
     return COLORS.primary;
   };
 
-  // 🟢 ເປີດປະຕິທິນທັນທີ ແລະ ປິດ Keyboard
   const openDatePicker = () => {
       Keyboard.dismiss();
       setShowDatePicker(true);
@@ -114,7 +115,6 @@ export default function OrderTrackingScreen() {
     if (date) setSelectedDate(date);
   };
 
-  // Header Component (ຈະເລື່ອນໄປພ້ອມກັບ List)
   const ListHeader = () => (
     <View style={styles.header}>
         <Text style={styles.headerTitle}>📦 ຕິດຕາມຄຳສັ່ງຊື້</Text>
@@ -128,7 +128,6 @@ export default function OrderTrackingScreen() {
   return (
     <View style={styles.container}>
       
-      {/* FlatList ກວມເອົາທັງໝົດ */}
       <FlatList
         data={orders}
         keyExtractor={item => item.id!}
@@ -166,114 +165,120 @@ export default function OrderTrackingScreen() {
 
       <Modal visible={showForm} animationType="slide">
         <SafeAreaView style={{flex: 1, backgroundColor: 'white'}}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{id ? 'ແກ້ໄຂອໍເດີ' : 'ບັນທຶກອໍເດີ (ຫຼາຍລິ້ງ)'}</Text>
-            <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={30} /></TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.formBody}>
-            <Text style={styles.label}>ຊື່ລູກຄ້າ *</Text>
-            <TextInput style={styles.input} value={customerName} onChangeText={setCustomerName} placeholder="ປ້ອນຊື່ລູກຄ້າ..." />
-
-            <Text style={styles.label}>ວັນທີ *</Text>
-            {/* 🟢 ໃຊ້ openDatePicker */}
-            <TouchableOpacity style={styles.dateInput} onPress={openDatePicker}>
-              <Text style={styles.inputText}>{formatDate(selectedDate)}</Text>
-              <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
-            </TouchableOpacity>
-
-            <Text style={[styles.label, {marginTop: 20, fontSize: 16}]}>ລາຍການສິນຄ້າ ({items.length})</Text>
+          {/* 🟢 1. ໃຊ້ KeyboardAvoidingView ຫຸ້ມ Form */}
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={{ flex: 1 }}
+          >
+            <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{id ? 'ແກ້ໄຂອໍເດີ' : 'ບັນທຶກອໍເດີ (ຫຼາຍລິ້ງ)'}</Text>
+                <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={30} /></TouchableOpacity>
+            </View>
             
-            {items.map((item, index) => (
-              <View key={item.id} style={styles.itemEditorCard}>
-                <View style={styles.itemHeader}>
-                  <Text style={styles.itemNumber}>ລາຍການທີ {index + 1}</Text>
-                  <TouchableOpacity onPress={() => setItems(items.filter(i => i.id !== item.id))}>
-                    <Ionicons name="trash" size={20} color={COLORS.danger} />
-                  </TouchableOpacity>
-                </View>
-                
-                <Text style={styles.subLabel}>ສິນຄ້າ *</Text>
-                <TextInput style={styles.input} placeholder="ຕົວຢ່າງ: ເສື້ອຢືດ..." value={item.productName} onChangeText={(v) => updateItemValue(item.id, 'productName', v)} />
-                
-                <View style={styles.row}>
-                  <View style={{flex: 1.5}}>
-                    <Text style={styles.subLabel}>ແຫຼ່ງສັ່ງ *</Text>
-                    <View style={styles.sourceRow}>
-                      {SOURCES.map(s => (
-                        <TouchableOpacity key={s} onPress={() => updateItemValue(item.id, 'source', s)} style={[styles.sourceChip, item.source === s && styles.sourceChipActive]}>
-                          <Text style={[styles.chipText, {color: item.source === s ? 'white' : '#666'}]}>{s}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                  <View style={{flex: 0.5, marginLeft: 10}}>
-                    <Text style={styles.subLabel}>ຈຳນວນ *</Text>
-                    {/* 🟢 ໃຊ້ CurrencyInput */}
-                    <CurrencyInput 
-                        style={styles.input} 
-                        value={item.quantity.toString()} 
-                        onChangeValue={(v) => updateItemValue(item.id, 'quantity', v)} 
-                        placeholder="0"
-                    />
-                  </View>
-                </View>
+            <ScrollView 
+                style={styles.formBody} 
+                contentContainerStyle={{ paddingBottom: 50 }}
+                keyboardShouldPersistTaps="handled" // 🟢 2. ໃຫ້ກົດປຸ່ມໄດ້ເລີຍ
+            >
+                <Text style={styles.label}>ຊື່ລູກຄ້າ *</Text>
+                <TextInput style={styles.input} value={customerName} onChangeText={setCustomerName} placeholder="ປ້ອນຊື່ລູກຄ້າ..." />
 
-                <View style={styles.row}>
-                  <View style={{flex: 1}}>
-                    <Text style={styles.subLabel}>ລາຄາສັ່ງ (ຕົ້ນທຶນ)</Text>
-                    {/* 🟢 ໃຊ້ CurrencyInput */}
-                    <CurrencyInput 
-                        style={styles.input} 
-                        value={item.costPrice.toString()} 
-                        onChangeValue={(v) => updateItemValue(item.id, 'costPrice', v)} 
-                        placeholder="0"
-                    />
-                  </View>
-                  <View style={{flex: 1, marginLeft: 10}}>
-                    <Text style={styles.subLabel}>ລາຄາຂາຍ (₭)</Text>
-                    {/* 🟢 ໃຊ້ CurrencyInput */}
-                    <CurrencyInput 
-                        style={styles.input} 
-                        value={item.salePrice.toString()} 
-                        onChangeValue={(v) => updateItemValue(item.id, 'salePrice', v)} 
-                        placeholder="0"
-                    />
-                  </View>
-                </View>
-
-                <Text style={styles.subLabel}>ລິ້ງເວັບໄຊ (Link)</Text>
-                <TextInput style={styles.input} placeholder="https://..." value={item.link} onChangeText={(v) => updateItemValue(item.id, 'link', v)} />
-
-                <Text style={styles.subLabel}>ຮູບພາບສິນຄ້າ</Text>
-                <TouchableOpacity style={styles.imgPicker} onPress={() => pickItemImage(item.id)}>
-                  {item.imageUrl ? <Image source={{uri: item.imageUrl}} style={styles.fullImg} /> : <Ionicons name="camera-outline" size={30} color="#ccc" />}
+                <Text style={styles.label}>ວັນທີ *</Text>
+                <TouchableOpacity style={styles.dateInput} onPress={openDatePicker}>
+                    <Text style={styles.inputText}>{formatDate(selectedDate)}</Text>
+                    <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
                 </TouchableOpacity>
 
-                <Text style={styles.subLabel}>ສະຖານະ *</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusRow}>
-                  {STATUSES.map(s => (
-                    <TouchableOpacity key={s} onPress={() => updateItemValue(item.id, 'status', s)} style={[styles.statusChip, item.status === s && {backgroundColor: getStatusColor(s)}]}>
-                      <Text style={{fontSize: 12, fontFamily: 'Lao-Bold', color: item.status === s ? 'white' : '#666'}}>{s}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            ))}
+                <Text style={[styles.label, {marginTop: 20, fontSize: 16}]}>ລາຍການສິນຄ້າ ({items.length})</Text>
+                
+                {items.map((item, index) => (
+                    <View key={item.id} style={styles.itemEditorCard}>
+                        <View style={styles.itemHeader}>
+                            <Text style={styles.itemNumber}>ລາຍການທີ {index + 1}</Text>
+                            <TouchableOpacity onPress={() => setItems(items.filter(i => i.id !== item.id))}>
+                                {/* 🟢 3. ປ່ຽນສີປຸ່ມລຶບເປັນສີສົ້ມ */}
+                                <Ionicons name="trash" size={20} color={ORANGE_COLOR} />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <Text style={styles.subLabel}>ສິນຄ້າ *</Text>
+                        <TextInput style={styles.input} placeholder="ຕົວຢ່າງ: ເສື້ອຢືດ..." value={item.productName} onChangeText={(v) => updateItemValue(item.id, 'productName', v)} />
+                        
+                        <View style={styles.row}>
+                            <View style={{flex: 1.5}}>
+                                <Text style={styles.subLabel}>ແຫຼ່ງສັ່ງ *</Text>
+                                <View style={styles.sourceRow}>
+                                {SOURCES.map(s => (
+                                    <TouchableOpacity key={s} onPress={() => updateItemValue(item.id, 'source', s)} style={[styles.sourceChip, item.source === s && styles.sourceChipActive]}>
+                                    <Text style={[styles.chipText, {color: item.source === s ? 'white' : '#666'}]}>{s}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                                </View>
+                            </View>
+                            <View style={{flex: 0.5, marginLeft: 10}}>
+                                <Text style={styles.subLabel}>ຈຳນວນ *</Text>
+                                <CurrencyInput 
+                                    style={styles.input} 
+                                    value={item.quantity.toString()} 
+                                    onChangeValue={(v) => updateItemValue(item.id, 'quantity', v)} 
+                                    placeholder="0"
+                                />
+                            </View>
+                        </View>
 
-            <TouchableOpacity style={styles.addItemBtn} onPress={addNewItem}>
-              <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />
-              <Text style={styles.addItemBtnText}>+ ເພີ່ມລາຍການສິນຄ້າ</Text>
-            </TouchableOpacity>
+                        <View style={styles.row}>
+                            <View style={{flex: 1}}>
+                                <Text style={styles.subLabel}>ລາຄາສັ່ງ (ຕົ້ນທຶນ)</Text>
+                                <CurrencyInput 
+                                    style={styles.input} 
+                                    value={item.costPrice.toString()} 
+                                    onChangeValue={(v) => updateItemValue(item.id, 'costPrice', v)} 
+                                    placeholder="0"
+                                />
+                            </View>
+                            <View style={{flex: 1, marginLeft: 10}}>
+                                <Text style={styles.subLabel}>ລາຄາຂາຍ (₭)</Text>
+                                <CurrencyInput 
+                                    style={styles.input} 
+                                    value={item.salePrice.toString()} 
+                                    onChangeValue={(v) => updateItemValue(item.id, 'salePrice', v)} 
+                                    placeholder="0"
+                                />
+                            </View>
+                        </View>
 
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-              <Text style={styles.saveBtnText}>ບັນທຶກອໍເດີທັງໝົດ</Text>
-            </TouchableOpacity>
-            <View style={{height: 50}} />
-          </ScrollView>
+                        <Text style={styles.subLabel}>ລິ້ງເວັບໄຊ (Link)</Text>
+                        <TextInput style={styles.input} placeholder="https://..." value={item.link} onChangeText={(v) => updateItemValue(item.id, 'link', v)} />
+
+                        <Text style={styles.subLabel}>ຮູບພາບສິນຄ້າ</Text>
+                        <TouchableOpacity style={styles.imgPicker} onPress={() => pickItemImage(item.id)}>
+                            {item.imageUrl ? <Image source={{uri: item.imageUrl}} style={styles.fullImg} /> : <Ionicons name="camera-outline" size={30} color="#ccc" />}
+                        </TouchableOpacity>
+
+                        <Text style={styles.subLabel}>ສະຖານະ *</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusRow}>
+                            {STATUSES.map(s => (
+                            <TouchableOpacity key={s} onPress={() => updateItemValue(item.id, 'status', s)} style={[styles.statusChip, item.status === s && {backgroundColor: getStatusColor(s)}]}>
+                                <Text style={{fontSize: 12, fontFamily: 'Lao-Bold', color: item.status === s ? 'white' : '#666'}}>{s}</Text>
+                            </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                ))}
+
+                <TouchableOpacity style={styles.addItemBtn} onPress={addNewItem}>
+                    <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />
+                    <Text style={styles.addItemBtnText}>+ ເພີ່ມລາຍການສິນຄ້າ</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                    <Text style={styles.saveBtnText}>ບັນທຶກອໍເດີທັງໝົດ</Text>
+                </TouchableOpacity>
+                <View style={{height: 50}} />
+            </ScrollView>
+          </KeyboardAvoidingView>
         </SafeAreaView>
 
-        {/* 🟢 iOS Date Picker Modal */}
         {showDatePicker && (
             Platform.OS === 'ios' ? (
                 <Modal visible={true} transparent={true} animationType="fade">
@@ -357,7 +362,6 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 30 },
   saveBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 18 },
 
-  // 🟢 iOS Date Picker Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   iosDatePickerContainer: { backgroundColor: 'white', borderRadius: 20, width: '85%', padding: 20, alignItems: 'center' },
   iosDateDoneBtn: { marginTop: 10, padding: 10, width: '100%', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' },

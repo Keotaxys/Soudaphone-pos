@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -18,7 +18,6 @@ import {
 } from 'react-native';
 
 import { db } from '../../firebase';
-// 🟢 1. Import COLORS ຈາກ types ຢ່າງຖືກຕ້ອງ
 import { COLORS } from '../../types';
 
 interface BillSettingsModalProps {
@@ -34,7 +33,6 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
   const [logo, setLogo] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 🟢 2. ດຶງຂໍ້ມູນ (Fetch Data)
   useEffect(() => {
     const settingsRef = ref(db, 'billSettings');
     const unsubscribe = onValue(settingsRef, (snapshot) => {
@@ -44,35 +42,41 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
         setAddress(data.address || '');
         setPhone(data.phone || '');
         setFooterText(data.footerText || '');
-        setLogo(data.logo || '');
+        
+        // 🟢 ກວດສອບວ່າຂໍ້ມູນເກົ່າເປັນ Local Path ຫຼືບໍ່, ຖ້າແມ່ນໃຫ້ລ້າງອອກ
+        if (data.logo && data.logo.startsWith('file://')) {
+            setLogo(''); 
+        } else {
+            setLogo(data.logo || '');
+        }
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // ຟັງຊັນເລືອກຮູບພາບ
   const pickLogo = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (status !== 'granted') {
-      Alert.alert('ຕ້ອງການອະນຸຍາດ', 'ກະລຸນາອະນຸຍາດໃຫ້ເຂົ້າເຖິງຮູບພາບເພື່ອປ່ຽນໂລໂກ້');
+      Alert.alert('ຕ້ອງການອະນຸຍາດ', 'ກະລຸນາອະນຸຍາດໃຫ້ເຂົ້າເຖິງຮູບພາບ');
       return;
     }
 
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [1, 1], // ຮູບຈັດຕຸລັດ
-      quality: 0.5,   // ຫຼຸດຂະໜາດໄຟລ໌
-      base64: true,   
+      aspect: [1, 1],
+      quality: 0.3, // 🟢 ຫຼຸດຄຸນນະພາບລົງໜ້ອຍໜຶ່ງ ເພື່ອບໍ່ໃຫ້ Base64 ຍາວເກີນໄປ
+      base64: true, // 🟢 ສຳຄັນ! ຕ້ອງເປີດອັນນີ້ ເພື່ອໃຫ້ໄດ້ Base64 String
     });
 
     if (!result.canceled && result.assets[0].base64) {
-      setLogo(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      // 🟢 ບັນທຶກເປັນ Base64 String (Data URI)
+      const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      setLogo(base64Img);
     }
   };
 
-  // ຟັງຊັນບັນທຶກ
   const handleSave = async () => {
     if (!shopName.trim()) {
       Alert.alert('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ຮ້ານ');
@@ -87,13 +91,13 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
         address,
         phone,
         footerText,
-        logo
+        logo // 🟢 ຕອນນີ້ logo ຈະເປັນ Base64 string ຍາວໆ ແລ້ວ
       });
       Alert.alert('ສຳເລັດ', 'ບັນທຶກການຕັ້ງຄ່າໃບບິນຮຽບຮ້ອຍແລ້ວ');
       onClose();
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ');
+      Alert.alert('Error', 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ (ຮູບອາດຈະໃຫຍ່ເກີນໄປ)');
     } finally {
       setLoading(false);
     }
@@ -101,14 +105,12 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      {/* 🟢 ໃຊ້ KeyboardAvoidingView ຫຸ້ມ Modal Container */}
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
         style={styles.overlay}
       >
         <View style={styles.container}>
           
-          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>ຕັ້ງຄ່າໃບບິນ (Bill Settings)</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
@@ -117,7 +119,6 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {/* Logo Section */}
             <TouchableOpacity style={styles.logoPicker} onPress={pickLogo}>
               {logo ? (
                 <Image source={{ uri: logo }} style={styles.logo} />
@@ -132,7 +133,6 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
               </View>
             </TouchableOpacity>
 
-            {/* Form Inputs */}
             <Text style={styles.label}>ຊື່ຮ້ານ (ຫົວບິນ) <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput 
               style={styles.input} 
@@ -168,7 +168,6 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
               numberOfLines={3}
             />
 
-            {/* Save Button */}
             <TouchableOpacity 
               style={[styles.saveBtn, loading && styles.disabledBtn]} 
               onPress={handleSave}
@@ -255,7 +254,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: COLORS.primary, // 🟢 ໃຊ້ສີຈາກ Theme
+    backgroundColor: COLORS.primary,
     padding: 6,
     borderRadius: 15,
     borderWidth: 2,
@@ -283,7 +282,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top'
   },
   saveBtn: { 
-    backgroundColor: COLORS.primary, // 🟢 ໃຊ້ສີຈາກ Theme
+    backgroundColor: COLORS.primary,
     padding: 15, 
     borderRadius: 10, 
     alignItems: 'center', 

@@ -8,7 +8,7 @@ import {
   FlatList,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
+  KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
   Linking,
   Modal,
   Platform,
@@ -279,6 +279,7 @@ export default function CustomerScreen() {
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            {/* 🟢 1. ໃຊ້ KeyboardAvoidingView ຫຸ້ມ Modal Overlay */}
             <KeyboardAvoidingView 
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
                 style={styles.modalOverlay}
@@ -291,7 +292,7 @@ export default function CustomerScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView showsVerticalScrollIndicator={false}>
+                    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                         <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
                             {imageUrl ? (
                                 <Image source={{ uri: imageUrl }} style={styles.previewImage} />

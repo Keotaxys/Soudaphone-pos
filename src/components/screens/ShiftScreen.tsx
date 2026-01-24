@@ -3,6 +3,8 @@ import { onValue, push, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,7 +12,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-// 🟢 1. ໃຊ້ SafeAreaView ຈາກ library ນີ້
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { db } from '../../firebase';
@@ -114,71 +115,81 @@ export default function ShiftScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
-        {!activeShift ? (
-          <View>
-            <View style={styles.card}>
-                <View style={styles.iconCircle}>
-                    <Ionicons name="wallet-outline" size={40} color={COLORS.primary} />
+      {/* 🟢 ໃຊ້ KeyboardAvoidingView ຫຸ້ມ ScrollView */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={{ flex: 1 }}
+      >
+        <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+            keyboardShouldPersistTaps="handled"
+        >
+            {!activeShift ? (
+            <View>
+                <View style={styles.card}>
+                    <View style={styles.iconCircle}>
+                        <Ionicons name="wallet-outline" size={40} color={COLORS.primary} />
+                    </View>
+                    <Text style={styles.mainTitle}>ເລີ່ມຕົ້ນເປີດກະຂາຍ</Text>
+                    <Text style={styles.subTitle}>ກະລຸນານັບເງິນສົດຕັ້ງຕົ້ນໃນລິ້ນຊັກ</Text>
                 </View>
-                <Text style={styles.mainTitle}>ເລີ່ມຕົ້ນເປີດກະຂາຍ</Text>
-                <Text style={styles.subTitle}>ກະລຸນານັບເງິນສົດຕັ້ງຕົ້ນໃນລິ້ນຊັກ</Text>
-            </View>
 
-            <Text style={styles.sectionTitle}>💵 ໃບເງິນກີບ (LAK)</Text>
-            <View style={styles.denomCard}>
-                {LAK_DENOMS.map(v => renderDenomRow(v, openLakCounts, setOpenLakCounts, '₭', COLORS.primary))}
-                <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>ລວມເງິນກີບຕັ້ງຕົ້ນ:</Text>
-                    <Text style={[styles.summaryValue, { color: COLORS.primary }]}>{formatNumber(calculateTotal(LAK_DENOMS, openLakCounts))} ₭</Text>
+                <Text style={styles.sectionTitle}>💵 ໃບເງິນກີບ (LAK)</Text>
+                <View style={styles.denomCard}>
+                    {LAK_DENOMS.map(v => renderDenomRow(v, openLakCounts, setOpenLakCounts, '₭', COLORS.primary))}
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>ລວມເງິນກີບຕັ້ງຕົ້ນ:</Text>
+                        <Text style={[styles.summaryValue, { color: COLORS.primary }]}>{formatNumber(calculateTotal(LAK_DENOMS, openLakCounts))} ₭</Text>
+                    </View>
                 </View>
-            </View>
 
-            <Text style={styles.sectionTitle}>฿ ໃບເງິນບາດ (THB)</Text>
-            <View style={styles.denomCard}>
-                {THB_DENOMS.map(v => renderDenomRow(v, openThbCounts, setOpenThbCounts, '฿', '#F57C00'))}
-                <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>ລວມເງິນບາດຕັ້ງຕົ້ນ:</Text>
-                    <Text style={[styles.summaryValue, {color: '#F57C00'}]}>{formatNumber(calculateTotal(THB_DENOMS, openThbCounts))} ฿</Text>
+                <Text style={styles.sectionTitle}>฿ ໃບເງິນບາດ (THB)</Text>
+                <View style={styles.denomCard}>
+                    {THB_DENOMS.map(v => renderDenomRow(v, openThbCounts, setOpenThbCounts, '฿', '#F57C00'))}
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>ລວມເງິນບາດຕັ້ງຕົ້ນ:</Text>
+                        <Text style={[styles.summaryValue, {color: '#F57C00'}]}>{formatNumber(calculateTotal(THB_DENOMS, openThbCounts))} ฿</Text>
+                    </View>
                 </View>
-            </View>
 
-            <TouchableOpacity style={styles.openBtn} onPress={handleOpenShift}>
-                <Text style={styles.openBtnText}>ເປີດກະດຽວນີ້</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View>
-            <View style={styles.activeHeader}>
-                <View>
-                    <Text style={styles.activeStatus}>🟢 ກຳລັງເປີດກະຂາຍ</Text>
-                    <Text style={styles.activeTime}>ເລີ່ມ: {new Date(activeShift.startTime).toLocaleTimeString()}</Text>
-                </View>
-                <TouchableOpacity style={styles.closeBtn} onPress={handleCloseShift}>
-                    <Text style={styles.closeBtnText}>ປິດກະຂາຍ</Text>
+                <TouchableOpacity style={styles.openBtn} onPress={handleOpenShift}>
+                    <Text style={styles.openBtnText}>ເປີດກະດຽວນີ້</Text>
                 </TouchableOpacity>
             </View>
+            ) : (
+            <View>
+                <View style={styles.activeHeader}>
+                    <View>
+                        <Text style={styles.activeStatus}>🟢 ກຳລັງເປີດກະຂາຍ</Text>
+                        <Text style={styles.activeTime}>ເລີ່ມ: {new Date(activeShift.startTime).toLocaleTimeString()}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.closeBtn} onPress={handleCloseShift}>
+                        <Text style={styles.closeBtnText}>ປິດກະຂາຍ</Text>
+                    </TouchableOpacity>
+                </View>
 
-            <Text style={styles.sectionTitle}>🧾 ນັບເງິນສົດກ່ອນປິດກະ (ກີບ)</Text>
-            <View style={styles.denomCard}>
-                {LAK_DENOMS.map(v => renderDenomRow(v, closeLakCounts, setCloseLakCounts, '₭', COLORS.primary))}
-                <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>ລວມເງິນກີບ:</Text>
-                    <Text style={[styles.summaryValue, { color: COLORS.primary }]}>{formatNumber(calculateTotal(LAK_DENOMS, closeLakCounts))} ₭</Text>
+                <Text style={styles.sectionTitle}>🧾 ນັບເງິນສົດກ່ອນປິດກະ (ກີບ)</Text>
+                <View style={styles.denomCard}>
+                    {LAK_DENOMS.map(v => renderDenomRow(v, closeLakCounts, setCloseLakCounts, '₭', COLORS.primary))}
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>ລວມເງິນກີບ:</Text>
+                        <Text style={[styles.summaryValue, { color: COLORS.primary }]}>{formatNumber(calculateTotal(LAK_DENOMS, closeLakCounts))} ₭</Text>
+                    </View>
+                </View>
+
+                <Text style={styles.sectionTitle}>💰 ນັບເງິນສົດກ່ອນປິດກະ (ບາດ)</Text>
+                <View style={styles.denomCard}>
+                    {THB_DENOMS.map(v => renderDenomRow(v, closeThbCounts, setCloseThbCounts, '฿', '#F57C00'))}
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>ລວມເງິນບາດ:</Text>
+                        <Text style={[styles.summaryValue, { color: '#F57C00' }]}>{formatNumber(calculateTotal(THB_DENOMS, closeThbCounts))} ฿</Text>
+                    </View>
                 </View>
             </View>
-
-            <Text style={styles.sectionTitle}>💰 ນັບເງິນສົດກ່ອນປິດກະ (ບາດ)</Text>
-            <View style={styles.denomCard}>
-                {THB_DENOMS.map(v => renderDenomRow(v, closeThbCounts, setCloseThbCounts, '฿', '#F57C00'))}
-                <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>ລວມເງິນບາດ:</Text>
-                    <Text style={[styles.summaryValue, { color: '#F57C00' }]}>{formatNumber(calculateTotal(THB_DENOMS, closeThbCounts))} ฿</Text>
-                </View>
-            </View>
-          </View>
-        )}
-      </ScrollView>
+            )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

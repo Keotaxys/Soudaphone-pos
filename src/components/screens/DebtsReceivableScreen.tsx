@@ -370,14 +370,17 @@ export default function DebtsReceivableScreen() {
 
       {/* 🟢 Modal 1: Add/Edit Debt */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={styles.modalOverlay}
+        >
             <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>{currentId ? 'ແກ້ໄຂຂໍ້ມູນ' : 'ເພີ່ມໜີ້ຕ້ອງຮັບ'}</Text>
                     <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
                 </View>
 
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                     <Text style={styles.inputLabel}>ຊື່ລູກຄ້າ *</Text>
                     <TextInput style={styles.input} value={customer} onChangeText={setCustomer} placeholder="ຊື່ລູກຄ້າ..." />
 
@@ -418,7 +421,7 @@ export default function DebtsReceivableScreen() {
                     </View>
                 </ScrollView>
 
-                {/* 🟢 DatePicker for Add/Edit - ວາງໄວ້ໃນ Modal ນີ້ */}
+                {/* 🟢 DatePicker for Add/Edit */}
                 {showDatePicker && dateMode === 'due' && (
                     <View style={styles.datePickerOverlay}>
                         <View style={styles.datePickerContainer}>
@@ -441,14 +444,17 @@ export default function DebtsReceivableScreen() {
 
       {/* 🟢 Modal 2: Payment Modal */}
       <Modal visible={paymentModalVisible} animationType="fade" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={styles.modalOverlay}
+        >
             <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>ຮັບຊຳລະໜີ້</Text>
                     <TouchableOpacity onPress={() => setPaymentModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity>
                 </View>
 
-                <ScrollView>
+                <ScrollView keyboardShouldPersistTaps="handled">
                     {selectedDebt && (
                         <View style={{marginBottom: 20}}>
                             <Text style={{fontFamily: 'Lao-Regular', color: '#666'}}>ຈາກລູກຄ້າ: <Text style={{fontFamily:'Lao-Bold', color: COLORS.text}}>{selectedDebt.customer}</Text></Text>
@@ -480,7 +486,7 @@ export default function DebtsReceivableScreen() {
                     </View>
                 </ScrollView>
 
-                {/* 🟢 DatePicker for Payment - ວາງໄວ້ໃນ Modal ນີ້ຄືກັນ */}
+                {/* 🟢 DatePicker for Payment */}
                 {showDatePicker && dateMode === 'payment' && (
                     <View style={styles.datePickerOverlay}>
                         <View style={styles.datePickerContainer}>
@@ -579,9 +585,6 @@ const styles = StyleSheet.create({
   payBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.primary, paddingVertical: 8, paddingHorizontal: 15, borderRadius: 8 },
   payBtnText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 13 },
   
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, elevation: 5 },
-  fabText: { color: 'white', fontFamily: 'Lao-Bold', fontSize: 16, marginLeft: 8 },
-  
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { marginTop: 10, color: '#ccc', fontFamily: 'Lao-Regular' },
   
@@ -616,4 +619,24 @@ const styles = StyleSheet.create({
   historyItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   historyDate: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text },
   historyAmount: { fontFamily: 'Lao-Bold', fontSize: 16, color: COLORS.success },
+
+  fab: { 
+    position: 'absolute', 
+    bottom: 20, 
+    right: 20, 
+    backgroundColor: COLORS.primary, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 12, 
+    paddingHorizontal: 20, 
+    borderRadius: 30, 
+    elevation: 5,
+    zIndex: 999 
+  },
+  fabText: { 
+    color: 'white', 
+    fontFamily: 'Lao-Bold', 
+    fontSize: 16, 
+    marginLeft: 8 
+  },
 });

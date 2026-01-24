@@ -6,22 +6,23 @@ import * as Sharing from 'expo-sharing';
 import { onValue, push, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ ໃຊ້ SafeAreaView ໂຕນີ້
 import * as XLSX from 'xlsx';
 import { db } from '../../firebase';
 import { useCategories } from '../../hooks/useCategories';
-// 🟢 1. Import Hook ອັດຕາແລກປ່ຽນ
 import { useExchangeRate } from '../../hooks/useExchangeRate';
 import { COLORS, formatDate, formatNumber, Product } from '../../types';
 
@@ -34,9 +35,8 @@ interface SpecialSaleScreenProps {
 }
 
 export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) {
-  // 🟢 2. ເອີ້ນໃຊ້ Hook (Categories & Exchange Rate)
   const { categories, addCategory } = useCategories();
-  const exchangeRate = useExchangeRate(); // ດຶງເລດເງິນປັດຈຸບັນ
+  const exchangeRate = useExchangeRate();
 
   // Form State
   const [date, setDate] = useState(new Date());
@@ -74,14 +74,12 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
   const receivedVal = parseFloat(amountReceived) || 0;
   const changeVal = receivedVal - totalVal;
 
-  // ຕັ້ງຄ່າ Default Category
   useEffect(() => {
     if (categories.length > 0 && !category) {
         setCategory(categories[0]);
     }
   }, [categories, category]);
 
-  // Fetch Sales Data
   useEffect(() => {
     const salesRef = ref(db, 'sales');
     const unsub = onValue(salesRef, (snapshot) => {
@@ -97,7 +95,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     return () => unsub();
   }, []);
 
-  // Filter Logic
   useEffect(() => {
     let start = new Date(currentFilterDate);
     let end = new Date(currentFilterDate);
@@ -180,7 +177,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     }
   };
 
-  // Excel Functions (Download, Export, Import - ຄືເກົ່າ)
   const handleDownloadTemplate = async () => {
     setLoading(true);
     try {
@@ -258,7 +254,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                     currency: currencyMap,
                     items: [{ name, price, quantity: qty, category: row["ໝວດໝູ່"] || "ທົ່ວໄປ", priceCurrency: currencyMap }],
                     subTotal: total, total, discount: 0, amountReceived: total, change: 0, status: 'COMPLETED',
-                    exchangeRateUsed: exchangeRate // 🟢 ບັນທຶກ Exchange Rate (ຖ້າມີ)
+                    exchangeRateUsed: exchangeRate
                 });
                 count++;
             }
@@ -279,7 +275,6 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
       amountReceived: paymentMethod === 'CASH' ? receivedVal : totalVal,
       change: paymentMethod === 'CASH' ? changeVal : 0,
       status: 'COMPLETED',
-      // 🟢 3. ບັນທຶກ exchangeRateUsed ລົງ Database
       exchangeRateUsed: exchangeRate
     }).then(() => {
         Alert.alert("ສຳເລັດ", "ບັນທຶກແລ້ວ!");
@@ -307,189 +302,194 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {loading && <View style={styles.loadingOverlay}><ActivityIndicator size="large" color={COLORS.primary} /><Text style={{marginTop: 10, fontFamily: 'Lao-Bold'}}>ກຳລັງປະມວນຜົນ...</Text></View>}
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ຂາຍພິເສດ (Manual Sale)</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Form Section */}
-        <View style={styles.formSection}>
-            <View style={styles.row}>
-                <View style={{flex: 1}}>
-                    <Text style={styles.label}>ວັນທີ *</Text>
-                    <TouchableOpacity style={styles.inputBox} onPress={() => setShowFormDatePicker(true)}>
-                        <Text>{date.toLocaleDateString('en-GB')}</Text>
-                        <Ionicons name="calendar" size={20} color="#666" />
-                    </TouchableOpacity>
-                </View>
-                <View style={{flex: 1, marginLeft: 10}}>
-                    <Text style={styles.label}>ແຫຼ່ງຂາຍ *</Text>
-                    <View style={styles.chipRow}>
-                        {['Shop', 'Online'].map(s => {
-                            const isOnline = s === 'Online';
-                            const isActive = source === s;
-                            return (
-                                <TouchableOpacity key={s} onPress={() => setSource(s as any)} style={[styles.chipSmall, { backgroundColor: isActive ? getActiveColor(true, isOnline ? 'alert' : 'default') : 'white', borderColor: isActive ? getActiveColor(true, isOnline ? 'alert' : 'default') : '#eee' }]}>
-                                    <Text style={[styles.chipText, isActive && {color:'white'}]}>{s === 'Shop' ? 'ໜ້າຮ້ານ' : 'Online'}</Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-                </View>
-            </View>
-
-            <View style={styles.row}>
-                <View style={{flex: 1}}>
-                    <Text style={styles.label}>ສະກຸນເງິນ *</Text>
-                    <View style={styles.chipRow}>
-                        <TouchableOpacity style={[styles.chipSmall, currency === 'LAK' && styles.activeChip]} onPress={() => setCurrency('LAK')}>
-                            <Text style={[styles.chipText, currency === 'LAK' && {color:'white'}]}>₭ ກີບ</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.chipSmall, currency === 'THB' && {backgroundColor: ORANGE_THEME, borderColor: ORANGE_THEME}]} onPress={() => setCurrency('THB')}>
-                            <Text style={[styles.chipText, currency === 'THB' && {color:'white'}]}>฿ ບາດ</Text>
+      {/* 🟢 1. ໃຊ້ KeyboardAvoidingView ຫຸ້ມ ScrollView ຫຼັກ */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={{ flex: 1 }}
+      >
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {/* Form Section */}
+            <View style={styles.formSection}>
+                <View style={styles.row}>
+                    <View style={{flex: 1}}>
+                        <Text style={styles.label}>ວັນທີ *</Text>
+                        <TouchableOpacity style={styles.inputBox} onPress={() => setShowFormDatePicker(true)}>
+                            <Text>{date.toLocaleDateString('en-GB')}</Text>
+                            <Ionicons name="calendar" size={20} color="#666" />
                         </TouchableOpacity>
                     </View>
-                </View>
-                <View style={{flex: 1, marginLeft: 10}}>
-                    <Text style={styles.label}>ຊຳລະໂດຍ *</Text>
-                    <View style={styles.chipRow}>
-                        {['CASH', 'QR'].map(m => {
-                            const isQR = m === 'QR';
-                            const isActive = paymentMethod === m;
-                            return (
-                                <TouchableOpacity key={m} onPress={() => setPaymentMethod(m as any)} style={[styles.chipSmall, { backgroundColor: isActive ? getActiveColor(true, isQR ? 'alert' : 'default') : 'white', borderColor: isActive ? getActiveColor(true, isQR ? 'alert' : 'default') : '#eee' }]}>
-                                    <Text style={[styles.chipText, isActive && {color:'white'}]}>{m === 'CASH' ? 'ເງິນສົດ' : 'QR'}</Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-                </View>
-            </View>
-            
-            <Text style={styles.label}>ໝວດໝູ່ *</Text>
-            <TouchableOpacity style={styles.inputBox} onPress={() => setShowCatDropdown(true)}>
-                <Text>{category || 'ເລືອກໝວດໝູ່'}</Text>
-                <Ionicons name="chevron-down" size={20} color="#666" />
-            </TouchableOpacity>
-
-            <Text style={styles.label}>ລາຍລະອຽດສິນຄ້າ *</Text>
-            <TextInput style={styles.inputBox} placeholder="ພິມຊື່ສິນຄ້າ..." value={detail} onChangeText={setDetail} />
-
-            <View style={styles.row}>
-                <View style={{flex: 1, marginRight: 10}}>
-                    <Text style={styles.label}>ລາຄາ ({currency === 'THB' ? 'ບາດ' : 'ກີບ'}) *</Text>
-                    <TextInput style={styles.inputBox} keyboardType="numeric" placeholder="0" value={price} onChangeText={setPrice} />
-                </View>
-                <View style={{flex: 1}}>
-                    <Text style={styles.label}>ຈຳນວນ *</Text>
-                    <TextInput style={styles.inputBox} keyboardType="numeric" placeholder="1" value={qty} onChangeText={setQty} />
-                </View>
-            </View>
-
-            <View style={styles.totalBox}>
-                <View>
-                    <Text style={styles.totalLabel}>ລວມເງິນ:</Text>
-                    {/* 🟢 4. ໂຊອັດຕາແລກປ່ຽນ ຖ້າເລືອກເປັນເງິນບາດ */}
-                    {currency === 'THB' && (
-                        <Text style={{fontSize: 12, color: '#666', fontFamily: 'Lao-Regular'}}>
-                            (Rate: 1 = {formatNumber(exchangeRate)})
-                        </Text>
-                    )}
-                </View>
-                <Text style={styles.totalValue}>{formatNumber(totalVal)} {currency === 'THB' ? '฿' : '₭'}</Text>
-            </View>
-
-            {paymentMethod === 'CASH' && (
-                <View style={styles.cashSection}>
-                    <Text style={styles.sectionHeader}>🧮 ຄິດໄລ່ເງິນສົດ</Text>
-                    <View style={styles.row}>
-                        <View style={{flex: 1, marginRight: 10}}>
-                            <Text style={styles.label}>ຮັບເງິນມາ:</Text>
-                            <TextInput style={[styles.inputBox, {borderColor: COLORS.primary, borderWidth: 2}]} keyboardType="numeric" placeholder="0" value={amountReceived} onChangeText={setAmountReceived} />
+                    <View style={{flex: 1, marginLeft: 10}}>
+                        <Text style={styles.label}>ແຫຼ່ງຂາຍ *</Text>
+                        <View style={styles.chipRow}>
+                            {['Shop', 'Online'].map(s => {
+                                const isOnline = s === 'Online';
+                                const isActive = source === s;
+                                return (
+                                    <TouchableOpacity key={s} onPress={() => setSource(s as any)} style={[styles.chipSmall, { backgroundColor: isActive ? getActiveColor(true, isOnline ? 'alert' : 'default') : 'white', borderColor: isActive ? getActiveColor(true, isOnline ? 'alert' : 'default') : '#eee' }]}>
+                                        <Text style={[styles.chipText, isActive && {color:'white'}]}>{s === 'Shop' ? 'ໜ້າຮ້ານ' : 'Online'}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
-                        <View style={{flex: 1}}>
-                            <Text style={styles.label}>ເງິນທອນ:</Text>
-                            <View style={[styles.inputBox, {backgroundColor: '#f0f0f0', borderColor: '#eee'}]}>
-                                <Text style={{fontFamily: 'Lao-Bold', color: changeVal < 0 ? 'red' : COLORS.primary}}>{formatNumber(changeVal)}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.row}>
+                    <View style={{flex: 1}}>
+                        <Text style={styles.label}>ສະກຸນເງິນ *</Text>
+                        <View style={styles.chipRow}>
+                            <TouchableOpacity style={[styles.chipSmall, currency === 'LAK' && styles.activeChip]} onPress={() => setCurrency('LAK')}>
+                                <Text style={[styles.chipText, currency === 'LAK' && {color:'white'}]}>₭ ກີບ</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.chipSmall, currency === 'THB' && {backgroundColor: ORANGE_THEME, borderColor: ORANGE_THEME}]} onPress={() => setCurrency('THB')}>
+                                <Text style={[styles.chipText, currency === 'THB' && {color:'white'}]}>฿ ບາດ</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                    <View style={{flex: 1, marginLeft: 10}}>
+                        <Text style={styles.label}>ຊຳລະໂດຍ *</Text>
+                        <View style={styles.chipRow}>
+                            {['CASH', 'QR'].map(m => {
+                                const isQR = m === 'QR';
+                                const isActive = paymentMethod === m;
+                                return (
+                                    <TouchableOpacity key={m} onPress={() => setPaymentMethod(m as any)} style={[styles.chipSmall, { backgroundColor: isActive ? getActiveColor(true, isQR ? 'alert' : 'default') : 'white', borderColor: isActive ? getActiveColor(true, isQR ? 'alert' : 'default') : '#eee' }]}>
+                                        <Text style={[styles.chipText, isActive && {color:'white'}]}>{m === 'CASH' ? 'ເງິນສົດ' : 'QR'}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+                </View>
+                
+                <Text style={styles.label}>ໝວດໝູ່ *</Text>
+                <TouchableOpacity style={styles.inputBox} onPress={() => setShowCatDropdown(true)}>
+                    <Text>{category || 'ເລືອກໝວດໝູ່'}</Text>
+                    <Ionicons name="chevron-down" size={20} color="#666" />
+                </TouchableOpacity>
+
+                <Text style={styles.label}>ລາຍລະອຽດສິນຄ້າ *</Text>
+                <TextInput style={styles.inputBox} placeholder="ພິມຊື່ສິນຄ້າ..." value={detail} onChangeText={setDetail} />
+
+                <View style={styles.row}>
+                    <View style={{flex: 1, marginRight: 10}}>
+                        <Text style={styles.label}>ລາຄາ ({currency === 'THB' ? 'ບາດ' : 'ກີບ'}) *</Text>
+                        <TextInput style={styles.inputBox} keyboardType="numeric" placeholder="0" value={price} onChangeText={setPrice} />
+                    </View>
+                    <View style={{flex: 1}}>
+                        <Text style={styles.label}>ຈຳນວນ *</Text>
+                        <TextInput style={styles.inputBox} keyboardType="numeric" placeholder="1" value={qty} onChangeText={setQty} />
+                    </View>
+                </View>
+
+                <View style={styles.totalBox}>
+                    <View>
+                        <Text style={styles.totalLabel}>ລວມເງິນ:</Text>
+                        {currency === 'THB' && (
+                            <Text style={{fontSize: 12, color: '#666', fontFamily: 'Lao-Regular'}}>
+                                (Rate: 1 = {formatNumber(exchangeRate)})
+                            </Text>
+                        )}
+                    </View>
+                    <Text style={styles.totalValue}>{formatNumber(totalVal)} {currency === 'THB' ? '฿' : '₭'}</Text>
+                </View>
+
+                {paymentMethod === 'CASH' && (
+                    <View style={styles.cashSection}>
+                        <Text style={styles.sectionHeader}>🧮 ຄິດໄລ່ເງິນສົດ</Text>
+                        <View style={styles.row}>
+                            <View style={{flex: 1, marginRight: 10}}>
+                                <Text style={styles.label}>ຮັບເງິນມາ:</Text>
+                                <TextInput style={[styles.inputBox, {borderColor: COLORS.primary, borderWidth: 2}]} keyboardType="numeric" placeholder="0" value={amountReceived} onChangeText={setAmountReceived} />
+                            </View>
+                            <View style={{flex: 1}}>
+                                <Text style={styles.label}>ເງິນທອນ:</Text>
+                                <View style={[styles.inputBox, {backgroundColor: '#f0f0f0', borderColor: '#eee'}]}>
+                                    <Text style={{fontFamily: 'Lao-Bold', color: changeVal < 0 ? 'red' : COLORS.primary}}>{formatNumber(changeVal)}</Text>
+                                </View>
                             </View>
                         </View>
                     </View>
-                </View>
-            )}
-
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                <Text style={styles.saveBtnText}>ບັນທຶກການຂາຍ</Text>
-            </TouchableOpacity>
-        </View>
-
-        {/* History Section (ບໍ່ມີການປ່ຽນແປງ) */}
-        <View style={styles.historySection}>
-            <View style={styles.historyHeaderRow}>
-                <Text style={styles.historyTitle}>ປະຫວັດລາຍຮັບ</Text>
-                <View style={styles.toolsRow}>
-                    <TouchableOpacity style={styles.toolIconBtn} onPress={handleDownloadTemplate}><Ionicons name="copy-outline" size={18} color="#555" /></TouchableOpacity>
-                    <TouchableOpacity style={styles.toolIconBtn} onPress={handleImport}><Ionicons name="cloud-upload-outline" size={18} color="#555" /></TouchableOpacity>
-                    <TouchableOpacity style={[styles.toolIconBtn, {backgroundColor: COLORS.primary}]} onPress={handleExport}><Ionicons name="download-outline" size={18} color="white" /></TouchableOpacity>
-                </View>
-            </View>
-
-            {/* Filter Tabs */}
-            <View style={styles.filterTabs}>
-                {['day', 'week', 'month', 'year', 'custom'].map((type) => (
-                    <TouchableOpacity key={type} style={[styles.filterTab, filterType === type && styles.activeFilterTab]} onPress={() => setFilterType(type as FilterType)}>
-                        <Text style={[styles.filterText, filterType === type && styles.activeFilterText]}>
-                            {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-
-            {/* Date Navigation */}
-            <View style={styles.navRow}>
-                {filterType !== 'custom' ? (
-                    <>
-                        <TouchableOpacity onPress={() => handleNavigateDate('prev')} style={styles.navBtn}><Ionicons name="chevron-back" size={24} color={COLORS.primary} /></TouchableOpacity>
-                        <Text style={styles.dateLabel}>{getDateLabel()}</Text>
-                        <TouchableOpacity onPress={() => handleNavigateDate('next')} style={styles.navBtn}><Ionicons name="chevron-forward" size={24} color={COLORS.primary} /></TouchableOpacity>
-                    </>
-                ) : (
-                    <View style={styles.customDateContainer}>
-                        <TouchableOpacity style={styles.datePickBtn} onPress={() => { setCustomDateMode('start'); setShowCustomDatePicker(true); }}>
-                            <Text style={styles.datePickText}>{formatDate(customStartDate)}</Text>
-                        </TouchableOpacity>
-                        <Text>-</Text>
-                        <TouchableOpacity style={styles.datePickBtn} onPress={() => { setCustomDateMode('end'); setShowCustomDatePicker(true); }}>
-                            <Text style={styles.datePickText}>{formatDate(customEndDate)}</Text>
-                        </TouchableOpacity>
-                    </View>
                 )}
+
+                <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                    <Text style={styles.saveBtnText}>ບັນທຶກການຂາຍ</Text>
+                </TouchableOpacity>
             </View>
 
-            <FlatList 
-                data={filteredHistory}
-                keyExtractor={item => item.id}
-                scrollEnabled={false} 
-                ListEmptyComponent={<Text style={{textAlign:'center', margin: 20, color: '#999'}}>ບໍ່ມີຂໍ້ມູນ</Text>}
-                renderItem={({item}) => (
-                    <View style={styles.historyCard}>
-                        <View>
-                            <Text style={styles.historyName}>{item.items[0]?.name}</Text>
-                            <Text style={styles.historyDate}>{new Date(item.date).toLocaleDateString('en-GB')}</Text>
-                        </View>
-                        <View style={{alignItems: 'flex-end'}}>
-                            <Text style={styles.historyPrice}>+{formatNumber(item.total)} {item.currency === 'THB' ? '฿' : '₭'}</Text>
-                            <Text style={styles.historySource}>{item.paymentMethod}</Text>
-                        </View>
+            {/* History Section */}
+            <View style={styles.historySection}>
+                <View style={styles.historyHeaderRow}>
+                    <Text style={styles.historyTitle}>ປະຫວັດລາຍຮັບ</Text>
+                    <View style={styles.toolsRow}>
+                        <TouchableOpacity style={styles.toolIconBtn} onPress={handleDownloadTemplate}><Ionicons name="copy-outline" size={18} color="#555" /></TouchableOpacity>
+                        <TouchableOpacity style={styles.toolIconBtn} onPress={handleImport}><Ionicons name="cloud-upload-outline" size={18} color="#555" /></TouchableOpacity>
+                        <TouchableOpacity style={[styles.toolIconBtn, {backgroundColor: COLORS.primary}]} onPress={handleExport}><Ionicons name="download-outline" size={18} color="white" /></TouchableOpacity>
                     </View>
-                )}
-            />
-        </View>
+                </View>
 
-        <View style={{height: 50}} /> 
-      </ScrollView>
+                {/* Filter Tabs */}
+                <View style={styles.filterTabs}>
+                    {['day', 'week', 'month', 'year', 'custom'].map((type) => (
+                        <TouchableOpacity key={type} style={[styles.filterTab, filterType === type && styles.activeFilterTab]} onPress={() => setFilterType(type as FilterType)}>
+                            <Text style={[styles.filterText, filterType === type && styles.activeFilterText]}>
+                                {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : type === 'year' ? 'ປີ' : 'ກຳນົດເອງ'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* Date Navigation */}
+                <View style={styles.navRow}>
+                    {filterType !== 'custom' ? (
+                        <>
+                            <TouchableOpacity onPress={() => handleNavigateDate('prev')} style={styles.navBtn}><Ionicons name="chevron-back" size={24} color={COLORS.primary} /></TouchableOpacity>
+                            <Text style={styles.dateLabel}>{getDateLabel()}</Text>
+                            <TouchableOpacity onPress={() => handleNavigateDate('next')} style={styles.navBtn}><Ionicons name="chevron-forward" size={24} color={COLORS.primary} /></TouchableOpacity>
+                        </>
+                    ) : (
+                        <View style={styles.customDateContainer}>
+                            <TouchableOpacity style={styles.datePickBtn} onPress={() => { setCustomDateMode('start'); setShowCustomDatePicker(true); }}>
+                                <Text style={styles.datePickText}>{formatDate(customStartDate)}</Text>
+                            </TouchableOpacity>
+                            <Text>-</Text>
+                            <TouchableOpacity style={styles.datePickBtn} onPress={() => { setCustomDateMode('end'); setShowCustomDatePicker(true); }}>
+                                <Text style={styles.datePickText}>{formatDate(customEndDate)}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+
+                <FlatList 
+                    data={filteredHistory}
+                    keyExtractor={item => item.id}
+                    scrollEnabled={false} 
+                    ListEmptyComponent={<Text style={{textAlign:'center', margin: 20, color: '#999'}}>ບໍ່ມີຂໍ້ມູນ</Text>}
+                    renderItem={({item}) => (
+                        <View style={styles.historyCard}>
+                            <View>
+                                <Text style={styles.historyName}>{item.items[0]?.name}</Text>
+                                <Text style={styles.historyDate}>{new Date(item.date).toLocaleDateString('en-GB')}</Text>
+                            </View>
+                            <View style={{alignItems: 'flex-end'}}>
+                                <Text style={styles.historyPrice}>+{formatNumber(item.total)} {item.currency === 'THB' ? '฿' : '₭'}</Text>
+                                <Text style={styles.historySource}>{item.paymentMethod}</Text>
+                            </View>
+                        </View>
+                    )}
+                />
+            </View>
+
+            <View style={{height: 50}} /> 
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Category Dropdown Modal */}
       <Modal visible={showCatDropdown} transparent animationType="fade">
@@ -519,7 +519,8 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
       {/* Add Category Modal */}
       <Modal visible={showAddCatModal} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
+          {/* 🟢 2. ໃຊ້ KeyboardAvoidingView ຫຸ້ມ Modal ເພີ່ມໝວດໝູ່ */}
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
               <View style={[styles.dropdownContent, {width: '85%'}]}>
                   <Text style={styles.dropdownTitle}>ເພີ່ມໝວດໝູ່ໃໝ່</Text>
                   <TextInput 
@@ -538,7 +539,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                       </TouchableOpacity>
                   </View>
               </View>
-          </View>
+          </KeyboardAvoidingView>
       </Modal>
 
       {/* Date Pickers */}
@@ -564,7 +565,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         </View>
       )}
 
-    </View>
+    </SafeAreaView>
   );
 }
 

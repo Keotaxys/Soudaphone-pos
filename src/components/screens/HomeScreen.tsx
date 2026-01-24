@@ -15,6 +15,7 @@ import {
     View
 } from 'react-native';
 import { db } from '../../firebase';
+import { useAuth } from '../../hooks/useAuth'; // 🟢 1. Import useAuth
 import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../types';
 
 const { width } = Dimensions.get('window');
@@ -26,16 +27,16 @@ const FIXED_EXCHANGE_RATE = 680;
 
 // 🟢 ຟັງຊັນຄິດໄລ່ເງິນທຽບເທົ່າເປັນກີບ (LAK)
 const calculateLAK = (item: any) => {
-    const amount = parseFloat(item.total || item.amount || 0);
-    
-    // ຖ້າເປັນເງິນບາດ ໃຫ້ຄູນດ້ວຍເລດທີ່ໃຊ້ຕອນນັ້ນ ຫຼື ເລດກາງ
-    if (item.currency === 'THB') {
-        const rate = item.exchangeRateUsed || FIXED_EXCHANGE_RATE;
-        return amount * rate;
-    }
-    
-    // ຖ້າເປັນກີບຢູ່ແລ້ວ ກໍສົ່ງຄ່າກັບໄປເລີຍ
-    return amount;
+  const amount = parseFloat(item.total || item.amount || 0);
+  
+  // ຖ້າເປັນເງິນບາດ ໃຫ້ຄູນດ້ວຍເລດທີ່ໃຊ້ຕອນນັ້ນ ຫຼື ເລດກາງ
+  if (item.currency === 'THB') {
+    const rate = item.exchangeRateUsed || FIXED_EXCHANGE_RATE;
+    return amount * rate;
+  }
+  
+  // ຖ້າເປັນກີບຢູ່ແລ້ວ ກໍສົ່ງຄ່າກັບໄປເລີຍ
+  return amount;
 };
 
 interface HomeScreenProps {
@@ -56,6 +57,7 @@ export default function HomeScreen({
   onQuickCustomer
 }: HomeScreenProps) {
   
+  const { hasPermission } = useAuth(); // 🟢 2. ດຶງສິດມາໃຊ້
   const [filterType, setFilterType] = useState<FilterType>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -70,13 +72,19 @@ export default function HomeScreen({
   const [filteredExpenses, setFilteredExpenses] = useState(0);
 
   useEffect(() => {
+    // 🟢 3. ຖ້າບໍ່ມີສິດເບິ່ງການເງິນ ກໍບໍ່ຕ້ອງດຶງຂໍ້ມູນລາຍຈ່າຍມາເລີຍ
+    if (!hasPermission('viewFinancials')) {
+        setExpensesData([]);
+        return;
+    }
+
     const expenseRef = ref(db, 'expenses');
     const unsubscribe = onValue(expenseRef, (snapshot) => {
       if (snapshot.exists()) setExpensesData(Object.values(snapshot.val()));
       else setExpensesData([]);
     });
     return () => unsubscribe();
-  }, []);
+  }, [hasPermission]); // Add dependency
 
   const getDateRange = () => {
     let start = new Date(currentDate);
@@ -125,7 +133,7 @@ export default function HomeScreen({
       return d >= start && d <= end;
     });
 
-    // 🟢 ປັບປຸງ: ໃຊ້ calculateLAK ເພື່ອຄິດໄລ່ຍອດຂາຍລວມເປັນກີບ
+    // 🟢 ໃຊ້ calculateLAK ເພື່ອຄິດໄລ່ຍອດຂາຍລວມເປັນກີບ
     const totalSalesLAK = fSales.reduce((sum, sale) => sum + calculateLAK(sale), 0);
     setFilteredTotal(totalSalesLAK);
 
@@ -241,25 +249,31 @@ export default function HomeScreen({
                         <View><Text style={styles.statLabelWhite}>ຍອດຂາຍ</Text><Text style={styles.statValueWhite}>{formatNumber(filteredTotal)} ₭</Text></View>
                         </View>
 
-                        <View style={[styles.statCard, { backgroundColor: '#E0F2F1', borderWidth: 1, borderColor: COLORS.primary }]}>
-                        <View style={[styles.iconCircle, { backgroundColor: 'white' }]}><Ionicons name="trending-up" size={24} color={COLORS.primary} /></View>
-                        <View>
-                            <Text style={[styles.statLabel, {color: COLORS.primary}]}>ກຳໄລ</Text>
-                            <Text style={[styles.statValue, { color: profit >= 0 ? COLORS.primary : ORANGE_COLOR }]}>
-                                {profit >= 0 ? '+' : ''}{formatNumber(profit)}
-                            </Text>
-                        </View>
-                        </View>
+                        {/* 🟢 4. ຊອນບັດກຳໄລ ຖ້າບໍ່ມີສິດ */}
+                        {hasPermission('viewFinancials') && (
+                            <View style={[styles.statCard, { backgroundColor: '#E0F2F1', borderWidth: 1, borderColor: COLORS.primary }]}>
+                            <View style={[styles.iconCircle, { backgroundColor: 'white' }]}><Ionicons name="trending-up" size={24} color={COLORS.primary} /></View>
+                            <View>
+                                <Text style={[styles.statLabel, {color: COLORS.primary}]}>ກຳໄລ</Text>
+                                <Text style={[styles.statValue, { color: profit >= 0 ? COLORS.primary : ORANGE_COLOR }]}>
+                                    {profit >= 0 ? '+' : ''}{formatNumber(profit)}
+                                </Text>
+                            </View>
+                            </View>
+                        )}
 
                         <View style={[styles.statCard, { backgroundColor: COLORS.secondary }]}>
                         <View style={styles.iconCircleWhite}><Ionicons name="receipt" size={24} color={COLORS.secondaryDark} /></View>
                         <View><Text style={styles.statLabelWhite}>ອໍເດີ</Text><Text style={styles.statValueWhite}>{filteredOrders}</Text></View>
                         </View>
 
-                        <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
-                        <View style={[styles.iconCircle, { backgroundColor: ORANGE_BG }]}><Ionicons name="wallet-outline" size={24} color={ORANGE_COLOR} /></View>
-                        <View><Text style={styles.statLabel}>ລາຍຈ່າຍ</Text><Text style={[styles.statValue, { color: ORANGE_COLOR }]}>{formatNumber(filteredExpenses)}</Text></View>
-                        </View>
+                        {/* 🟢 5. ຊອນບັດລາຍຈ່າຍ ຖ້າບໍ່ມີສິດ */}
+                        {hasPermission('viewFinancials') && (
+                            <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
+                            <View style={[styles.iconCircle, { backgroundColor: ORANGE_BG }]}><Ionicons name="wallet-outline" size={24} color={ORANGE_COLOR} /></View>
+                            <View><Text style={styles.statLabel}>ລາຍຈ່າຍ</Text><Text style={[styles.statValue, { color: ORANGE_COLOR }]}>{formatNumber(filteredExpenses)}</Text></View>
+                            </View>
+                        )}
                     </View>
 
                     {/* Quick Menu */}

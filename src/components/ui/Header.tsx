@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { onValue, ref, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -15,8 +16,8 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { onValue, ref, update } from 'firebase/database';
-import { db } from '../../firebase'; 
+import { db } from '../../firebase';
+import { useAuth } from '../../hooks/useAuth'; // 🟢 1. Import useAuth
 import { COLORS, formatNumber } from '../../types';
 
 interface HeaderProps {
@@ -42,6 +43,7 @@ export default function Header({
 }: HeaderProps) {
   
   const insets = useSafeAreaInsets();
+  const { hasPermission } = useAuth(); // 🟢 2. ດຶງຟັງຊັນກວດສອບສິດມາໃຊ້
   
   const [exchangeRate, setExchangeRate] = useState('0');
   const [modalVisible, setModalVisible] = useState(false);
@@ -106,7 +108,6 @@ export default function Header({
       <View style={styles.shopCard}>
         <View style={styles.shopInfo}>
           {shopLogo ? (
-            // 🟢 ປັບປຸງ: ເພີ່ມ resizeMode="cover" ເພື່ອໃຫ້ຮູບສະແດງຜົນເຕັມງາມ
             <Image 
                 source={{ uri: shopLogo }} 
                 style={styles.shopLogo} 
@@ -135,9 +136,12 @@ export default function Header({
                 <Text style={styles.rateBtnText}>ປ່ຽນ Rate</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.editBtn} onPress={onEditPress}>
-                <Text style={styles.editBtnText}>ແກ້ໄຂຮ້ານ</Text>
-            </TouchableOpacity>
+            {/* 🟢 3. ກວດສອບສິດ: ຖ້າມີສິດ editSettings ຈຶ່ງສະແດງປຸ່ມ */}
+            {hasPermission('editSettings') && (
+              <TouchableOpacity style={styles.editBtn} onPress={onEditPress}>
+                  <Text style={styles.editBtnText}>ແກ້ໄຂຮ້ານ</Text>
+              </TouchableOpacity>
+            )}
         </View>
       </View>
 
@@ -150,7 +154,7 @@ export default function Header({
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <KeyboardAvoidingView 
-                behavior={Platform.OS === "ios" ? "padding" : undefined} // 🟢 ແກ້ໄຂ behavior
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
                 style={styles.modalOverlay}
             >
                 <View style={styles.modalContent}>
@@ -223,8 +227,8 @@ const styles = StyleSheet.create({
     height: 50, 
     borderRadius: 25, 
     backgroundColor: '#eee',
-    borderWidth: 1,      // 🟢 ເພີ່ມຂອບ
-    borderColor: '#eee'  // 🟢 ສີຂອບ
+    borderWidth: 1,      
+    borderColor: '#eee'  
   },
   shopLogoPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E0F2F1', justifyContent: 'center', alignItems: 'center' },
   shopLogoText: { fontSize: 24, fontFamily: 'Lao-Bold', color: COLORS.primary },

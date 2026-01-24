@@ -16,6 +16,7 @@ import {
     ActivityIndicator,
     Alert,
     Keyboard,
+    KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
     Modal,
     Platform,
     ScrollView,
@@ -148,15 +149,12 @@ export default function ExpenseScreen() {
     setFilterDate(newDate);
   };
 
-  // 🟢 Helper Function: ຫາ Directory ໂດຍການ Bypass TS Check
   const getSaveDirectory = () => {
-    // Cast ເປັນ any ເພື່ອໃຫ້ເຂົ້າເຖິງ property ທີ່ TS ມອງບໍ່ເຫັນ
     const fs: any = FileSystem;
     const dir = fs.documentDirectory || fs.cacheDirectory;
     
     if (!dir) {
         console.warn("⚠️ Warning: documentDirectory & cacheDirectory are null/undefined");
-        // Fallback ສຸດທ້າຍ (ຖ້າຈຳເປັນ)
         return FileSystemLegacy.cacheDirectory; 
     }
     return dir;
@@ -189,12 +187,10 @@ export default function ExpenseScreen() {
       XLSX.utils.book_append_sheet(wb, ws, "Template");
       const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
-      // 🟢 1. ຫາ Path (ຈາກ Main FS)
       const docDir = getSaveDirectory();
       if (!docDir) throw new Error("Storage Unavailable (Cannot find directory)");
       const fileName = `${docDir}expense_template.xlsx`;
 
-      // 🟢 2. ຂຽນຟາຍ (ໃຊ້ Legacy FS)
       await FileSystemLegacy.writeAsStringAsync(fileName, wbout, { encoding: 'base64' });
       
       await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
@@ -223,7 +219,6 @@ export default function ExpenseScreen() {
       setImporting(true);
       const fileUri = result.assets[0].uri;
       
-      // 🟢 ອ່ານຟາຍ (ໃຊ້ Legacy FS)
       const fileContent = await FileSystemLegacy.readAsStringAsync(fileUri, { encoding: 'base64' });
       
       const wb = XLSX.read(fileContent, { type: 'base64', cellDates: true });
@@ -234,7 +229,6 @@ export default function ExpenseScreen() {
       let successCount = 0;
       
       for (const row of data) {
-        // Fuzzy Match Keys
         const keys = Object.keys(row);
         const findKey = (keyword: string) => keys.find(k => k.toLowerCase().includes(keyword.toLowerCase()));
 
@@ -311,12 +305,10 @@ export default function ExpenseScreen() {
         XLSX.utils.book_append_sheet(wb, ws, "Expenses");
         const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
-        // 🟢 1. ຫາ Path (Main)
         const docDir = getSaveDirectory();
         if (!docDir) throw new Error("Storage Unavailable");
         const fileName = `${docDir}expenses_report.xlsx`;
 
-        // 🟢 2. ຂຽນຟາຍ (Legacy)
         await FileSystemLegacy.writeAsStringAsync(fileName, wbout, { encoding: 'base64' });
         
         await shareAsync(fileName, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'com.microsoft.excel.xlsx' });
@@ -451,148 +443,157 @@ export default function ExpenseScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
-        
-        {/* Header with Export */}
-        <View style={styles.headerRow}>
-            <Text style={styles.screenTitle}>ລາຍຈ່າຍ (Expenses)</Text>
-            <TouchableOpacity style={styles.exportIconBtn} onPress={() => setShowExportOptions(true)}>
-                <Ionicons name="ellipsis-vertical" size={22} color={COLORS.primary} />
-            </TouchableOpacity>
-        </View>
-
-        {/* Filter Bar */}
-        <View style={styles.filterContainer}>
-            <View style={styles.filterRow}>
-                {['day', 'week', 'month', 'custom'].map((type) => (
-                    <TouchableOpacity 
-                        key={type} 
-                        style={[styles.filterChip, filterType === type && styles.activeFilterChip]} 
-                        onPress={() => setFilterType(type as FilterType)}
-                    >
-                        <Text style={[styles.filterText, filterType === type && {color: 'white'}]}>
-                            {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : 'ກຳນົດເອງ'}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
+      {/* 🟢 1. ໃຊ້ KeyboardAvoidingView ຫຸ້ມ ScrollView ໄວ້ */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={{ flex: 1 }}
+      >
+          <ScrollView 
+            contentContainerStyle={{ paddingBottom: 100 }} 
+            keyboardShouldPersistTaps="handled"
+          >
+            
+            {/* Header with Export */}
+            <View style={styles.headerRow}>
+                <Text style={styles.screenTitle}>ລາຍຈ່າຍ (Expenses)</Text>
+                <TouchableOpacity style={styles.exportIconBtn} onPress={() => setShowExportOptions(true)}>
+                    <Ionicons name="ellipsis-vertical" size={22} color={COLORS.primary} />
+                </TouchableOpacity>
             </View>
 
-            {/* Date Selector */}
-            <View style={styles.dateSelectorRow}>
-                {filterType === 'custom' ? (
-                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
-                        <TouchableOpacity onPress={() => openDatePicker('start')} style={styles.dateDisplayBtn}>
-                            <Text style={styles.dateDisplayText}>{formatDate(startDate)}</Text>
-                        </TouchableOpacity>
-                        <Ionicons name="arrow-forward" size={16} color="#666" />
-                        <TouchableOpacity onPress={() => openDatePicker('end')} style={styles.dateDisplayBtn}>
-                            <Text style={styles.dateDisplayText}>{formatDate(endDate)}</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <View style={styles.navRow}>
-                        <TouchableOpacity onPress={() => handleDateNavigate(-1)} style={styles.navBtn}>
-                            <Ionicons name="chevron-back" size={20} color="#666" />
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity onPress={() => openDatePicker('filter')} style={styles.dateDisplayBtn}>
-                            <Ionicons name="calendar" size={16} color={COLORS.primary} />
-                            <Text style={styles.dateDisplayText}>
-                                {filterType === 'day' ? formatDate(filterDate) : 
-                                 filterType === 'month' ? `${filterDate.getMonth() + 1}/${filterDate.getFullYear()}` : 
-                                 formatDate(filterDate)}
+            {/* Filter Bar */}
+            <View style={styles.filterContainer}>
+                <View style={styles.filterRow}>
+                    {['day', 'week', 'month', 'custom'].map((type) => (
+                        <TouchableOpacity 
+                            key={type} 
+                            style={[styles.filterChip, filterType === type && styles.activeFilterChip]} 
+                            onPress={() => setFilterType(type as FilterType)}
+                        >
+                            <Text style={[styles.filterText, filterType === type && {color: 'white'}]}>
+                                {type === 'day' ? 'ມື້' : type === 'week' ? 'ອາທິດ' : type === 'month' ? 'ເດືອນ' : 'ກຳນົດເອງ'}
                             </Text>
                         </TouchableOpacity>
+                    ))}
+                </View>
 
-                        <TouchableOpacity onPress={() => handleDateNavigate(1)} style={styles.navBtn}>
-                            <Ionicons name="chevron-forward" size={20} color="#666" />
-                        </TouchableOpacity>
-                    </View>
-                )}
+                {/* Date Selector */}
+                <View style={styles.dateSelectorRow}>
+                    {filterType === 'custom' ? (
+                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
+                            <TouchableOpacity onPress={() => openDatePicker('start')} style={styles.dateDisplayBtn}>
+                                <Text style={styles.dateDisplayText}>{formatDate(startDate)}</Text>
+                            </TouchableOpacity>
+                            <Ionicons name="arrow-forward" size={16} color="#666" />
+                            <TouchableOpacity onPress={() => openDatePicker('end')} style={styles.dateDisplayBtn}>
+                                <Text style={styles.dateDisplayText}>{formatDate(endDate)}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View style={styles.navRow}>
+                            <TouchableOpacity onPress={() => handleDateNavigate(-1)} style={styles.navBtn}>
+                                <Ionicons name="chevron-back" size={20} color="#666" />
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity onPress={() => openDatePicker('filter')} style={styles.dateDisplayBtn}>
+                                <Ionicons name="calendar" size={16} color={COLORS.primary} />
+                                <Text style={styles.dateDisplayText}>
+                                    {filterType === 'day' ? formatDate(filterDate) : 
+                                     filterType === 'month' ? `${filterDate.getMonth() + 1}/${filterDate.getFullYear()}` : 
+                                     formatDate(filterDate)}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity onPress={() => handleDateNavigate(1)} style={styles.navBtn}>
+                                <Ionicons name="chevron-forward" size={20} color="#666" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
             </View>
-        </View>
 
-        {/* Form Input */}
-        <View style={styles.formCard}>
-            <View style={styles.actionRowTop}>
-                <Text style={styles.headerTitle}>{id ? '✏️ ແກ້ໄຂ' : '➕ ເພີ່ມລາຍຈ່າຍ'}</Text>
-            </View>
-            
-            <View style={styles.row}>
-                <TouchableOpacity style={styles.dateBtn} onPress={() => openDatePicker('form')}>
-                    <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
-                    <Text style={styles.dateText}>{formatDate(formDate)}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.categoryBtn} onPress={() => setShowCategoryPicker(true)}>
-                    <Text style={styles.categoryText} numberOfLines={1}>{category}</Text>
-                    <Ionicons name="chevron-down" size={16} color="#666" />
-                </TouchableOpacity>
-            </View>
-
-            <TextInput style={styles.input} placeholder="ລາຍລະອຽດ..." value={description} onChangeText={setDescription} />
-
-            <View style={styles.amountContainer}>
-                <Text style={[styles.currencyLabel, {color: ORANGE_COLOR}]}>₭</Text>
-                <CurrencyInput 
-                    style={[styles.amountInput, {color: ORANGE_COLOR}]} 
-                    placeholder="0" 
-                    value={amount} 
-                    onChangeValue={setAmount} 
-                />
-            </View>
-
-            <View style={styles.actionRow}>
-                {id && (
-                    <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
-                        <Ionicons name="close" size={24} color="white" />
+            {/* Form Input */}
+            <View style={styles.formCard}>
+                <View style={styles.actionRowTop}>
+                    <Text style={styles.headerTitle}>{id ? '✏️ ແກ້ໄຂ' : '➕ ເພີ່ມລາຍຈ່າຍ'}</Text>
+                </View>
+                
+                <View style={styles.row}>
+                    <TouchableOpacity style={styles.dateBtn} onPress={() => openDatePicker('form')}>
+                        <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                        <Text style={styles.dateText}>{formatDate(formDate)}</Text>
                     </TouchableOpacity>
-                )}
-                <TouchableOpacity 
-                    style={[styles.saveBtn, { backgroundColor: id ? COLORS.secondary : COLORS.primary }]} 
-                    onPress={handleSave}
-                >
-                    <Text style={styles.saveBtnText}>{id ? 'ອັບເດດລາຍຈ່າຍ' : 'ບັນທຶກລາຍຈ່າຍ'}</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-
-        <Text style={styles.listHeader}>
-            📜 ປະຫວັດລາຍຈ່າຍ ({filteredExpenses.length} ລາຍການ)
-        </Text>
-
-        {filteredExpenses.map((item) => (
-            <View key={item.id} style={styles.expenseItem}>
-                <View style={styles.iconBox}>
-                    <Ionicons name="pricetag" size={20} color={COLORS.primary} />
+                    <TouchableOpacity style={styles.categoryBtn} onPress={() => setShowCategoryPicker(true)}>
+                        <Text style={styles.categoryText} numberOfLines={1}>{category}</Text>
+                        <Ionicons name="chevron-down" size={16} color="#666" />
+                    </TouchableOpacity>
                 </View>
-                <View style={{ flex: 1, paddingHorizontal: 12, justifyContent: 'center' }}>
-                    <Text style={styles.itemCategory}>{item.category}</Text>
-                    {item.description ? (
-                        <Text style={styles.itemDesc} numberOfLines={1}>{item.description}</Text>
-                    ) : null}
-                    <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
-                        <Ionicons name="calendar-outline" size={12} color="#999" style={{marginRight: 4}} />
-                        <Text style={styles.itemDateSmall}>
-                            {new Date(item.date).toLocaleDateString('en-GB')} {new Date(item.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+
+                <TextInput style={styles.input} placeholder="ລາຍລະອຽດ..." value={description} onChangeText={setDescription} />
+
+                <View style={styles.amountContainer}>
+                    <Text style={[styles.currencyLabel, {color: ORANGE_COLOR}]}>₭</Text>
+                    <CurrencyInput 
+                        style={[styles.amountInput, {color: ORANGE_COLOR}]} 
+                        placeholder="0" 
+                        value={amount} 
+                        onChangeValue={setAmount} 
+                    />
+                </View>
+
+                <View style={styles.actionRow}>
+                    {id && (
+                        <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
+                            <Ionicons name="close" size={24} color="white" />
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity 
+                        style={[styles.saveBtn, { backgroundColor: id ? COLORS.secondary : COLORS.primary }]} 
+                        onPress={handleSave}
+                    >
+                        <Text style={styles.saveBtnText}>{id ? 'ອັບເດດລາຍຈ່າຍ' : 'ບັນທຶກລາຍຈ່າຍ'}</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            <Text style={styles.listHeader}>
+                📜 ປະຫວັດລາຍຈ່າຍ ({filteredExpenses.length} ລາຍການ)
+            </Text>
+
+            {filteredExpenses.map((item) => (
+                <View key={item.id} style={styles.expenseItem}>
+                    <View style={styles.iconBox}>
+                        <Ionicons name="pricetag" size={20} color={COLORS.primary} />
+                    </View>
+                    <View style={{ flex: 1, paddingHorizontal: 12, justifyContent: 'center' }}>
+                        <Text style={styles.itemCategory}>{item.category}</Text>
+                        {item.description ? (
+                            <Text style={styles.itemDesc} numberOfLines={1}>{item.description}</Text>
+                        ) : null}
+                        <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
+                            <Ionicons name="calendar-outline" size={12} color="#999" style={{marginRight: 4}} />
+                            <Text style={styles.itemDateSmall}>
+                                {new Date(item.date).toLocaleDateString('en-GB')} {new Date(item.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </Text>
+                        </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                        <Text style={[styles.itemAmount, {color: ORANGE_COLOR}]}>
+                            - {formatNumber(item.amount)}
                         </Text>
+                        <View style={{ flexDirection: 'row', gap: 15, marginTop: 8 }}>
+                            <TouchableOpacity onPress={() => handleEdit(item)}>
+                                <Ionicons name="pencil" size={16} color={COLORS.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => handleDelete(item.id!)}>
+                                <Ionicons name="trash-outline" size={16} color="#FF5252" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
-                <View style={{ alignItems: 'flex-end', justifyContent: 'space-between' }}>
-                    <Text style={[styles.itemAmount, {color: ORANGE_COLOR}]}>
-                        - {formatNumber(item.amount)}
-                    </Text>
-                    <View style={{ flexDirection: 'row', gap: 15, marginTop: 8 }}>
-                        <TouchableOpacity onPress={() => handleEdit(item)}>
-                            <Ionicons name="pencil" size={16} color={COLORS.primary} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleDelete(item.id!)}>
-                            <Ionicons name="trash-outline" size={16} color="#FF5252" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
-        ))}
-      </ScrollView>
+            ))}
+          </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Export/Import Options Modal */}
       <Modal visible={showExportOptions} transparent animationType="fade">

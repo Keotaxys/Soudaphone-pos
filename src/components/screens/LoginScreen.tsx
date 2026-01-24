@@ -63,7 +63,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 <Ionicons name="cart" size={50} color="white" />
               </View>
               {/* ປ່ຽນຊື່ເປັນ Keota ໃຫ້ເລີຍ */}
-              <Text style={styles.appTitle}>Keota POS (Demo)</Text>
+              <Text style={styles.appTitle}>Keota POS</Text>
               <Text style={styles.appSubTitle}>ລະບົບຈັດການຮ້ານທີ່ທັນສະໄໝ</Text>
             </View>
 

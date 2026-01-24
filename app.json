@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "posapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": true,         
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.keota.soudaphonepos"

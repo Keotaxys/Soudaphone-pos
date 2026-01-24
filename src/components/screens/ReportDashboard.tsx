@@ -21,6 +21,7 @@ import {
     View
 } from 'react-native';
 import { db } from '../../firebase';
+import { useAuth } from '../../hooks/useAuth'; // 🟢 1. Import useAuth
 import { COLORS, formatNumber } from '../../types';
 
 // 🟢 ກຳນົດຄ່າຄົງທີ່ (Fallback)
@@ -32,29 +33,30 @@ const formatDateLao = (date: Date) => {
 
 // 🟢 ຟັງຊັນແປງຄ່າເງິນເປັນ Number ປົກກະຕິ
 const parseCurrency = (value: any): number => {
-    if (value === undefined || value === null || value === '') return 0;
-    const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
-    const num = parseFloat(strVal);
-    return isNaN(num) ? 0 : num;
+  if (value === undefined || value === null || value === '') return 0;
+  const strVal = String(value).replace(/,/g, '').replace(/ /g, '');
+  const num = parseFloat(strVal);
+  return isNaN(num) ? 0 : num;
 };
 
 // 🟢 ຟັງຊັນຄິດໄລ່ເງິນທຽບເທົ່າເປັນກີບ (LAK)
 const calculateLAK = (item: any) => {
-    const amount = parseCurrency(item.total || item.amount);
-    
-    // ຖ້າເປັນເງິນບາດ ໃຫ້ຄູນດ້ວຍເລດທີ່ໃຊ້ຕອນນັ້ນ ຫຼື ເລດກາງ
-    if (item.currency === 'THB') {
-        const rate = item.exchangeRateUsed || FIXED_EXCHANGE_RATE;
-        return amount * rate;
-    }
-    
-    // ຖ້າເປັນກີບຢູ່ແລ້ວ ກໍສົ່ງຄ່າກັບໄປເລີຍ
-    return amount;
+  const amount = parseCurrency(item.total || item.amount);
+  
+  // ຖ້າເປັນເງິນບາດ ໃຫ້ຄູນດ້ວຍເລດທີ່ໃຊ້ຕອນນັ້ນ ຫຼື ເລດກາງ
+  if (item.currency === 'THB') {
+    const rate = item.exchangeRateUsed || FIXED_EXCHANGE_RATE;
+    return amount * rate;
+  }
+  
+  // ຖ້າເປັນກີບຢູ່ແລ້ວ ກໍສົ່ງຄ່າກັບໄປເລີຍ
+  return amount;
 };
 
 type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 
 export default function ReportDashboard() {
+  const { hasPermission } = useAuth(); // 🟢 2. ດຶງສິດມາໃຊ້
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   
@@ -80,12 +82,17 @@ export default function ReportDashboard() {
       setSales(data ? Object.values(data) : []);
     });
 
-    const expRef = ref(db, 'expenses');
-    onValue(expRef, (snapshot) => {
-      const data = snapshot.val();
-      setExpenses(data ? Object.values(data) : []);
-    });
-  }, []);
+    // 🟢 3. ກວດສອບສິດ: ຖ້າບໍ່ມີສິດ viewFinancials ບໍ່ຕ້ອງດຶງລາຍຈ່າຍມາ
+    if (hasPermission('viewFinancials')) {
+        const expRef = ref(db, 'expenses');
+        onValue(expRef, (snapshot) => {
+            const data = snapshot.val();
+            setExpenses(data ? Object.values(data) : []);
+        });
+    } else {
+        setExpenses([]); // ເຄຍຂໍ້ມູນລາຍຈ່າຍຖ້າບໍ່ມີສິດ
+    }
+  }, [hasPermission]); // Add dependency
 
   // Helper: Get Filtered Data
   const getFilteredData = () => {
@@ -127,13 +134,12 @@ export default function ReportDashboard() {
     return { fSales, fExpenses, start, end };
   };
 
-  // 2. Calculate Stats (🟢 ປັບປຸງ Logic ຄິດໄລ່ເງິນ)
+  // 2. Calculate Stats
   useEffect(() => {
     const { fSales, fExpenses } = getFilteredData();
 
-    // 🟢 ໃຊ້ calculateLAK ແທນການບວກດື້ໆ
     const revenue = fSales.reduce((sum, item: any) => sum + calculateLAK(item), 0);
-    const expense = fExpenses.reduce((sum, item: any) => sum + parseCurrency(item.amount), 0); // Expense ສ່ວນຫຼາຍເປັນ LAK
+    const expense = fExpenses.reduce((sum, item: any) => sum + parseCurrency(item.amount), 0); 
     
     setTotalRevenue(revenue);
     setTotalExpense(expense);
@@ -142,7 +148,6 @@ export default function ReportDashboard() {
     const catStats: any = {};
     
     fSales.forEach((sale: any) => {
-        // ຄິດໄລ່ຍອດຂາຍລວມຂອງບິນນີ້ເປັນ LAK ກ່ອນ
         const saleTotalLAK = calculateLAK(sale); 
         
         if(sale.items) {
@@ -151,7 +156,6 @@ export default function ReportDashboard() {
                 
                 prodStats[p.id].totalSold += p.quantity;
                 
-                // ຄິດໄລ່ລາຄາຕໍ່ຊິ້ນເປັນ LAK
                 let itemTotalLAK = 0;
                 if (p.priceCurrency === 'THB') {
                     const rate = sale.exchangeRateUsed || FIXED_EXCHANGE_RATE;
@@ -221,19 +225,25 @@ export default function ReportDashboard() {
             csv += `${dateStr},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${totalLAK},${s.total},${s.currency}\n`;
         });
 
-        fExpenses.forEach(e => {
-            const dateStr = new Date(e.date).toLocaleDateString('lo-LA');
-            csv += `${dateStr},Expense,${e.category},${e.note || '-'},-${parseCurrency(e.amount)},${e.amount},LAK\n`;
-        });
+        // 🟢 4. ຊອນລາຍຈ່າຍໃນ Excel ຖ້າບໍ່ມີສິດ
+        if (hasPermission('viewFinancials')) {
+            fExpenses.forEach(e => {
+                const dateStr = new Date(e.date).toLocaleDateString('lo-LA');
+                csv += `${dateStr},Expense,${e.category},${e.note || '-'},-${parseCurrency(e.amount)},${e.amount},LAK\n`;
+            });
+        }
 
-        // 🟢 ສະຫຼຸບຍອດເປັນ LAK
         const totalRev = fSales.reduce((s, i) => s + calculateLAK(i), 0);
-        const totalExp = fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0);
+        const totalExp = hasPermission('viewFinancials') ? fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0) : 0;
         
         csv += `\nSUMMARY,,,\n`;
         csv += `,,Total Revenue (LAK),${totalRev}\n`;
-        csv += `,,Total Expense (LAK),${totalExp}\n`;
-        csv += `,,Net Profit (LAK),${totalRev - totalExp}\n`;
+        
+        // 🟢 5. ຊອນ Summary ລາຍຈ່າຍ/ກຳໄລ ໃນ Excel
+        if (hasPermission('viewFinancials')) {
+            csv += `,,Total Expense (LAK),${totalExp}\n`;
+            csv += `,,Net Profit (LAK),${totalRev - totalExp}\n`;
+        }
 
         const fileName = `Report_${new Date().getTime()}.csv`;
         const docDir = FileSystem.documentDirectory;
@@ -252,8 +262,23 @@ export default function ReportDashboard() {
     try {
         const { fSales, fExpenses, start, end } = getFilteredData();
         const totalRev = fSales.reduce((s, i) => s + calculateLAK(i), 0);
-        const totalExp = fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0);
+        const totalExp = hasPermission('viewFinancials') ? fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0) : 0;
         const profit = totalRev - totalExp;
+
+        // 🟢 6. ຕັດສ່ວນສະຫຼຸບກຳໄລອອກຈາກ PDF ຖ້າບໍ່ມີສິດ
+        const summarySection = `
+            <div class="summary">
+                <div class="row"><b>ຍອດຂາຍລວມ (Revenue):</b> <span>${formatNumber(totalRev)} ₭</span></div>
+                ${hasPermission('viewFinancials') ? `
+                    <div class="row"><b>ລາຍຈ່າຍລວມ (Expense):</b> <span>${formatNumber(totalExp)} ₭</span></div>
+                    <hr/>
+                    <div class="row" style="font-size: 16px;">
+                        <b>ກຳໄລສຸດທິ (Net Profit):</b> 
+                        <span class="${profit >= 0 ? 'profit' : 'loss'}">${formatNumber(profit)} ₭</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
 
         const html = `
         <html>
@@ -276,15 +301,7 @@ export default function ReportDashboard() {
             <h1>ລາຍງານສະຫຼຸບ (POS Report)</h1>
             <p align="center">ວັນທີ: ${formatDateLao(start)} - ${formatDateLao(end)}</p>
             
-            <div class="summary">
-                <div class="row"><b>ຍອດຂາຍລວມ (Revenue):</b> <span>${formatNumber(totalRev)} ₭</span></div>
-                <div class="row"><b>ລາຍຈ່າຍລວມ (Expense):</b> <span>${formatNumber(totalExp)} ₭</span></div>
-                <hr/>
-                <div class="row" style="font-size: 16px;">
-                    <b>ກຳໄລສຸດທິ (Net Profit):</b> 
-                    <span class="${profit >= 0 ? 'profit' : 'loss'}">${formatNumber(profit)} ₭</span>
-                </div>
-            </div>
+            ${summarySection}
 
             <h3>ລາຍການຂາຍລ່າສຸດ (Sales)</h3>
             <table>
@@ -409,18 +426,32 @@ export default function ReportDashboard() {
       <View style={styles.content}>
         <View style={styles.summaryRow}>
             <SummaryCard label="ຍອດຂາຍລວມ" amount={totalRevenue} color={COLORS?.primary || '#008B94'} icon="cash" />
-            <SummaryCard label="ລາຍຈ່າຍລວມ" amount={totalExpense} color="#F57C00" icon="wallet" />
+            
+            {/* 🟢 7. ຊອນບັດລາຍຈ່າຍ ຖ້າບໍ່ມີສິດ */}
+            {hasPermission('viewFinancials') && (
+                <SummaryCard label="ລາຍຈ່າຍລວມ" amount={totalExpense} color="#F57C00" icon="wallet" />
+            )}
         </View>
-        <SummaryCard 
-            label="ກຳໄລສຸດທິ" 
-            amount={totalRevenue - totalExpense} 
-            color={(totalRevenue - totalExpense) >= 0 ? (COLORS?.primary || '#008B94') : '#F57C00'} 
-            icon="trending-up" 
-        />
+        
+        {/* 🟢 8. ຊອນບັດກຳໄລ ຖ້າບໍ່ມີສິດ */}
+        {hasPermission('viewFinancials') && (
+            <SummaryCard 
+                label="ກຳໄລສຸດທິ" 
+                amount={totalRevenue - totalExpense} 
+                color={(totalRevenue - totalExpense) >= 0 ? (COLORS?.primary || '#008B94') : '#F57C00'} 
+                icon="trending-up" 
+            />
+        )}
 
-        <HorizontalComparisonChart />
+        {/* 🟢 9. ຊອນກຣາຟປຽບທຽບ ແລະ ກຣາຟລາຍຈ່າຍ ຖ້າບໍ່ມີສິດ */}
+        {hasPermission('viewFinancials') && (
+            <>
+                <HorizontalComparisonChart />
+                <CategoryChart title="💸 ລາຍຈ່າຍຕາມໝວດໝູ່" data={expensesByCategory} barColor="#F57C00" />
+            </>
+        )}
+
         <CategoryChart title="💰 ລາຍຮັບຕາມໝວດໝູ່" data={salesByCategory} barColor={COLORS?.primary || '#008B94'} />
-        <CategoryChart title="💸 ລາຍຈ່າຍຕາມໝວດໝູ່" data={expensesByCategory} barColor="#F57C00" />
 
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>🏆 5 ອັນດັບສິນຄ້າຂາຍດີ</Text>
@@ -465,6 +496,7 @@ export default function ReportDashboard() {
             <DateTimePicker 
                 value={pickerMode === 'start' ? startDate : pickerMode === 'end' ? endDate : currentDate} 
                 mode="date" 
+                display="default" 
                 onChange={onDateChange} 
             />
         )

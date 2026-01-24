@@ -15,9 +15,8 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// 🟢 1. Import Firebase Functions
 import { onValue, ref, update } from 'firebase/database';
-import { db } from '../../firebase'; // ປັບ Path ໃຫ້ຖືກກັບໂຄງສ້າງໂປຣເຈັກຂອງທ່ານ
+import { db } from '../../firebase'; 
 import { COLORS, formatNumber } from '../../types';
 
 interface HeaderProps {
@@ -44,7 +43,6 @@ export default function Header({
   
   const insets = useSafeAreaInsets();
   
-  // 🟢 2. State ສຳລັບອັດຕາແລກປ່ຽນ
   const [exchangeRate, setExchangeRate] = useState('0');
   const [modalVisible, setModalVisible] = useState(false);
   const [newRate, setNewRate] = useState('');
@@ -52,7 +50,6 @@ export default function Header({
   const displayName = shopName || user?.name || "ຮ້ານ ສຸດາພອນ";
   const displayDetail = shopId || (user?.role ? `Role: ${user.role}` : "");
 
-  // 🟢 3. useEffect ດຶງຄ່າອັດຕາແລກປ່ຽນຈາກ RTDB (path: settings/exchangeRateTHB)
   useEffect(() => {
     const rateRef = ref(db, 'settings/exchangeRateTHB');
     const unsubscribe = onValue(rateRef, (snapshot) => {
@@ -65,7 +62,6 @@ export default function Header({
     return () => unsubscribe();
   }, []);
 
-  // 🟢 4. ຟັງຊັນບັນທຶກອັດຕາແລກປ່ຽນລົງ RTDB
   const handleSaveRate = async () => {
     if (!newRate) return;
     try {
@@ -110,7 +106,12 @@ export default function Header({
       <View style={styles.shopCard}>
         <View style={styles.shopInfo}>
           {shopLogo ? (
-            <Image source={{ uri: shopLogo }} style={styles.shopLogo} />
+            // 🟢 ປັບປຸງ: ເພີ່ມ resizeMode="cover" ເພື່ອໃຫ້ຮູບສະແດງຜົນເຕັມງາມ
+            <Image 
+                source={{ uri: shopLogo }} 
+                style={styles.shopLogo} 
+                resizeMode="cover" 
+            />
           ) : (
             <View style={styles.shopLogoPlaceholder}>
               <Text style={styles.shopLogoText}>{displayName ? displayName.charAt(0) : 'S'}</Text>
@@ -121,7 +122,6 @@ export default function Header({
             <Text style={styles.shopName}>{displayName}</Text>
             <Text style={styles.shopId}>{displayDetail}</Text>
             
-            {/* 🟢 5. ສະແດງອັດຕາແລກປ່ຽນປະຈຸບັນ */}
             <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
                 <Text style={{fontSize: 12, color: '#666', fontFamily: 'Lao-Regular'}}>Rate: </Text>
                 <Text style={{fontSize: 12, color: COLORS.primary, fontFamily: 'Lao-Bold'}}>1 ฿ = {formatNumber(parseFloat(exchangeRate))} ₭</Text>
@@ -130,7 +130,6 @@ export default function Header({
         </View>
         
         <View style={{gap: 8}}>
-            {/* 🟢 6. ປຸ່ມແກ້ໄຂ Rate */}
             <TouchableOpacity style={styles.rateBtn} onPress={openRateModal}>
                 <Ionicons name="swap-horizontal" size={16} color="white" />
                 <Text style={styles.rateBtnText}>ປ່ຽນ Rate</Text>
@@ -142,7 +141,7 @@ export default function Header({
         </View>
       </View>
 
-      {/* 🟢 7. Modal ສຳລັບປ່ຽນອັດຕາແລກປ່ຽນ */}
+      {/* Modal */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -151,7 +150,7 @@ export default function Header({
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <KeyboardAvoidingView 
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                behavior={Platform.OS === "ios" ? "padding" : undefined} // 🟢 ແກ້ໄຂ behavior
                 style={styles.modalOverlay}
             >
                 <View style={styles.modalContent}>
@@ -219,7 +218,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4
   },
   shopInfo: { flexDirection: 'row', alignItems: 'center', gap: 15, flex: 1 },
-  shopLogo: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eee' },
+  shopLogo: { 
+    width: 50, 
+    height: 50, 
+    borderRadius: 25, 
+    backgroundColor: '#eee',
+    borderWidth: 1,      // 🟢 ເພີ່ມຂອບ
+    borderColor: '#eee'  // 🟢 ສີຂອບ
+  },
   shopLogoPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E0F2F1', justifyContent: 'center', alignItems: 'center' },
   shopLogoText: { fontSize: 24, fontFamily: 'Lao-Bold', color: COLORS.primary },
   shopName: { fontSize: 16, fontFamily: 'Lao-Bold', color: COLORS.text },
@@ -228,7 +234,6 @@ const styles = StyleSheet.create({
   editBtn: { backgroundColor: '#f0f0f0', paddingVertical: 6, paddingHorizontal: 15, borderRadius: 20, alignItems: 'center' },
   editBtnText: { fontSize: 10, fontFamily: 'Lao-Regular', color: '#666' },
 
-  // 🟢 Styles ໃໝ່
   rateBtn: { 
     backgroundColor: COLORS.primary, 
     paddingVertical: 6, 
@@ -241,7 +246,6 @@ const styles = StyleSheet.create({
   },
   rateBtnText: { fontSize: 10, fontFamily: 'Lao-Bold', color: 'white' },
 
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: 'white', width: '80%', padding: 20, borderRadius: 15, elevation: 5 },
   modalTitle: { fontSize: 18, fontFamily: 'Lao-Bold', textAlign: 'center', marginBottom: 5, color: COLORS.text },

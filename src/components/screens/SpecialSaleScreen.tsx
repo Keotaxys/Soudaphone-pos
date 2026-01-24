@@ -6,20 +6,20 @@ import * as Sharing from 'expo-sharing';
 import { onValue, push, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ ໃຊ້ SafeAreaView ໂຕນີ້
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as XLSX from 'xlsx';
 import { db } from '../../firebase';
 import { useCategories } from '../../hooks/useCategories';
@@ -80,9 +80,10 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
     }
   }, [categories, category]);
 
+  // 🟢 ແກ້ໄຂຈຸດນີ້: ໃຊ້ຊື່ unsubscribe ໃຫ້ກົງກັນ
   useEffect(() => {
     const salesRef = ref(db, 'sales');
-    const unsub = onValue(salesRef, (snapshot) => {
+    const unsubscribe = onValue(salesRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const list = Object.keys(data)
@@ -92,7 +93,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         setHistory(list);
       }
     });
-    return () => unsub();
+    return () => unsubscribe(); // ✅ ດຽວນີ້ຊື່ກົງກັນແລ້ວ
   }, []);
 
   useEffect(() => {
@@ -309,12 +310,17 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
         <Text style={styles.headerTitle}>ຂາຍພິເສດ (Manual Sale)</Text>
       </View>
 
-      {/* 🟢 1. ໃຊ້ KeyboardAvoidingView ຫຸ້ມ ScrollView ຫຼັກ */}
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined} // 🟢 ແກ້ໄຂ: Android ບໍ່ຄວນໃຊ້ height ຖ້າມີ windowSoftInputMode
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0} 
       >
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView 
+            style={styles.content} 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={{ paddingBottom: 100 }} 
+            keyboardShouldPersistTaps="handled"
+        >
             {/* Form Section */}
             <View style={styles.formSection}>
                 <View style={styles.row}>
@@ -519,8 +525,10 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
 
       {/* Add Category Modal */}
       <Modal visible={showAddCatModal} transparent animationType="slide">
-          {/* 🟢 2. ໃຊ້ KeyboardAvoidingView ຫຸ້ມ Modal ເພີ່ມໝວດໝູ່ */}
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+            style={styles.modalOverlay}
+          >
               <View style={[styles.dropdownContent, {width: '85%'}]}>
                   <Text style={styles.dropdownTitle}>ເພີ່ມໝວດໝູ່ໃໝ່</Text>
                   <TextInput 

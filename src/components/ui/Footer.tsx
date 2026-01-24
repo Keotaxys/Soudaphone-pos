@@ -1,19 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// 🟢 1. Import Hook ນີ້ມາໃຊ້
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../types';
 
 interface FooterProps {
   currentTab: string;
   onTabChange: (tab: string) => void;
-  // ຮັບ props ເພີ່ມເຕີມເພື່ອບໍ່ໃຫ້ index.tsx ຟ້ອງ Error (Optional)
   status?: string;
   version?: string;
 }
 
 export default function Footer({ currentTab, onTabChange }: FooterProps) {
+  // 🟢 2. ດຶງຄ່າ safe area (ຂອບຈໍ)
+  const insets = useSafeAreaInsets();
   
-  // ປ່ຽນເປັນ toLowerCase ເພື່ອປ້ອງກັນບັນຫາ home vs Home
   const active = currentTab.toLowerCase();
 
   const getIconColor = (tabName: string) => {
@@ -21,7 +23,16 @@ export default function Footer({ currentTab, onTabChange }: FooterProps) {
   };
 
   return (
-    <View style={styles.footer}>
+    // 🟢 3. ປັບ Style ແບບ Dynamic ຕາມຂອບຈໍຂອງແຕ່ລະເຄື່ອງ
+    <View style={[
+      styles.footer, 
+      { 
+        // ຖ້າ Android ໃຫ້ດັນຂຶ້ນຢ່າງໜ້ອຍ 15px, ຖ້າ iOS ໃຫ້ໃຊ້ຕາມ safe area
+        paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 15) : Math.max(insets.bottom, 20),
+        // ປັບຄວາມສູງໃຫ້ຍືດຕາມ Padding
+        height: 60 + (Platform.OS === 'android' ? Math.max(insets.bottom, 15) : Math.max(insets.bottom, 20))
+      }
+    ]}>
         {/* 1. ປຸ່ມໜ້າຫຼັກ */}
         <TouchableOpacity style={styles.navBtn} onPress={() => onTabChange('home')}>
             <Ionicons name="home" size={24} color={getIconColor('home')} />
@@ -55,10 +66,9 @@ const styles = StyleSheet.create({
   footer: { 
       flexDirection: 'row', 
       backgroundColor: COLORS?.primary || '#008B94', 
-      height: 75, 
+      // height: 75,  <-- 🔴 ລຶບອອກ (ເພາະເຮົາກຳນົດແບບ dynamic ທາງເທິງແລ້ວ)
       alignItems: 'center', 
       justifyContent: 'space-around', 
-      paddingBottom: Platform.OS === 'ios' ? 20 : 10, // ປັບໃຫ້ພໍດີກັບ iPhone X+
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       elevation: 10,
@@ -66,7 +76,7 @@ const styles = StyleSheet.create({
       shadowOffset: { width: 0, height: -3 },
       shadowOpacity: 0.1,
       shadowRadius: 3,
-      position: 'absolute', // 🟢 Fix ໃຫ້ມັນຢູ່ລຸ່ມສຸດສະເໝີ
+      position: 'absolute', 
       bottom: 0,
       left: 0,
       right: 0,
@@ -74,7 +84,8 @@ const styles = StyleSheet.create({
   navBtn: { 
       alignItems: 'center', 
       justifyContent: 'center', 
-      flex: 1 
+      flex: 1,
+      marginTop: -10 // 🟢 ປັບຂຶ້ນໜ້ອຍໜຶ່ງເພື່ອຄວາມສວຍງາມ
   },
   navText: { 
       color: 'rgba(255, 255, 255, 0.6)', 
@@ -93,7 +104,7 @@ const styles = StyleSheet.create({
       backgroundColor: 'white', 
       justifyContent: 'center', 
       alignItems: 'center', 
-      marginTop: -25, // ເທັກນິກເຮັດໃຫ້ປຸ່ມລອຍ
+      marginTop: -25, 
       elevation: 5, 
       shadowColor: '#000', 
       shadowOpacity: 0.2, 

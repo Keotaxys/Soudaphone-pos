@@ -15,7 +15,7 @@ import {
     View
 } from 'react-native';
 import { db } from '../../firebase';
-import { useAuth } from '../../hooks/useAuth'; // 🟢 1. Import useAuth
+import { useAuth } from '../../hooks/useAuth'; // 🟢 Import useAuth
 import { COLORS, formatDate, formatNumber, Product, SaleRecord } from '../../types';
 
 const { width } = Dimensions.get('window');
@@ -71,20 +71,19 @@ export default function HomeScreen({
   const [filteredOrders, setFilteredOrders] = useState(0);
   const [filteredExpenses, setFilteredExpenses] = useState(0);
 
+  // 🟢 1. ແກ້ໄຂ useEffect: ດຶງຂໍ້ມູນມາເກັບໄວ້ state ສະເໝີ (ບໍ່ຕ້ອງມີ if check)
+  // ເພື່ອປ້ອງກັນ error "Maximum update depth exceeded"
   useEffect(() => {
-    // 🟢 3. ຖ້າບໍ່ມີສິດເບິ່ງການເງິນ ກໍບໍ່ຕ້ອງດຶງຂໍ້ມູນລາຍຈ່າຍມາເລີຍ
-    if (!hasPermission('viewFinancials')) {
-        setExpensesData([]);
-        return;
-    }
-
     const expenseRef = ref(db, 'expenses');
     const unsubscribe = onValue(expenseRef, (snapshot) => {
-      if (snapshot.exists()) setExpensesData(Object.values(snapshot.val()));
-      else setExpensesData([]);
+      if (snapshot.exists()) {
+          setExpensesData(Object.values(snapshot.val()));
+      } else {
+          setExpensesData([]);
+      }
     });
     return () => unsubscribe();
-  }, [hasPermission]); // Add dependency
+  }, []);
 
   const getDateRange = () => {
     let start = new Date(currentDate);
@@ -123,24 +122,33 @@ export default function HomeScreen({
   useEffect(() => {
     const { start, end } = getDateRange();
     
+    // Filter Sales
     const fSales = salesHistory.filter(sale => {
       const d = new Date(sale.date);
       return d >= start && d <= end && sale.status !== 'ຍົກເລີກ';
     });
 
-    const fExp = expensesData.filter(exp => {
-      const d = new Date(exp.date);
-      return d >= start && d <= end;
-    });
+    // 🟢 2. Filter Expenses (ແລະກວດສອບສິດຢູ່ນີ້ແທນ)
+    let totalExp = 0;
+    if (hasPermission('viewFinancials')) {
+        const fExp = expensesData.filter(exp => {
+            const d = new Date(exp.date);
+            return d >= start && d <= end;
+        });
+        totalExp = fExp.reduce((sum, exp) => sum + exp.amount, 0);
+    } else {
+        totalExp = 0; // ຖ້າບໍ່ມີສິດ ໃຫ້ຄ່າເປັນ 0
+    }
 
-    // 🟢 ໃຊ້ calculateLAK ເພື່ອຄິດໄລ່ຍອດຂາຍລວມເປັນກີບ
+    // ຄິດໄລ່ຍອດຂາຍລວມ
     const totalSalesLAK = fSales.reduce((sum, sale) => sum + calculateLAK(sale), 0);
+    
+    // Update States
     setFilteredTotal(totalSalesLAK);
-
     setFilteredOrders(fSales.length);
-    setFilteredExpenses(fExp.reduce((sum, exp) => sum + exp.amount, 0));
+    setFilteredExpenses(totalExp);
 
-  }, [salesHistory, expensesData, filterType, currentDate, customStartDate, customEndDate]);
+  }, [salesHistory, expensesData, filterType, currentDate, customStartDate, customEndDate, hasPermission]);
 
   const handleNavigateDate = (dir: 'prev' | 'next') => {
     if (filterType === 'custom') return;
@@ -249,7 +257,7 @@ export default function HomeScreen({
                         <View><Text style={styles.statLabelWhite}>ຍອດຂາຍ</Text><Text style={styles.statValueWhite}>{formatNumber(filteredTotal)} ₭</Text></View>
                         </View>
 
-                        {/* 🟢 4. ຊອນບັດກຳໄລ ຖ້າບໍ່ມີສິດ */}
+                        {/* 🟢 3. ຊອນບັດກຳໄລ ຖ້າບໍ່ມີສິດ */}
                         {hasPermission('viewFinancials') && (
                             <View style={[styles.statCard, { backgroundColor: '#E0F2F1', borderWidth: 1, borderColor: COLORS.primary }]}>
                             <View style={[styles.iconCircle, { backgroundColor: 'white' }]}><Ionicons name="trending-up" size={24} color={COLORS.primary} /></View>
@@ -267,7 +275,7 @@ export default function HomeScreen({
                         <View><Text style={styles.statLabelWhite}>ອໍເດີ</Text><Text style={styles.statValueWhite}>{filteredOrders}</Text></View>
                         </View>
 
-                        {/* 🟢 5. ຊອນບັດລາຍຈ່າຍ ຖ້າບໍ່ມີສິດ */}
+                        {/* 🟢 4. ຊອນບັດລາຍຈ່າຍ ຖ້າບໍ່ມີສິດ */}
                         {hasPermission('viewFinancials') && (
                             <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
                             <View style={[styles.iconCircle, { backgroundColor: ORANGE_BG }]}><Ionicons name="wallet-outline" size={24} color={ORANGE_COLOR} /></View>

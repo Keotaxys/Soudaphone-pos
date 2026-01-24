@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-// 🟢 1. Import Hook useCategories
+import * as ImagePicker from 'expo-image-picker'; // 🟢 1. Import Image Picker
 import React, { useState } from 'react';
 import {
+  Alert,
   FlatList,
   Image,
   Keyboard,
@@ -25,7 +26,7 @@ interface ProductModalProps {
   product: Product;
   setProduct: (product: Product) => void;
   onSave: () => void;
-  onPickImage: () => void;
+  // onPickImage: () => void; // ❌ ບໍ່ຈຳເປັນຕ້ອງຮັບ Props ນີ້ແລ້ວ ເພາະເຮັດໃນນີ້ເລີຍ
   onScan: () => void;
 }
 
@@ -35,17 +36,39 @@ export default function ProductModal({
   product,
   setProduct,
   onSave,
-  onPickImage,
   onScan
 }: ProductModalProps) {
 
-  // 🟢 2. ໃຊ້ Hook ເພື່ອດຶງ Categories (ບໍ່ຕ້ອງ Hardcode)
   const { categories } = useCategories(); 
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
   // Helper function
   const updateField = (key: keyof Product, value: any) => {
     setProduct({ ...product, [key]: value });
+  };
+
+  // 🟢 2. ສ້າງຟັງຊັນເລືອກຮູບພາບໃນນີ້ເລີຍ
+  const handlePickImage = async () => {
+    // ຂໍອະນຸຍາດເຂົ້າເຖິງຄັງຮູບ
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert('ຕ້ອງການສິດ', 'ກະລຸນາອະນຸຍາດໃຫ້ເຂົ້າເຖິງຄັງຮູບພາບເພື່ອເລືອກຮູບ');
+      return;
+    }
+
+    // ເປີດຄັງຮູບ
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, // ໃຫ້ຕັດຮູບໄດ້
+      aspect: [1, 1],      // ຕັດເປັນຮູບຈັດຕຸລັດ
+      quality: 0.5,        // ຫຼຸດຂະໜາດໄຟລ໌ລົງ
+    });
+
+    if (!result.canceled) {
+      // ອັບເດດຮູບເຂົ້າໃນ state ຂອງສິນຄ້າທັນທີ
+      updateField('imageUrl', result.assets[0].uri);
+    }
   };
 
   return (
@@ -69,8 +92,8 @@ export default function ProductModal({
 
             <ScrollView showsVerticalScrollIndicator={false}>
               
-              {/* Image Picker */}
-              <TouchableOpacity style={styles.imagePicker} onPress={onPickImage}>
+              {/* 🟢 3. ປ່ຽນ onPress ໃຫ້ເອີ້ນຟັງຊັນ handlePickImage */}
+              <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage}>
                 {product.imageUrl ? (
                   <Image source={{ uri: product.imageUrl }} style={styles.image} />
                 ) : (

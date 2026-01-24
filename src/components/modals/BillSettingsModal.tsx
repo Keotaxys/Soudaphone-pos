@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  KeyboardAvoidingView,
+  KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
   Modal,
   Platform,
   ScrollView,
@@ -101,7 +101,11 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
+      {/* 🟢 ໃຊ້ KeyboardAvoidingView ຫຸ້ມ Modal Container */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={styles.overlay}
+      >
         <View style={styles.container}>
           
           {/* Header */}
@@ -112,7 +116,7 @@ export default function BillSettingsModal({ visible, onClose }: BillSettingsModa
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Logo Section */}
             <TouchableOpacity style={styles.logoPicker} onPress={pickLogo}>
               {logo ? (

@@ -7,13 +7,12 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { COLORS } from '../../types';
+// 🟢 Import ໂຕນີ້ເພື່ອຈັດການຂອບຈໍເທິງ (Notch)
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// ✅ ແກ້ໄຂ Path ໃຫ້ຖືກຕ້ອງ
-import BillSettingsModal from '../modals/BillSettingsModal';
-
-// 🟢 1. Import Hook ເພື່ອກວດສອບສິດ
 import { useAuth } from '../../hooks/useAuth';
+import { COLORS } from '../../types';
+import BillSettingsModal from '../modals/BillSettingsModal';
 
 interface SidebarProps {
   activeTab: string;
@@ -21,10 +20,9 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-// 🟢 2. ເພີ່ມ field 'permission' ໃສ່ໃນ MENU_ITEMS ເພື່ອກຳກັບວ່າໃຜເຂົ້າໄດ້ແນ່
 const MENU_ITEMS = [
   // ກຸ່ມຂາຍ
-  { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' }, // ບໍ່ມີ permission = ເຂົ້າໄດ້ໝົດ
+  { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' },
   { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart-outline', permission: 'accessPos' },
   { id: 'special_sale', label: 'ຂາຍພິເສດ', icon: 'flash-outline', permission: 'accessPos' },
   { id: 'history', label: 'ປະຫວັດການຂາຍ', icon: 'time-outline', permission: 'accessReports' },
@@ -46,82 +44,92 @@ const MENU_ITEMS = [
 
 export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProps) {
   const [showBillSettings, setShowBillSettings] = useState(false);
-  
-  // 🟢 3. ດຶງສິດການໃຊ້ງານມາ
   const { hasPermission } = useAuth();
+  const insets = useSafeAreaInsets(); // 🟢 ດຶງຄ່າຂອບຈໍ
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>ເມນູຫຼັກ</Text>
-        <TouchableOpacity onPress={onClose}>
-          <Ionicons name="close" size={30} color="#fff" />
-        </TouchableOpacity>
-      </View>
+    // 🟢 1. ປັບ Container ໃຫ້ເປັນ Absolute Overlay ເຕັມຈໍ
+    <View style={styles.overlayContainer}>
+      
+      {/* 🟢 2. ພື້ນຫຼັງສີດຳຈາງໆ (ກົດແລ້ວປິດເມນູ) */}
+      <TouchableOpacity 
+        style={styles.backdrop} 
+        activeOpacity={1} 
+        onPress={onClose}
+      />
 
-      <ScrollView contentContainerStyle={styles.menuContainer} showsVerticalScrollIndicator={false}>
-        {MENU_ITEMS.map((item, index) => {
-          // 🟢 4. ກວດສອບສິດ: ຖ້າມີ permission ແລ້ວ user ບໍ່ມີສິດ -> ບໍ່ຕ້ອງສະແດງ (return null)
-          if (item.permission && !hasPermission(item.permission as any)) {
-            return null;
-          }
+      {/* 🟢 3. ຕົວ Sidebar ຕົວຈິງ */}
+      <View style={[styles.sidebarPanel, { paddingTop: insets.top }]}>
+        
+        {/* Header ສ່ວນຫົວ */}
+        <View style={styles.header}>
+          <Text style={styles.title}>ເມນູຫຼັກ</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+        </View>
 
-          const isActive = activeTab.toLowerCase() === item.id.toLowerCase();
-          const isGroupDivider = index === 4 || index === 6 || index === 10;
+        <ScrollView contentContainerStyle={styles.menuContainer} showsVerticalScrollIndicator={false}>
+          {MENU_ITEMS.map((item, index) => {
+            if (item.permission && !hasPermission(item.permission as any)) {
+              return null;
+            }
 
-          return (
-            <React.Fragment key={item.id}>
-              {isGroupDivider && <View style={styles.groupDivider} />}
-              <TouchableOpacity 
-                style={[styles.menuItem, isActive && styles.activeItem]}
-                onPress={() => {
-                    onTabChange(item.id);
-                    if (onClose) onClose(); // ປິດ Sidebar ເມື່ອກົດ
-                }}
-              >
-                <Ionicons 
-                  name={item.icon as any} 
-                  size={24} 
-                  color={isActive ? (COLORS?.primary || '#008B94') : '#555'} 
-                />
-                <Text style={[styles.menuText, isActive && styles.activeText]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            </React.Fragment>
-          );
-        })}
+            const isActive = activeTab.toLowerCase() === item.id.toLowerCase();
+            const isGroupDivider = index === 4 || index === 6 || index === 10;
 
-        {/* 🟢 5. ເພີ່ມເມນູ "ຈັດການຜູ້ໃຊ້" (ສະແດງສະເພາະ Admin/Manager) */}
-        {hasPermission('canManageUsers') && (
-            <>
-                <View style={styles.groupDivider} />
+            return (
+              <React.Fragment key={item.id}>
+                {isGroupDivider && <View style={styles.groupDivider} />}
                 <TouchableOpacity 
-                    style={[styles.menuItem, activeTab === 'Users' && styles.activeItem]}
-                    onPress={() => {
-                        onTabChange('Users');
-                        if (onClose) onClose();
-                    }}
+                  style={[styles.menuItem, isActive && styles.activeItem]}
+                  onPress={() => {
+                      onTabChange(item.id);
+                      if (onClose) onClose(); 
+                  }}
                 >
-                    <Ionicons name="people-circle-outline" size={24} color={activeTab === 'Users' ? (COLORS?.primary || '#008B94') : '#555'} />
-                    <Text style={[styles.menuText, activeTab === 'Users' && styles.activeText]}>
-                        ຈັດການຜູ້ໃຊ້
-                    </Text>
+                  <Ionicons 
+                    name={item.icon as any} 
+                    size={24} 
+                    color={isActive ? (COLORS?.primary || '#008B94') : '#555'} 
+                  />
+                  <Text style={[styles.menuText, isActive && styles.activeText]}>
+                    {item.label}
+                  </Text>
                 </TouchableOpacity>
-            </>
-        )}
+              </React.Fragment>
+            );
+          })}
 
-        <View style={styles.divider} />
+          {hasPermission('canManageUsers') && (
+              <>
+                  <View style={styles.groupDivider} />
+                  <TouchableOpacity 
+                      style={[styles.menuItem, activeTab === 'Users' && styles.activeItem]}
+                      onPress={() => {
+                          onTabChange('Users');
+                          if (onClose) onClose();
+                      }}
+                  >
+                      <Ionicons name="people-circle-outline" size={24} color={activeTab === 'Users' ? (COLORS?.primary || '#008B94') : '#555'} />
+                      <Text style={[styles.menuText, activeTab === 'Users' && styles.activeText]}>
+                          ຈັດການຜູ້ໃຊ້
+                      </Text>
+                  </TouchableOpacity>
+              </>
+          )}
 
-        {/* ປຸ່ມຕັ້ງຄ່າໃບບິນ */}
-        <TouchableOpacity 
-          style={styles.menuItem}
-          onPress={() => setShowBillSettings(true)}
-        >
-          <Ionicons name="settings-outline" size={24} color="#555" />
-          <Text style={styles.menuText}>ຕັ້ງຄ່າໃບບິນ</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <View style={styles.divider} />
+
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => setShowBillSettings(true)}
+          >
+            <Ionicons name="settings-outline" size={24} color="#555" />
+            <Text style={styles.menuText}>ຕັ້ງຄ່າໃບບິນ</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
 
       <BillSettingsModal 
         visible={showBillSettings} 
@@ -132,14 +140,86 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'white', width: '100%', height: '100%' },
-  header: { height: 100, backgroundColor: COLORS?.primary || '#008B94', paddingHorizontal: 20, paddingTop: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 24, fontFamily: 'Lao-Bold', color: 'white' },
-  menuContainer: { padding: 15, paddingBottom: 50 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 15, borderRadius: 10, marginBottom: 2 },
-  activeItem: { backgroundColor: '#E0F2F1' },
-  menuText: { fontSize: 16, fontFamily: 'Lao-Regular', marginLeft: 15, color: '#333' },
-  activeText: { color: COLORS?.primary || '#008B94', fontFamily: 'Lao-Bold' },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 15 },
-  groupDivider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 5, marginHorizontal: 15 }
+  // 🟢 Style ໃໝ່ສຳລັບ Overlay
+  overlayContainer: {
+    position: 'absolute', // ລອຍຢູ່ເໜືອທຸກຢ່າງ
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999, // ໃຫ້ຢູ່ຊັ້ນເທິງສຸດ
+    flexDirection: 'row',
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)', // ສີດຳຈາງໆ
+  },
+  sidebarPanel: {
+    width: '75%', // ກວ້າງ 75% ຂອງໜ້າຈໍ (ສ່ວນທີ່ເຫຼືອເຫັນ Backdrop)
+    maxWidth: 300,
+    backgroundColor: 'white',
+    height: '100%',
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  header: { 
+    backgroundColor: COLORS?.primary || '#008B94', 
+    paddingHorizontal: 20, 
+    paddingBottom: 20, 
+    paddingTop: 20, // ໄລຍະຫ່າງຈາກຂອບເທິງ (ເພີ່ມຈາກ insets.top)
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center' 
+  },
+  title: { 
+    fontSize: 22, 
+    fontFamily: 'Lao-Bold', 
+    color: 'white' 
+  },
+  closeBtn: {
+    padding: 5
+  },
+  menuContainer: { 
+    padding: 15, 
+    paddingBottom: 50 
+  },
+  menuItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 12, 
+    paddingHorizontal: 15, 
+    borderRadius: 10, 
+    marginBottom: 2 
+  },
+  activeItem: { 
+    backgroundColor: '#E0F2F1' 
+  },
+  menuText: { 
+    fontSize: 16, 
+    fontFamily: 'Lao-Regular', 
+    marginLeft: 15, 
+    color: '#333' 
+  },
+  activeText: { 
+    color: COLORS?.primary || '#008B94', 
+    fontFamily: 'Lao-Bold' 
+  },
+  divider: { 
+    height: 1, 
+    backgroundColor: '#eee', 
+    marginVertical: 15 
+  },
+  groupDivider: { 
+    height: 1, 
+    backgroundColor: '#f0f0f0', 
+    marginVertical: 5, 
+    marginHorizontal: 15 
+  }
 });

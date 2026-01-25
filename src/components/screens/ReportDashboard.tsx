@@ -10,15 +10,15 @@ import { shareAsync } from 'expo-sharing';
 import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth'; // 🟢 1. Import useAuth
@@ -57,6 +57,10 @@ type FilterType = 'day' | 'week' | 'month' | 'year' | 'custom';
 
 export default function ReportDashboard() {
   const { hasPermission } = useAuth(); // 🟢 2. ດຶງສິດມາໃຊ້
+  
+  // 🟢 3. ສ້າງຕົວປ່ຽນ boolean ເພື່ອໃຊ້ເປັນ Dependency ທີ່ໝັ້ນຄົງ (ແກ້ບັນຫາ Loop)
+  const canViewFinancials = hasPermission('viewFinancials');
+
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   
@@ -74,25 +78,29 @@ export default function ReportDashboard() {
   const [salesByCategory, setSalesByCategory] = useState<any[]>([]);
   const [expensesByCategory, setExpensesByCategory] = useState<any[]>([]);
 
-  // 1. Fetch Data
+  // 1. Fetch Sales Data (Separate Effect)
   useEffect(() => {
     const salesRef = ref(db, 'sales');
-    onValue(salesRef, (snapshot) => {
+    const unsubscribe = onValue(salesRef, (snapshot) => {
       const data = snapshot.val();
       setSales(data ? Object.values(data) : []);
     });
+    return () => unsubscribe();
+  }, []);
 
-    // 🟢 3. ກວດສອບສິດ: ຖ້າບໍ່ມີສິດ viewFinancials ບໍ່ຕ້ອງດຶງລາຍຈ່າຍມາ
-    if (hasPermission('viewFinancials')) {
+  // 🟢 4. Fetch Expenses Data (Separate Effect using stable dependency)
+  useEffect(() => {
+    if (canViewFinancials) {
         const expRef = ref(db, 'expenses');
-        onValue(expRef, (snapshot) => {
+        const unsubscribe = onValue(expRef, (snapshot) => {
             const data = snapshot.val();
             setExpenses(data ? Object.values(data) : []);
         });
+        return () => unsubscribe();
     } else {
         setExpenses([]); // ເຄຍຂໍ້ມູນລາຍຈ່າຍຖ້າບໍ່ມີສິດ
     }
-  }, [hasPermission]); // Add dependency
+  }, [canViewFinancials]); // ✅ ໃຊ້ boolean ແທນ function
 
   // Helper: Get Filtered Data
   const getFilteredData = () => {
@@ -148,7 +156,7 @@ export default function ReportDashboard() {
     const catStats: any = {};
     
     fSales.forEach((sale: any) => {
-        const saleTotalLAK = calculateLAK(sale); 
+        // const saleTotalLAK = calculateLAK(sale); // Unused variable
         
         if(sale.items) {
             sale.items.forEach((p: any) => {
@@ -225,8 +233,8 @@ export default function ReportDashboard() {
             csv += `${dateStr},Sale,-,Bill #${s.id ? s.id.slice(-4) : '-'},${totalLAK},${s.total},${s.currency}\n`;
         });
 
-        // 🟢 4. ຊອນລາຍຈ່າຍໃນ Excel ຖ້າບໍ່ມີສິດ
-        if (hasPermission('viewFinancials')) {
+        // 🟢 ໃຊ້ variable canViewFinancials ແທນການເອີ້ນ function
+        if (canViewFinancials) {
             fExpenses.forEach(e => {
                 const dateStr = new Date(e.date).toLocaleDateString('lo-LA');
                 csv += `${dateStr},Expense,${e.category},${e.note || '-'},-${parseCurrency(e.amount)},${e.amount},LAK\n`;
@@ -234,13 +242,12 @@ export default function ReportDashboard() {
         }
 
         const totalRev = fSales.reduce((s, i) => s + calculateLAK(i), 0);
-        const totalExp = hasPermission('viewFinancials') ? fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0) : 0;
+        const totalExp = canViewFinancials ? fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0) : 0;
         
         csv += `\nSUMMARY,,,\n`;
         csv += `,,Total Revenue (LAK),${totalRev}\n`;
         
-        // 🟢 5. ຊອນ Summary ລາຍຈ່າຍ/ກຳໄລ ໃນ Excel
-        if (hasPermission('viewFinancials')) {
+        if (canViewFinancials) {
             csv += `,,Total Expense (LAK),${totalExp}\n`;
             csv += `,,Net Profit (LAK),${totalRev - totalExp}\n`;
         }
@@ -262,14 +269,14 @@ export default function ReportDashboard() {
     try {
         const { fSales, fExpenses, start, end } = getFilteredData();
         const totalRev = fSales.reduce((s, i) => s + calculateLAK(i), 0);
-        const totalExp = hasPermission('viewFinancials') ? fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0) : 0;
+        const totalExp = canViewFinancials ? fExpenses.reduce((s, i) => s + parseCurrency(i.amount), 0) : 0;
         const profit = totalRev - totalExp;
 
-        // 🟢 6. ຕັດສ່ວນສະຫຼຸບກຳໄລອອກຈາກ PDF ຖ້າບໍ່ມີສິດ
+        // 🟢 ໃຊ້ variable canViewFinancials
         const summarySection = `
             <div class="summary">
                 <div class="row"><b>ຍອດຂາຍລວມ (Revenue):</b> <span>${formatNumber(totalRev)} ₭</span></div>
-                ${hasPermission('viewFinancials') ? `
+                ${canViewFinancials ? `
                     <div class="row"><b>ລາຍຈ່າຍລວມ (Expense):</b> <span>${formatNumber(totalExp)} ₭</span></div>
                     <hr/>
                     <div class="row" style="font-size: 16px;">
@@ -427,14 +434,14 @@ export default function ReportDashboard() {
         <View style={styles.summaryRow}>
             <SummaryCard label="ຍອດຂາຍລວມ" amount={totalRevenue} color={COLORS?.primary || '#008B94'} icon="cash" />
             
-            {/* 🟢 7. ຊອນບັດລາຍຈ່າຍ ຖ້າບໍ່ມີສິດ */}
-            {hasPermission('viewFinancials') && (
+            {/* 🟢 7. ຊອນບັດລາຍຈ່າຍ ຖ້າບໍ່ມີສິດ (ໃຊ້ variable) */}
+            {canViewFinancials && (
                 <SummaryCard label="ລາຍຈ່າຍລວມ" amount={totalExpense} color="#F57C00" icon="wallet" />
             )}
         </View>
         
         {/* 🟢 8. ຊອນບັດກຳໄລ ຖ້າບໍ່ມີສິດ */}
-        {hasPermission('viewFinancials') && (
+        {canViewFinancials && (
             <SummaryCard 
                 label="ກຳໄລສຸດທິ" 
                 amount={totalRevenue - totalExpense} 
@@ -444,7 +451,7 @@ export default function ReportDashboard() {
         )}
 
         {/* 🟢 9. ຊອນກຣາຟປຽບທຽບ ແລະ ກຣາຟລາຍຈ່າຍ ຖ້າບໍ່ມີສິດ */}
-        {hasPermission('viewFinancials') && (
+        {canViewFinancials && (
             <>
                 <HorizontalComparisonChart />
                 <CategoryChart title="💸 ລາຍຈ່າຍຕາມໝວດໝູ່" data={expensesByCategory} barColor="#F57C00" />

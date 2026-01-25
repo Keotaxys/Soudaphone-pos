@@ -1,13 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
-
-// 🟢 1. Import Main (ເພື່ອເອົາທີ່ຢູ່ Path)
 import * as FileSystem from 'expo-file-system';
-
-// 🟢 2. Import Legacy (ເພື່ອເອົາຟັງຊັນ Read/Write)
+// @ts-ignore
 import * as FileSystemLegacy from 'expo-file-system/legacy';
-
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { onValue, push, ref, remove, update } from 'firebase/database';
@@ -48,7 +44,7 @@ type FilterType = 'day' | 'week' | 'month' | 'custom';
 
 export default function ExpenseScreen() {
   const { hasPermission, loading: authLoading } = useAuth();
-  
+   
   const [allExpenses, setAllExpenses] = useState<ExpenseRecord[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<ExpenseRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +60,7 @@ export default function ExpenseScreen() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('ສັ່ງສິນຄ້າ'); 
   const [formDate, setFormDate] = useState(new Date());
-  
+   
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerTarget, setDatePickerTarget] = useState<'form' | 'filter' | 'start' | 'end'>('form');
@@ -160,7 +156,6 @@ export default function ExpenseScreen() {
     return dir;
   };
 
-  // 🟢 4. Download Template
   const handleDownloadTemplate = async () => {
     try {
       const data = [
@@ -201,7 +196,6 @@ export default function ExpenseScreen() {
     }
   };
 
-  // 🟢 5. Import Excel
   const handleImportExcel = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -278,7 +272,6 @@ export default function ExpenseScreen() {
     }
   };
 
-  // 🟢 6. Export Excel
   const exportToExcel = async () => {
     try {
         const data = filteredExpenses.map(item => ({
@@ -443,11 +436,10 @@ export default function ExpenseScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 🟢 ແກ້ໄຂ: behavior ເປັນ undefined ສຳລັບ Android */}
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
         style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0} // ເພີ່ມ Offset ໃຫ້ iOS
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0} 
       >
           <ScrollView 
             contentContainerStyle={{ paddingBottom: 100 }} 
@@ -587,7 +579,7 @@ export default function ExpenseScreen() {
                                 <Ionicons name="pencil" size={16} color={COLORS.primary} />
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => handleDelete(item.id!)}>
-                                <Ionicons name="trash-outline" size={16} color="#FF5252" />
+                                <Ionicons name="trash-outline" size={16} color="#FFA726" />
                             </TouchableOpacity>
                         </View>
                     </View>

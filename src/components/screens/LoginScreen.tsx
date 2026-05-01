@@ -95,7 +95,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   keyboardType="default" 
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#666" />
+                  <Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color="#666" />
                 </TouchableOpacity>
               </View>
 

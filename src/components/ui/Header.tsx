@@ -96,10 +96,10 @@ export default function Header({
 
         <View style={styles.rightIcons}>
           <TouchableOpacity>
-            <Ionicons name="notifications-outline" size={24} color="white" />
+            <Ionicons name="notifications" size={24} color="white" />
           </TouchableOpacity>
           <TouchableOpacity onPress={onLogout} style={{marginLeft: 5}}>
-            <Ionicons name="log-out-outline" size={24} color="white" />
+            <Ionicons name="log-out" size={24} color="white" />
           </TouchableOpacity>
         </View>
       </View>

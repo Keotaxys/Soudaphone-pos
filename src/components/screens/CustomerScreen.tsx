@@ -240,7 +240,7 @@ export default function CustomerScreen() {
   if (!hasPermission('accessCustomers')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Ionicons name="lock-closed" size={50} color="#ccc" />
               <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
                   ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນລູກຄ້າ
               </Text>
@@ -262,7 +262,7 @@ export default function CustomerScreen() {
         columnWrapperStyle={{ justifyContent: 'space-between' }} 
         ListEmptyComponent={
             <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={60} color="#ddd" />
+                <Ionicons name="people" size={60} color="#ddd" />
                 <Text style={styles.emptyText}>ບໍ່ພົບຂໍ້ມູນລູກຄ້າ</Text>
             </View>
         }

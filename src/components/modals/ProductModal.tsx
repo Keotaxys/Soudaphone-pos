@@ -98,7 +98,7 @@ export default function ProductModal({
                   <Image source={{ uri: product.imageUrl }} style={styles.image} />
                 ) : (
                   <View style={styles.imagePlaceholder}>
-                    <Ionicons name="camera-outline" size={40} color="#ccc" />
+                    <Ionicons name="camera" size={40} color="#ccc" />
                     <Text style={styles.imageText}>ເລືອກຮູບ</Text>
                   </View>
                 )}
@@ -181,7 +181,7 @@ export default function ProductModal({
                       placeholder="Scan..."
                     />
                     <TouchableOpacity onPress={onScan} style={styles.scanBtn}>
-                      <Ionicons name="qr-code-outline" size={24} color="white" />
+                      <Ionicons name="qr-code" size={24} color="white" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -204,7 +204,7 @@ export default function ProductModal({
           <View style={styles.pickerContent}>
             
             <View style={{alignItems: 'center', marginBottom: 15}}>
-              <Ionicons name="images-outline" size={40} color="#888" style={{marginBottom: 10}} />
+              <Ionicons name="images" size={40} color="#888" style={{marginBottom: 10}} />
               <Text style={styles.pickerTitle}>ເລືອກໝວດໝູ່</Text>
             </View>
 

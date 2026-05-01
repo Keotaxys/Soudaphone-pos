@@ -196,7 +196,7 @@ export default function ProductsScreen({
             )}
             {hasPermission('canDeleteProduct') && (
                 <TouchableOpacity style={styles.deleteBtn} onPress={() => onDeleteProduct(item.id!)}>
-                    <Ionicons name="trash-outline" size={20} color={ORANGE_THEME} />
+                    <Ionicons name="trash" size={20} color={ORANGE_THEME} />
                 </TouchableOpacity>
             )}
         </View>
@@ -249,11 +249,11 @@ export default function ProductsScreen({
         </View>
 
         <View style={styles.actionIcons}>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}><Ionicons name="download-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleDownloadTemplate}><Ionicons name="download" size={20} color={COLORS.primary} /></TouchableOpacity>
             {hasPermission('canEditProduct') && (
-                <TouchableOpacity style={styles.iconBtn} onPress={handleImport}><Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
+                <TouchableOpacity style={styles.iconBtn} onPress={handleImport}><Ionicons name="cloud-upload" size={20} color={COLORS.primary} /></TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.iconBtn} onPress={handleExport}><Ionicons name="share-outline" size={20} color={COLORS.primary} /></TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleExport}><Ionicons name="share" size={20} color={COLORS.primary} /></TouchableOpacity>
         </View>
       </View>
 
@@ -264,7 +264,7 @@ export default function ProductsScreen({
         contentContainerStyle={{ padding: 15, paddingBottom: 120 }}
         ListEmptyComponent={
             <View style={styles.emptyContainer}>
-                <Ionicons name="cube-outline" size={60} color="#ddd" />
+                <Ionicons name="cube" size={60} color="#ddd" />
                 <Text style={styles.emptyText}>ບໍ່ພົບສິນຄ້າ</Text>
             </View>
         }

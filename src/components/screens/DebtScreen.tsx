@@ -259,7 +259,7 @@ export default function DebtScreen() {
                         <Ionicons name="pencil" size={18} color={COLORS.primary} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.iconBtn}>
-                        <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
+                        <Ionicons name="trash" size={18} color={ORANGE_COLOR} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -277,12 +277,12 @@ export default function DebtScreen() {
             <View style={styles.divider} />
             <View style={styles.footerRow}>
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
-                    <Ionicons name="calendar-outline" size={14} color="#666" />
+                    <Ionicons name="calendar" size={14} color="#666" />
                     <Text style={styles.dueDateText}>ກຳນົດ: {formatDate(new Date(item.dueDate))}</Text>
                 </View>
                 <View style={styles.actionButtons}>
                     <TouchableOpacity style={styles.historyBtn} onPress={() => { setSelectedDebt(item); setHistoryModalVisible(true); }}>
-                        <Ionicons name="time-outline" size={16} color="#555" />
+                        <Ionicons name="time" size={16} color="#555" />
                         <Text style={styles.historyText}>ປະຫວັດ</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.payBtn} onPress={() => { 
@@ -291,7 +291,7 @@ export default function DebtScreen() {
                         setPaymentDate(new Date()); 
                         setPaymentModalVisible(true); 
                     }}>
-                        <Ionicons name="wallet-outline" size={16} color="white" />
+                        <Ionicons name="wallet" size={16} color="white" />
                         <Text style={styles.payBtnText}>ຊຳລະ</Text>
                     </TouchableOpacity>
                 </View>
@@ -303,7 +303,7 @@ export default function DebtScreen() {
   if (!hasPermission('accessFinancial')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Ionicons name="lock-closed" size={50} color="#ccc" />
               <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
                   ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
               </Text>
@@ -331,7 +331,7 @@ export default function DebtScreen() {
         contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
         ListEmptyComponent={
             <View style={styles.emptyContainer}>
-                <Ionicons name="document-text-outline" size={60} color="#ddd" />
+                <Ionicons name="document-text" size={60} color="#ddd" />
                 <Text style={styles.emptyText}>ບໍ່ມີລາຍການໜີ້ສິນ</Text>
             </View>
         }
@@ -382,7 +382,7 @@ export default function DebtScreen() {
 
                     <Text style={styles.inputLabel}>ກຳນົດຊຳລະ</Text>
                     <TouchableOpacity style={styles.dateInput} onPress={() => toggleDatePicker('due')}>
-                        <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                        <Ionicons name="calendar" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(dueDate)}</Text>
                     </TouchableOpacity>
 
@@ -434,7 +434,7 @@ export default function DebtScreen() {
                     
                     <Text style={styles.inputLabel}>ວັນທີຊຳລະ</Text>
                     <TouchableOpacity style={styles.dateInput} onPress={() => toggleDatePicker('payment')}>
-                        <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                        <Ionicons name="calendar" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(paymentDate)}</Text>
                     </TouchableOpacity>
 

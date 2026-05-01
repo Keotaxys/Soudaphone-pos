@@ -129,7 +129,7 @@ export default function ShiftScreen() {
             <View>
                 <View style={styles.card}>
                     <View style={styles.iconCircle}>
-                        <Ionicons name="wallet-outline" size={40} color={COLORS.primary} />
+                        <Ionicons name="wallet" size={40} color={COLORS.primary} />
                     </View>
                     <Text style={styles.mainTitle}>ເລີ່ມຕົ້ນເປີດກະຂາຍ</Text>
                     <Text style={styles.subTitle}>ກະລຸນານັບເງິນສົດຕັ້ງຕົ້ນໃນລິ້ນຊັກ</Text>

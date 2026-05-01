@@ -237,12 +237,12 @@ export default function HomeScreen({
                             ) : (
                                 <View style={styles.customDateContainer}>
                                     <TouchableOpacity style={styles.datePickBtn} onPress={() => openDatePicker('start')}>
-                                        <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+                                        <Ionicons name="calendar" size={18} color={COLORS.primary} />
                                         <Text style={styles.datePickText}>{formatDate(customStartDate)}</Text>
                                     </TouchableOpacity>
                                     <Text style={{marginHorizontal: 5}}>-</Text>
                                     <TouchableOpacity style={styles.datePickBtn} onPress={() => openDatePicker('end')}>
-                                        <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+                                        <Ionicons name="calendar" size={18} color={COLORS.primary} />
                                         <Text style={styles.datePickText}>{formatDate(customEndDate)}</Text>
                                     </TouchableOpacity>
                                 </View>
@@ -278,7 +278,7 @@ export default function HomeScreen({
                         {/* 🟢 4. ຊອນບັດລາຍຈ່າຍ ຖ້າບໍ່ມີສິດ */}
                         {hasPermission('viewFinancials') && (
                             <View style={[styles.statCard, { backgroundColor: 'white', borderWidth: 1, borderColor: '#eee' }]}>
-                            <View style={[styles.iconCircle, { backgroundColor: ORANGE_BG }]}><Ionicons name="wallet-outline" size={24} color={ORANGE_COLOR} /></View>
+                            <View style={[styles.iconCircle, { backgroundColor: ORANGE_BG }]}><Ionicons name="wallet" size={24} color={ORANGE_COLOR} /></View>
                             <View><Text style={styles.statLabel}>ລາຍຈ່າຍ</Text><Text style={[styles.statValue, { color: ORANGE_COLOR }]}>{formatNumber(filteredExpenses)}</Text></View>
                             </View>
                         )}
@@ -292,21 +292,21 @@ export default function HomeScreen({
                     <View style={styles.quickMenu}>
                         <TouchableOpacity style={styles.quickMenuItem} onPress={onSpecialSale}>
                             <View style={styles.quickMenuIcon}>
-                                <Ionicons name="flash-outline" size={28} color={COLORS.primary} />
+                                <Ionicons name="flash" size={28} color={COLORS.primary} />
                             </View>
                             <Text style={styles.quickMenuText}>ຂາຍພິເສດ</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickScan}>
                             <View style={styles.quickMenuIcon}>
-                                <Ionicons name="qr-code-outline" size={28} color={COLORS.primary} />
+                                <Ionicons name="qr-code" size={28} color={COLORS.primary} />
                             </View>
                             <Text style={styles.quickMenuText}>ສະແກນ</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.quickMenuItem} onPress={onQuickCustomer}>
                             <View style={styles.quickMenuIcon}>
-                                <Ionicons name="people-outline" size={28} color={COLORS.primary} />
+                                <Ionicons name="people" size={28} color={COLORS.primary} />
                             </View>
                             <Text style={styles.quickMenuText}>ລູກຄ້າ</Text>
                         </TouchableOpacity>

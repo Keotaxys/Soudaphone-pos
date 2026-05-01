@@ -108,7 +108,7 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
                             if (onClose) onClose();
                         }}
                     >
-                        <Ionicons name="people-circle-outline" size={24} color={activeTab === 'Users' ? (COLORS?.primary || '#008B94') : '#555'} />
+                        <Ionicons name="people-circle" size={24} color={activeTab === 'Users' ? (COLORS?.primary || '#008B94') : '#555'} />
                         <Text style={[styles.menuText, activeTab === 'Users' && styles.activeText]}>
                             ຈັດການຜູ້ໃຊ້
                         </Text>
@@ -122,7 +122,7 @@ export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProp
               style={styles.menuItem}
               onPress={() => setShowBillSettings(true)}
             >
-              <Ionicons name="settings-outline" size={24} color="#555" />
+              <Ionicons name="settings" size={24} color="#555" />
               <Text style={styles.menuText}>ຕັ້ງຄ່າໃບບິນ</Text>
             </TouchableOpacity>
           </ScrollView>

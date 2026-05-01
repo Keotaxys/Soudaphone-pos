@@ -314,7 +314,7 @@ export default function SalesHistoryScreen() {
                 </View>
                 
                 <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
-                    <Ionicons name="calendar-outline" size={12} color="#888" style={{marginRight: 4}} />
+                    <Ionicons name="calendar" size={12} color="#888" style={{marginRight: 4}} />
                     <Text style={styles.dateText}>
                         {dateStr} • {timeStr}
                     </Text>
@@ -380,7 +380,7 @@ export default function SalesHistoryScreen() {
                         {hasPermission('canDeleteProduct') && (
                             // 🟢 1. ປ່ຽນສີປຸ່ມລຶບເປັນສີສົ້ມ (ORANGE_COLOR)
                             <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
-                                <Ionicons name="trash-outline" size={18} color="white" />
+                                <Ionicons name="trash" size={18} color="white" />
                                 <Text style={styles.btnText}>ລຶບ</Text>
                             </TouchableOpacity>
                         )}
@@ -395,7 +395,7 @@ export default function SalesHistoryScreen() {
   if (!loading && !hasPermission('accessReports')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Ionicons name="lock-closed" size={50} color="#ccc" />
               <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
                   ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້
               </Text>
@@ -409,7 +409,7 @@ export default function SalesHistoryScreen() {
         <Text style={styles.headerTitle}>ປະຫວັດການຂາຍ</Text>
         {filteredSales.length > 0 && (
             <TouchableOpacity onPress={handleExport} style={styles.exportBtn}>
-                <Ionicons name="share-outline" size={20} color={COLORS.primary} />
+                <Ionicons name="share" size={20} color={COLORS.primary} />
                 <Text style={{fontFamily: 'Lao-Bold', color: COLORS.primary, marginLeft: 5}}>Export</Text>
             </TouchableOpacity>
         )}
@@ -454,7 +454,7 @@ export default function SalesHistoryScreen() {
         contentContainerStyle={{ padding: 15 }}
         ListEmptyComponent={
             <View style={{alignItems: 'center', marginTop: 50}}>
-                <Ionicons name="document-text-outline" size={50} color="#ddd" />
+                <Ionicons name="document-text" size={50} color="#ddd" />
                 <Text style={styles.emptyText}>ບໍ່ພົບປະຫວັດການຂາຍໃນຊ່ວງເວລານີ້</Text>
             </View>
         }

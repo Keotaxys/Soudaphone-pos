@@ -197,8 +197,8 @@ export default function POSScreen({
                     <TextInput style={styles.searchInput} placeholder="ຄົ້ນຫາສິນຄ້າ..." value={searchQuery} onChangeText={setSearchQuery} />
                 </View>
                 <View style={styles.actionButtons}>
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primary, marginRight: 10 }]} onPress={onOpenScan}><Ionicons name="qr-code-outline" size={20} color="white" /><Text style={styles.actionBtnText}>ສະແກນ</Text></TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primary }]} onPress={onOpenAddProduct}><Ionicons name="add-circle-outline" size={20} color="white" /><Text style={styles.actionBtnText}>ເພີ່ມສິນຄ້າ</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primary, marginRight: 10 }]} onPress={onOpenScan}><Ionicons name="qr-code" size={20} color="white" /><Text style={styles.actionBtnText}>ສະແກນ</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primary }]} onPress={onOpenAddProduct}><Ionicons name="add-circle" size={20} color="white" /><Text style={styles.actionBtnText}>ເພີ່ມສິນຄ້າ</Text></TouchableOpacity>
                 </View>
                 
                 {/* Categories List */}
@@ -252,7 +252,7 @@ export default function POSScreen({
                         </TouchableOpacity>
                         
                         <TouchableOpacity style={styles.dateBadge} onPress={() => setShowDatePicker(true)}>
-                            <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
+                            <Ionicons name="calendar" size={14} color={COLORS.primary} />
                             <Text style={styles.dateText}>{orderDate.toLocaleDateString('en-GB')}</Text>
                         </TouchableOpacity>
                     </View>
@@ -275,7 +275,7 @@ export default function POSScreen({
                                         <TouchableOpacity onPress={() => updateQuantity(item.id!, 1)}><Text style={styles.qtySign}>+</Text></TouchableOpacity>
                                     </View>
                                     <TouchableOpacity onPress={() => removeFromCart(item.id!)} style={{marginLeft: 15}}>
-                                        <Ionicons name="trash-outline" size={24} color={ORANGE_THEME} /> 
+                                        <Ionicons name="trash" size={24} color={ORANGE_THEME} /> 
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -318,11 +318,11 @@ export default function POSScreen({
 
                         <View style={styles.methodRow}>
                             <TouchableOpacity style={[styles.methodBtn, paymentMethod === 'CASH' ? {borderColor: COLORS.primary, backgroundColor: '#E0F2F1'} : styles.inactiveMethod]} onPress={() => setPaymentMethod('CASH')}>
-                                <Ionicons name="cash-outline" size={24} color={paymentMethod === 'CASH' ? COLORS.primary : '#999'} />
+                                <Ionicons name="cash" size={24} color={paymentMethod === 'CASH' ? COLORS.primary : '#999'} />
                                 <Text style={[styles.methodText, paymentMethod === 'CASH' && {color: COLORS.primary}]}>ເງິນສົດ</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={[styles.methodBtn, paymentMethod === 'QR' ? {borderColor: ORANGE_THEME, backgroundColor: '#FFF3E0'} : styles.inactiveMethod]} onPress={() => setPaymentMethod('QR')}>
-                                <Ionicons name="qr-code-outline" size={24} color={paymentMethod === 'QR' ? ORANGE_THEME : '#999'} />
+                                <Ionicons name="qr-code" size={24} color={paymentMethod === 'QR' ? ORANGE_THEME : '#999'} />
                                 <Text style={[styles.methodText, paymentMethod === 'QR' && {color: ORANGE_THEME}]}>QR</Text> 
                             </TouchableOpacity>
                         </View>

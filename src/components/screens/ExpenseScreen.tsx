@@ -426,7 +426,7 @@ export default function ExpenseScreen() {
   if (!authLoading && !hasPermission('accessFinancial')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Ionicons name="lock-closed" size={50} color="#ccc" />
               <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
                   ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
               </Text>
@@ -513,7 +513,7 @@ export default function ExpenseScreen() {
                 
                 <View style={styles.row}>
                     <TouchableOpacity style={styles.dateBtn} onPress={() => openDatePicker('form')}>
-                        <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                        <Ionicons name="calendar" size={20} color={COLORS.primary} />
                         <Text style={styles.dateText}>{formatDate(formDate)}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.categoryBtn} onPress={() => setShowCategoryPicker(true)}>
@@ -564,7 +564,7 @@ export default function ExpenseScreen() {
                             <Text style={styles.itemDesc} numberOfLines={1}>{item.description}</Text>
                         ) : null}
                         <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
-                            <Ionicons name="calendar-outline" size={12} color="#999" style={{marginRight: 4}} />
+                            <Ionicons name="calendar" size={12} color="#999" style={{marginRight: 4}} />
                             <Text style={styles.itemDateSmall}>
                                 {new Date(item.date).toLocaleDateString('en-GB')} {new Date(item.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </Text>
@@ -579,7 +579,7 @@ export default function ExpenseScreen() {
                                 <Ionicons name="pencil" size={16} color={COLORS.primary} />
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => handleDelete(item.id!)}>
-                                <Ionicons name="trash-outline" size={16} color="#FFA726" />
+                                <Ionicons name="trash" size={16} color="#FFA726" />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -603,7 +603,7 @@ export default function ExpenseScreen() {
                     <>
                         <Text style={styles.sectionHeader}>📤 ສົ່ງອອກ (Export)</Text>
                         <TouchableOpacity style={styles.exportOption} onPress={exportToExcel}>
-                            <Ionicons name="grid-outline" size={24} color="#217346" />
+                            <Ionicons name="grid" size={24} color="#217346" />
                             <Text style={styles.exportText}>Export as Excel (.xlsx)</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.exportOption} onPress={exportToPDF}>
@@ -613,11 +613,11 @@ export default function ExpenseScreen() {
 
                         <Text style={styles.sectionHeader}>📥 ນຳເຂົ້າ (Import)</Text>
                         <TouchableOpacity style={styles.exportOption} onPress={handleDownloadTemplate}>
-                            <Ionicons name="download-outline" size={24} color={COLORS.primary} />
+                            <Ionicons name="download" size={24} color={COLORS.primary} />
                             <Text style={styles.exportText}>ດາວໂຫຼດແບບຟອມ (.xlsx)</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.exportOption} onPress={handleImportExcel}>
-                            <Ionicons name="cloud-upload-outline" size={24} color={ORANGE_COLOR} />
+                            <Ionicons name="cloud-upload" size={24} color={ORANGE_COLOR} />
                             <Text style={styles.exportText}>Import ຈາກ Excel (.xlsx)</Text>
                         </TouchableOpacity>
                     </>

@@ -279,7 +279,7 @@ export default function DebtsReceivableScreen() {
                         <Ionicons name="pencil" size={18} color={COLORS.primary} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.iconBtn}>
-                        <Ionicons name="trash-outline" size={18} color={ORANGE_COLOR} />
+                        <Ionicons name="trash" size={18} color={ORANGE_COLOR} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -311,12 +311,12 @@ export default function DebtsReceivableScreen() {
                 
                 <View style={styles.actionButtons}>
                     <TouchableOpacity style={styles.historyBtn} onPress={() => openHistoryModal(item)}>
-                        <Ionicons name="time-outline" size={16} color="#555" />
+                        <Ionicons name="time" size={16} color="#555" />
                         <Text style={styles.historyText}>ປະຫວັດ</Text>
                     </TouchableOpacity>
                     {item.remaining > 0 && (
                         <TouchableOpacity style={styles.payBtn} onPress={() => openPaymentModal(item)}>
-                            <Ionicons name="download-outline" size={16} color="white" />
+                            <Ionicons name="download" size={16} color="white" />
                             <Text style={styles.payBtnText}>ຮັບຊຳລະ</Text>
                         </TouchableOpacity>
                     )}
@@ -329,7 +329,7 @@ export default function DebtsReceivableScreen() {
   if (!hasPermission('accessFinancial')) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F9FA'}}>
-              <Ionicons name="lock-closed-outline" size={50} color="#ccc" />
+              <Ionicons name="lock-closed" size={50} color="#ccc" />
               <Text style={{fontFamily: 'Lao-Bold', fontSize: 18, color: '#666', marginTop: 10}}>
                   ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນການເງິນ
               </Text>
@@ -357,7 +357,7 @@ export default function DebtsReceivableScreen() {
         contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
         ListEmptyComponent={
             <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={60} color="#ddd" />
+                <Ionicons name="people" size={60} color="#ddd" />
                 <Text style={styles.emptyText}>ບໍ່ມີລາຍການໜີ້ຕ້ອງຮັບ</Text>
             </View>
         }
@@ -407,7 +407,7 @@ export default function DebtsReceivableScreen() {
 
                     <Text style={styles.inputLabel}>ວັນທີ</Text>
                     <TouchableOpacity style={styles.dateInput} onPress={() => toggleDatePicker('due')}>
-                        <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                        <Ionicons name="calendar" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(date)}</Text>
                     </TouchableOpacity>
 
@@ -464,7 +464,7 @@ export default function DebtsReceivableScreen() {
 
                     <Text style={styles.inputLabel}>ວັນທີຮັບ *</Text>
                     <TouchableOpacity style={styles.dateInput} onPress={() => toggleDatePicker('payment')}>
-                        <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                        <Ionicons name="calendar" size={20} color={COLORS.primary} />
                         <Text style={{fontFamily: 'Lao-Bold', color: COLORS.text}}>{formatDate(paymentDate)}</Text>
                     </TouchableOpacity>
 

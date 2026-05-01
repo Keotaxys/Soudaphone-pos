@@ -169,12 +169,12 @@ export default function UserManagementScreen() {
       
       <View style={{flexDirection: 'row', gap: 15}}>
           <TouchableOpacity onPress={() => handleEditUser(item)}>
-              <Ionicons name="pencil-outline" size={24} color={COLORS.primary} />
+              <Ionicons name="pencil" size={24} color={COLORS.primary} />
           </TouchableOpacity>
 
           {item.role !== 'admin' && (
              <TouchableOpacity onPress={() => handleDeleteUser(item)}>
-                 <Ionicons name="trash-outline" size={24} color={COLORS.primary} />
+                 <Ionicons name="trash" size={24} color={COLORS.primary} />
              </TouchableOpacity>
           )}
       </View>

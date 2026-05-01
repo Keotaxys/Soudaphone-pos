@@ -435,9 +435,9 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                 <View style={styles.historyHeaderRow}>
                     <Text style={styles.historyTitle}>ປະຫວັດລາຍຮັບ</Text>
                     <View style={styles.toolsRow}>
-                        <TouchableOpacity style={styles.toolIconBtn} onPress={handleDownloadTemplate}><Ionicons name="copy-outline" size={18} color="#555" /></TouchableOpacity>
-                        <TouchableOpacity style={styles.toolIconBtn} onPress={handleImport}><Ionicons name="cloud-upload-outline" size={18} color="#555" /></TouchableOpacity>
-                        <TouchableOpacity style={[styles.toolIconBtn, {backgroundColor: COLORS.primary}]} onPress={handleExport}><Ionicons name="download-outline" size={18} color="white" /></TouchableOpacity>
+                        <TouchableOpacity style={styles.toolIconBtn} onPress={handleDownloadTemplate}><Ionicons name="copy" size={18} color="#555" /></TouchableOpacity>
+                        <TouchableOpacity style={styles.toolIconBtn} onPress={handleImport}><Ionicons name="cloud-upload" size={18} color="#555" /></TouchableOpacity>
+                        <TouchableOpacity style={[styles.toolIconBtn, {backgroundColor: COLORS.primary}]} onPress={handleExport}><Ionicons name="download" size={18} color="white" /></TouchableOpacity>
                     </View>
                 </View>
 
@@ -516,7 +516,7 @@ export default function SpecialSaleScreen({ products }: SpecialSaleScreenProps) 
                     style={styles.addCatBtn} 
                     onPress={() => { setShowCatDropdown(false); setShowAddCatModal(true); }}
                 >
-                    <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />
+                    <Ionicons name="add-circle" size={24} color={COLORS.primary} />
                     <Text style={styles.addCatText}>ເພີ່ມໝວດໝູ່ໃໝ່</Text>
                 </TouchableOpacity>
             </View>

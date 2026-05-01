@@ -73,7 +73,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
               {/* Username Input */}
               <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+                <Ionicons name="person" size={20} color="#666" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="ຊື່ຜູ້ໃຊ້ (Username)"
@@ -85,7 +85,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
               {/* Password Input */}
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                <Ionicons name="lock-closed" size={20} color="#666" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="ລະຫັດຜ່ານ (Password)"

@@ -198,7 +198,7 @@ export default function CartModal({
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity onPress={() => removeFromCart(item.id!)} style={{marginLeft: 10}}>
-                    <Ionicons name="trash-outline" size={22} color={COLORS.danger} />
+                    <Ionicons name="trash" size={22} color={COLORS.danger} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -270,13 +270,13 @@ export default function CartModal({
                         style={[styles.miniMethodBtn, paymentMethod === 'CASH' && {backgroundColor: 'white', shadowOpacity: 0.1}]} 
                         onPress={() => setPaymentMethod('CASH')}
                     >
-                        <Ionicons name="cash-outline" size={18} color={paymentMethod === 'CASH' ? activeColor : '#888'} />
+                        <Ionicons name="cash" size={18} color={paymentMethod === 'CASH' ? activeColor : '#888'} />
                     </TouchableOpacity>
                     <TouchableOpacity 
                         style={[styles.miniMethodBtn, paymentMethod === 'QR' && {backgroundColor: 'white', shadowOpacity: 0.1}]} 
                         onPress={() => setPaymentMethod('QR')}
                     >
-                        <Ionicons name="qr-code-outline" size={18} color={paymentMethod === 'QR' ? activeColor : '#888'} />
+                        <Ionicons name="qr-code" size={18} color={paymentMethod === 'QR' ? activeColor : '#888'} />
                     </TouchableOpacity>
                  </View>
 

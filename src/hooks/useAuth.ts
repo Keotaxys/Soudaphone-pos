@@ -64,9 +64,9 @@ export function useAuth() {
         Alert.alert("ຜິດພາດ", "ບໍ່ພົບຊື່ຜູ້ໃຊ້ນີ້");
         return false;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່");
+      Alert.alert("Error", "ເກີດຂໍ້ຜິດພາດ: " + error.message);
       return false;
     } finally {
       setLoading(false);

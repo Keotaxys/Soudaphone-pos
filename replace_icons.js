@@ -2,9 +2,10 @@ const fs = require('fs');
 const path = require('path');
 
 const directories = [
-  path.join(__dirname, '../../../../../../../e:/Git code/Soudaphone-pos/src/components/screens'),
-  path.join(__dirname, '../../../../../../../e:/Git code/Soudaphone-pos/src/components/ui'),
-  path.join(__dirname, '../../../../../../../e:/Git code/Soudaphone-pos/app')
+  path.join(__dirname, 'src', 'components', 'screens'),
+  path.join(__dirname, 'src', 'components', 'ui'),
+  path.join(__dirname, 'src', 'components', 'modals'),
+  path.join(__dirname, 'app')
 ];
 
 function processDirectory(dir) {

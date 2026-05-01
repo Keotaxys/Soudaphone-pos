@@ -23,18 +23,18 @@ interface SidebarProps {
 
 const MENU_ITEMS = [
   // ... (ຮັກສາລາຍການເມນູໄວ້ຄືເກົ່າ)
-  { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home-outline' },
-  { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart-outline', permission: 'accessPos' },
-  { id: 'special_sale', label: 'ຂາຍພິເສດ', icon: 'flash-outline', permission: 'accessPos' },
-  { id: 'history', label: 'ປະຫວັດການຂາຍ', icon: 'time-outline', permission: 'accessReports' },
-  { id: 'products', label: 'ຈັດການສິນຄ້າ', icon: 'cube-outline', permission: 'accessProducts' },
-  { id: 'orders', label: 'ຕິດຕາມຄຳສັ່ງຊື້', icon: 'list-outline', permission: 'accessProducts' },
-  { id: 'customers', label: 'ຂໍ້ມູນລູກຄ້າ', icon: 'people-outline', permission: 'accessCustomers' },
-  { id: 'debts_receivable', label: 'ໜີ້ຕ້ອງຮັບ', icon: 'download-outline', permission: 'accessFinancial' },
-  { id: 'debts_payable', label: 'ໜີ້ຕ້ອງສົ່ງ', icon: 'arrow-up-circle-outline', permission: 'accessFinancial' },
-  { id: 'expenses', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet-outline', permission: 'accessFinancial' },
-  { id: 'reports', label: 'ລາຍງານ', icon: 'bar-chart-outline', permission: 'accessReports' },
-  { id: 'shift', label: 'ປິດກະລາຍວັນ', icon: 'lock-closed-outline', permission: 'accessReports' },
+  { id: 'home', label: 'ໜ້າຫຼັກ', icon: 'home' },
+  { id: 'pos', label: 'ຂາຍສິນຄ້າ', icon: 'cart', permission: 'accessPos' },
+  { id: 'special_sale', label: 'ຂາຍພິເສດ', icon: 'flash', permission: 'accessPos' },
+  { id: 'history', label: 'ປະຫວັດການຂາຍ', icon: 'time', permission: 'accessReports' },
+  { id: 'products', label: 'ຈັດການສິນຄ້າ', icon: 'cube', permission: 'accessProducts' },
+  { id: 'orders', label: 'ຕິດຕາມຄຳສັ່ງຊື້', icon: 'list', permission: 'accessProducts' },
+  { id: 'customers', label: 'ຂໍ້ມູນລູກຄ້າ', icon: 'people', permission: 'accessCustomers' },
+  { id: 'debts_receivable', label: 'ໜີ້ຕ້ອງຮັບ', icon: 'download', permission: 'accessFinancial' },
+  { id: 'debts_payable', label: 'ໜີ້ຕ້ອງສົ່ງ', icon: 'arrow-up-circle', permission: 'accessFinancial' },
+  { id: 'expenses', label: 'ບັນທຶກລາຍຈ່າຍ', icon: 'wallet', permission: 'accessFinancial' },
+  { id: 'reports', label: 'ລາຍງານ', icon: 'bar-chart', permission: 'accessReports' },
+  { id: 'shift', label: 'ປິດກະລາຍວັນ', icon: 'lock-closed', permission: 'accessReports' },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, onClose }: SidebarProps) {

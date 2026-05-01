@@ -42,7 +42,19 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Soudaphone POS to access your camera to scan barcodes."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Soudaphone POS to access your photos for product and customer images."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

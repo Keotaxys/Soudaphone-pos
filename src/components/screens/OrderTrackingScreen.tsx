@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
-import { onValue, push, ref, update } from 'firebase/database';
+import { onValue, push, ref, remove, update } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   Alert, FlatList, Image,
   Keyboard,
-  KeyboardAvoidingView, // ✅ Import ມາແລ້ວ
+  KeyboardAvoidingView,
   Modal,
   Platform,
   SafeAreaView,
@@ -18,30 +18,55 @@ import CurrencyInput from '../ui/CurrencyInput';
 
 const SOURCES = ['ຈີນ', 'ຫວຽດ', 'ໄທ', 'ອື່ນໆ'];
 const STATUSES = ['ຮັບອໍເດີ້', 'ສັ່ງເຄື່ອງແລ້ວ', 'ເຄື່ອງຮອດແລ້ວ', 'ຈັດສົ່ງສຳເລັດ'];
-const ORANGE_COLOR = '#FF9800'; // 🟢 ກຳນົດສີສົ້ມສຳລັບປຸ່ມລຶບ
+const FILTER_STATUSES = ['ທັງໝົດ', ...STATUSES];
+const ORANGE_COLOR = '#FF8F00'; 
 
 export default function OrderTrackingScreen() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [customers, setCustomers] = useState<{id: string, name: string}[]>([]);
   const [showForm, setShowForm] = useState(false);
   
+  // --- Filter & Search States ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('ທັງໝົດ');
+
   // --- Form States ---
   const [id, setId] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState('');
+  const [showCustomerList, setShowCustomerList] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [items, setItems] = useState<OrderItem[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     const orderRef = ref(db, 'customer_orders');
-    const unsubscribe = onValue(orderRef, (snapshot) => {
+    const unsubscribeOrder = onValue(orderRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
         setOrders(list.reverse() as CustomerOrder[]);
       } else { setOrders([]); }
     });
-    return () => unsubscribe();
+
+    const custRef = ref(db, 'customers');
+    const unsubscribeCust = onValue(custRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setCustomers(Object.keys(data).map(key => ({ id: key, name: data[key].name })));
+      } else { setCustomers([]); }
+    });
+
+    return () => {
+        unsubscribeOrder();
+        unsubscribeCust();
+    };
   }, []);
+
+  const filteredOrders = orders.filter(order => {
+    const matchSearch = order.customerName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchStatus = filterStatus === 'ທັງໝົດ' || order.items.some(i => i.status === filterStatus);
+    return matchSearch && matchStatus;
+  });
 
   const addNewItem = () => {
     const newItem: OrderItem = {
@@ -77,16 +102,26 @@ export default function OrderTrackingScreen() {
       Alert.alert('ຂໍ້ມູນບໍ່ຄົບ', 'ກະລຸນາໃສ່ຊື່ລູກຄ້າ ແລະ ເພີ່ມສິນຄ້າຢ່າງໜ້ອຍ 1 ລາຍການ');
       return;
     }
-    const totalAmount = items.reduce((sum, item) => sum + (Number(item.salePrice) * Number(item.quantity)), 0);
-    const orderData = {
-      customerName,
-      date: selectedDate.toISOString(),
-      items,
-      totalAmount,
-      createdAt: new Date().toISOString()
-    };
 
     try {
+      // ບັນທຶກລູກຄ້າໃໝ່ອັດຕະໂນມັດ ຖ້າບໍ່ມີໃນລະບົບ
+      const existingCust = customers.find(c => c.name.toLowerCase() === customerName.trim().toLowerCase());
+      if (!existingCust) {
+        await push(ref(db, 'customers'), {
+          name: customerName.trim(),
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      const totalAmount = items.reduce((sum, item) => sum + (Number(item.salePrice) * Number(item.quantity)), 0);
+      const orderData = {
+        customerName: customerName.trim(),
+        date: selectedDate.toISOString(),
+        items,
+        totalAmount,
+        createdAt: id ? orders.find(o => o.id === id)?.createdAt || new Date().toISOString() : new Date().toISOString()
+      };
+
       if (id) { await update(ref(db, `customer_orders/${id}`), orderData); }
       else { await push(ref(db, 'customer_orders'), orderData); }
       setShowForm(false);
@@ -94,8 +129,20 @@ export default function OrderTrackingScreen() {
     } catch (error) { Alert.alert('Error', 'ບັນທຶກບໍ່ສຳເລັດ'); }
   };
 
+  const handleDeleteOrder = (orderId: string) => {
+    Alert.alert('ຢືນຢັນ', 'ທ່ານຕ້ອງການລຶບອໍເດີ້ນີ້ແທ້ບໍ່?', [
+      { text: 'ຍົກເລີກ', style: 'cancel' },
+      { text: 'ລຶບ', style: 'destructive', onPress: async () => {
+          try {
+            await remove(ref(db, `customer_orders/${orderId}`));
+          } catch (e) { Alert.alert('Error', 'ລຶບບໍ່ສຳເລັດ'); }
+        }
+      }
+    ]);
+  };
+
   const resetForm = () => {
-    setId(null); setCustomerName(''); setSelectedDate(new Date()); setItems([]);
+    setId(null); setCustomerName(''); setSelectedDate(new Date()); setItems([]); setShowCustomerList(false);
   };
 
   const getStatusColor = (s: string) => {
@@ -127,9 +174,37 @@ export default function OrderTrackingScreen() {
 
   return (
     <View style={styles.container}>
-      
+      {/* 🟢 Search & Filter Bar */}
+      <View style={styles.searchFilterContainer}>
+        <View style={styles.searchBox}>
+            <Ionicons name="search" size={20} color="#999" />
+            <TextInput 
+                style={styles.searchInput} 
+                placeholder="ຄົ້ນຫາຊື່ລູກຄ້າ..." 
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={20} color="#999" />
+                </TouchableOpacity>
+            )}
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+            {FILTER_STATUSES.map(status => (
+                <TouchableOpacity 
+                    key={status} 
+                    style={[styles.filterChip, filterStatus === status && styles.filterChipActive]}
+                    onPress={() => setFilterStatus(status)}
+                >
+                    <Text style={[styles.filterText, filterStatus === status && {color: 'white'}]}>{status}</Text>
+                </TouchableOpacity>
+            ))}
+        </ScrollView>
+      </View>
+
       <FlatList
-        data={orders}
+        data={filteredOrders}
         keyExtractor={item => item.id!}
         ListHeaderComponent={ListHeader} 
         contentContainerStyle={{ paddingBottom: 100 }} 
@@ -156,37 +231,70 @@ export default function OrderTrackingScreen() {
                 </View>
               </View>
             ))}
-            <TouchableOpacity style={styles.editLink} onPress={() => { setId(item.id!); setCustomerName(item.customerName); setItems(item.items); setSelectedDate(new Date(item.date)); setShowForm(true); }}>
-              <Text style={styles.editLinkText}>ເບິ່ງລາຍລະອຽດ / ແກ້ໄຂ</Text>
-            </TouchableOpacity>
+            <View style={styles.cardActions}>
+                <TouchableOpacity style={styles.editLink} onPress={() => { setId(item.id!); setCustomerName(item.customerName); setItems(item.items); setSelectedDate(new Date(item.date)); setShowForm(true); }}>
+                  <Ionicons name="pencil" size={16} color={COLORS.primary} style={{marginRight: 5}}/>
+                  <Text style={styles.editLinkText}>ເບິ່ງລາຍລະອຽດ / ແກ້ໄຂ</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.deleteLink} onPress={() => handleDeleteOrder(item.id!)}>
+                  <Ionicons name="trash" size={20} color={ORANGE_COLOR} />
+                </TouchableOpacity>
+            </View>
           </View>
         )}
       />
 
       <Modal visible={showForm} animationType="slide">
         <SafeAreaView style={{flex: 1, backgroundColor: 'white'}}>
-          {/* 🟢 1. ໃຊ້ KeyboardAvoidingView ຫຸ້ມ Form */}
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
             style={{ flex: 1 }}
           >
             <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{id ? 'ແກ້ໄຂອໍເດີ' : 'ບັນທຶກອໍເດີ (ຫຼາຍລິ້ງ)'}</Text>
-                <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={30} /></TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={30} color="#333" /></TouchableOpacity>
             </View>
             
             <ScrollView 
                 style={styles.formBody} 
                 contentContainerStyle={{ paddingBottom: 50 }}
-                keyboardShouldPersistTaps="handled" // 🟢 2. ໃຫ້ກົດປຸ່ມໄດ້ເລີຍ
+                keyboardShouldPersistTaps="handled" 
             >
                 <Text style={styles.label}>ຊື່ລູກຄ້າ *</Text>
-                <TextInput style={styles.input} value={customerName} onChangeText={setCustomerName} placeholder="ປ້ອນຊື່ລູກຄ້າ..." />
+                <View style={{zIndex: 10}}>
+                    <TextInput 
+                        style={styles.input} 
+                        value={customerName} 
+                        onChangeText={(text) => { setCustomerName(text); setShowCustomerList(true); }} 
+                        placeholder="ພິມຊອກຫາ ຫຼື ເພີ່ມລູກຄ້າໃໝ່..." 
+                        onFocus={() => setShowCustomerList(true)}
+                    />
+                    {showCustomerList && customerName.length > 0 && (
+                        <View style={styles.customerDropdown}>
+                            {customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).slice(0, 5).map(cust => (
+                                <TouchableOpacity 
+                                    key={cust.id} 
+                                    style={styles.customerOption}
+                                    onPress={() => { setCustomerName(cust.name); setShowCustomerList(false); Keyboard.dismiss(); }}
+                                >
+                                    <Ionicons name="person" size={16} color="#666" style={{marginRight: 10}}/>
+                                    <Text style={styles.customerOptionText}>{cust.name}</Text>
+                                </TouchableOpacity>
+                            ))}
+                            {customers.filter(c => c.name.toLowerCase() === customerName.toLowerCase()).length === 0 && (
+                                <TouchableOpacity style={styles.customerOptionNew} onPress={() => setShowCustomerList(false)}>
+                                    <Ionicons name="add-circle" size={16} color={COLORS.primary} style={{marginRight: 10}}/>
+                                    <Text style={styles.customerOptionNewText}>ເພີ່ມ "{customerName}" ເປັນລູກຄ້າໃໝ່</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )}
+                </View>
 
                 <Text style={styles.label}>ວັນທີ *</Text>
                 <TouchableOpacity style={styles.dateInput} onPress={openDatePicker}>
                     <Text style={styles.inputText}>{formatDate(selectedDate)}</Text>
-                    <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
+                    <Ionicons name="calendar" size={22} color={COLORS.primary} />
                 </TouchableOpacity>
 
                 <Text style={[styles.label, {marginTop: 20, fontSize: 16}]}>ລາຍການສິນຄ້າ ({items.length})</Text>
@@ -196,7 +304,6 @@ export default function OrderTrackingScreen() {
                         <View style={styles.itemHeader}>
                             <Text style={styles.itemNumber}>ລາຍການທີ {index + 1}</Text>
                             <TouchableOpacity onPress={() => setItems(items.filter(i => i.id !== item.id))}>
-                                {/* 🟢 3. ປ່ຽນສີປຸ່ມລຶບເປັນສີສົ້ມ */}
                                 <Ionicons name="trash" size={20} color={ORANGE_COLOR} />
                             </TouchableOpacity>
                         </View>
@@ -252,7 +359,7 @@ export default function OrderTrackingScreen() {
 
                         <Text style={styles.subLabel}>ຮູບພາບສິນຄ້າ</Text>
                         <TouchableOpacity style={styles.imgPicker} onPress={() => pickItemImage(item.id)}>
-                            {item.imageUrl ? <Image source={{uri: item.imageUrl}} style={styles.fullImg} /> : <Ionicons name="camera-outline" size={30} color="#ccc" />}
+                            {item.imageUrl ? <Image source={{uri: item.imageUrl}} style={styles.fullImg} /> : <Ionicons name="camera" size={30} color="#ccc" />}
                         </TouchableOpacity>
 
                         <Text style={styles.subLabel}>ສະຖານະ *</Text>
@@ -267,7 +374,7 @@ export default function OrderTrackingScreen() {
                 ))}
 
                 <TouchableOpacity style={styles.addItemBtn} onPress={addNewItem}>
-                    <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />
+                    <Ionicons name="add-circle" size={24} color={COLORS.primary} />
                     <Text style={styles.addItemBtnText}>+ ເພີ່ມລາຍການສິນຄ້າ</Text>
                 </TouchableOpacity>
 
@@ -311,8 +418,15 @@ export default function OrderTrackingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, backgroundColor: 'white', marginBottom: 10, borderBottomWidth: 1, borderBottomColor: '#eee', elevation: 2 },
-  
+  searchFilterContainer: { backgroundColor: 'white', padding: 15, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#eee', zIndex: 1 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 10, paddingHorizontal: 12, height: 45, marginBottom: 10 },
+  searchInput: { flex: 1, marginLeft: 10, fontFamily: 'Lao-Regular', fontSize: 14 },
+  filterScroll: { flexDirection: 'row' },
+  filterChip: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, backgroundColor: '#eee', marginRight: 10 },
+  filterChipActive: { backgroundColor: COLORS.primary },
+  filterText: { fontSize: 12, fontFamily: 'Lao-Bold', color: '#666' },
+
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, paddingTop: 5 },
   headerTitle: { fontFamily: 'Lao-Bold', fontSize: 18, color: COLORS.primary },
   addBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, padding: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center' },
   addBtnText: { color: 'white', fontFamily: 'Lao-Bold', marginLeft: 5 },
@@ -329,8 +443,10 @@ const styles = StyleSheet.create({
   subDetail: { fontSize: 12, color: COLORS.textLight, fontFamily: 'Lao-Regular' },
   miniStatus: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   miniStatusText: { color: 'white', fontSize: 10, fontFamily: 'Lao-Bold' },
-  editLink: { alignSelf: 'center', marginTop: 5 },
+  cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, borderTopWidth: 1, borderTopColor: '#f5f5f5', paddingTop: 10 },
+  editLink: { flexDirection: 'row', alignItems: 'center' },
   editLinkText: { color: COLORS.primary, fontFamily: 'Lao-Bold', fontSize: 13 },
+  deleteLink: { padding: 5 },
 
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
   modalTitle: { fontSize: 20, fontFamily: 'Lao-Bold', color: COLORS.text },
@@ -338,6 +454,13 @@ const styles = StyleSheet.create({
   label: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.text, marginBottom: 8 },
   subLabel: { fontFamily: 'Lao-Bold', fontSize: 13, color: '#666', marginBottom: 5, marginTop: 10 },
   input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#eee', fontFamily: 'Lao-Regular' },
+  
+  customerDropdown: { position: 'absolute', top: 50, left: 0, right: 0, backgroundColor: 'white', borderRadius: 10, elevation: 5, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, zIndex: 100 },
+  customerOption: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
+  customerOptionText: { fontFamily: 'Lao-Regular', fontSize: 14, color: '#333' },
+  customerOptionNew: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: '#f0fbcf' },
+  customerOptionNewText: { fontFamily: 'Lao-Bold', fontSize: 14, color: COLORS.primary },
+
   inputText: { fontFamily: 'Lao-Regular', fontSize: 16, color: COLORS.text },
   dateInput: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#eee' },
   

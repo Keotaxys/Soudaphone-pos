@@ -60,7 +60,7 @@ export default function ScannerModal({ visible, onClose, onScanned }: ScannerMod
             key={cameraKey}
             style={StyleSheet.absoluteFillObject}
             facing="back"
-            autoFocus="on"
+            autofocus="off"
             enableTorch={torchEnabled}
             onCameraReady={() => setIsCameraReady(true)}
             onBarcodeScanned={scanned || !isCameraReady ? undefined : handleBarcodeScanned}

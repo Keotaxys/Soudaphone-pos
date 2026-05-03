@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "posapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,         
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.keota.soudaphonepos"
@@ -21,7 +21,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -65,6 +71,12 @@
       "eas": {
         "projectId": "bb86dc08-9483-4272-a597-7c236d5bb481"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/bb86dc08-9483-4272-a597-7c236d5bb481"
     }
   }
 }

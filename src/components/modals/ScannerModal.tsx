@@ -58,7 +58,7 @@ export default function ScannerModal({ visible, onClose, onScanned }: ScannerMod
           // key prop forces remount on every open → guarantees auto-focus restarts
           <CameraView
             key={cameraKey}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             facing="back"
             autofocus="off"
             enableTorch={torchEnabled}
@@ -107,7 +107,7 @@ export default function ScannerModal({ visible, onClose, onScanned }: ScannerMod
 
 const styles = StyleSheet.create({
   scannerContainer: { flex: 1, backgroundColor: 'black' },
-  scannerOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  scannerOverlay: { ...StyleSheet.absoluteFill, justifyContent: 'center', alignItems: 'center' },
   scannerHeader: { position: 'absolute', top: 50, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 },
   scannerTitle: { color: 'white', fontSize: 20, fontFamily: 'Lao-Bold' },
   closeScannerBtn: { padding: 5 },

@@ -46,7 +46,6 @@ const SidebarAny = Sidebar as any;
 const FooterAny = Footer as any;
 const ProductModalAny = ProductModal as any;
 const LoginScreenAny = LoginScreen as any;
-const ScannerModalAny = ScannerModal as any;
 
 const emptyProduct: Product = {
   id: '', name: '', price: 0, stock: 0, priceCurrency: 'LAK', category: '', barcode: ''
@@ -247,7 +246,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" backgroundColor="transparent" translucent={true} />
+      <StatusBar style="light" />
       
       {/* 🟢 ໃຊ້ View ຫໍ່ເພື່ອຈັດການ Z-Index ໄດ້ງ່າຍ */}
       <View style={{ flex: 1, backgroundColor: '#F5F9FA' }}> 
@@ -310,10 +309,10 @@ export default function App() {
         )}
         
         {isScannerVisible && (
-            <ScannerModalAny 
+            <ScannerModal
                 visible={isScannerVisible} 
                 onClose={() => setScannerVisible(false)} 
-                onScan={handleScanSuccess} 
+                onScanned={handleScanSuccess}
             />
         )}
         

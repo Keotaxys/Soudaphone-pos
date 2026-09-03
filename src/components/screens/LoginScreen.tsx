@@ -42,9 +42,8 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     }
   };
 
-  return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={styles.container}>
+  const screen = (
+    <SafeAreaView style={styles.container}>
         {/* 🟢 2. ໃຊ້ KeyboardAvoidingView ຫຸ້ມໄວ້ຊັ້ນນອກ */}
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -115,7 +114,14 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
           </ScrollView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+    </SafeAreaView>
+  );
+
+  if (Platform.OS === 'web') return screen;
+
+  return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      {screen}
     </TouchableWithoutFeedback>
   );
 }
